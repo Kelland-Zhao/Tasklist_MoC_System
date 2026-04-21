@@ -20,16 +20,12 @@
         { data: 'Operator' },
         { data: 'Reason' },
         { data: 'Production Approval (Y/N)' },
-        { data: 'Production Approver' },
-        { data: 'Production Comment' },
-        { data: 'Approver1' },
-        { data: 'Comment1' },
-        { data: 'Approver2' },
-        { data: 'Comment2' },
-        { data: 'Dissminater' },
+        { data: null, defaultContent: '' },
         { data: 'Status' },
         { data: 'submitMail' }
       ],
+      autoWidth: false,
+      scrollX: true,
       columnDefs: [
         {
           targets: 3, // Production Approval (Y/N)列 (索引3)
@@ -52,7 +48,59 @@
           }
         },
         {
-          targets: 11, // Status列 (索引11)
+          targets: 4, // 审批流程列 (索引4)
+          render: function (data, type, row, meta) {
+            if (type !== 'display') return '';
+            function parseApprover(val) {
+              if (!val || !val.trim()) return null;
+              var action = '', name = '', date = '';
+              if (val.includes('批准作废')) action = '批准作废';
+              else if (val.includes('批准')) action = '批准';
+              else if (val.includes('拒绝')) action = '拒绝';
+              else action = val.substring(0, 4);
+              var emailMatch = val.match(/[\w.]+@[\w.]+/);
+              if (emailMatch) name = emailMatch[0].split('@')[0];
+              var dateMatch = val.match(/\d{4}-\d{2}-\d{2}/);
+              if (dateMatch) date = dateMatch[0];
+              return { action: action, name: name, date: date };
+            }
+            var steps = [
+              { skip: row['Production Approval (Y/N)'] === 'N', parsed: parseApprover(row['Production Approver']), label: '班组' },
+              { skip: false, parsed: parseApprover(row['Approver1']), label: '审1' },
+              { skip: false, parsed: parseApprover(row['Approver2']), label: '审2' },
+              { skip: false, parsed: parseApprover(row['Dissminater']), label: '发布' }
+            ];
+            var foundCurrent = false;
+            for (var i = 0; i < steps.length; i++) {
+              if (!foundCurrent && !steps[i].skip && !steps[i].parsed) {
+                steps[i].isCurrent = true;
+                foundCurrent = true;
+              }
+            }
+            var arrow = '<span style="color:#ccc;padding:0 3px;">&#9658;</span>';
+            var html = '<div style="display:flex;align-items:center;flex-wrap:nowrap;">';
+            for (var i = 0; i < steps.length; i++) {
+              var step = steps[i];
+              var inner = '';
+              if (step.skip) {
+                inner = '<div style="text-align:center;min-width:55px;"><span class="badge bg-secondary" style="font-size:10px;">N/A</span></div>';
+              } else if (step.parsed) {
+                var bc = step.parsed.action.includes('拒绝') ? 'bg-danger' : 'bg-success';
+                inner = '<div style="text-align:center;min-width:55px;"><span class="badge ' + bc + '" style="font-size:10px;">' + step.parsed.action + '</span><br><small style="font-size:9px;color:#555;">' + step.parsed.name + '</small><br><small style="font-size:9px;color:#888;">' + step.parsed.date + '</small></div>';
+              } else if (step.isCurrent) {
+                inner = '<div style="text-align:center;min-width:55px;"><span class="badge bg-warning text-dark" style="font-size:10px;">待审批</span><br><small style="font-size:9px;color:#aaa;">' + step.label + '</small></div>';
+              } else {
+                inner = '<div style="text-align:center;min-width:55px;"><span class="badge" style="background:#dee2e6;color:#aaa;font-size:10px;">待</span><br><small style="font-size:9px;color:#ccc;">' + step.label + '</small></div>';
+              }
+              html += inner;
+              if (i < steps.length - 1) html += arrow;
+            }
+            html += '</div>';
+            return html;
+          }
+        },
+        {
+          targets: 5, // Status列 (索引5)
           render: function (data, type, row, meta) {
             if (type === 'display') {
               let status = data;
@@ -114,7 +162,7 @@
           }
         },
         {
-          targets: 13, // 任务清单列 (索引13)
+          targets: 7, // 任务清单列 (索引7)
           render: function (data, type, row, meta) {
             return '<button class="btn btn-info btn-sm">任务清单/ Detail Tasklist</button>';
           }
