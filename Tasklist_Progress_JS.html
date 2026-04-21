@@ -14,6 +14,7 @@
       showConfirmButton: false
     })
 
+    var emailConfig = [];
     var table = $('#table').DataTable({
       columns: [
         { data: 'MachineType' },
@@ -27,6 +28,9 @@
       autoWidth: false,
       scrollX: true,
       columnDefs: [
+        { targets: 1, width: '110px' },
+        { targets: 3, width: '55px' },
+        { targets: 4, width: '450px' },
         {
           targets: 3, // Production Approval (Y/N)列 (索引3)
           render: function (data, type, row, meta) {
@@ -64,11 +68,23 @@
               if (dateMatch) date = dateMatch[0];
               return { action: action, name: name, date: date };
             }
+            function getPendingApprover(machineType, key) {
+              var item = null;
+              for (var j = 0; j < emailConfig.length; j++) {
+                if (emailConfig[j].MachineType === machineType) { item = emailConfig[j]; break; }
+              }
+              if (!item) return '';
+              var email = '';
+              if (key === 'lv1') email = item['Mail_Approve1'] || '';
+              else if (key === 'lv2') email = item['Mail_Approve2'] || '';
+              else if (key === 'dis') email = item['Mail_Disseninate'] || '';
+              return email ? email.split('@')[0] : '';
+            }
             var steps = [
-              { skip: row['Production Approval (Y/N)'] === 'N', parsed: parseApprover(row['Production Approver']), label: '班组' },
-              { skip: false, parsed: parseApprover(row['Approver1']), label: '审1' },
-              { skip: false, parsed: parseApprover(row['Approver2']), label: '审2' },
-              { skip: false, parsed: parseApprover(row['Dissminater']), label: '发布' }
+              { skip: row['Production Approval (Y/N)'] === 'N', parsed: parseApprover(row['Production Approver']), label: '班组', key: 'prod' },
+              { skip: false, parsed: parseApprover(row['Approver1']), label: '审1', key: 'lv1' },
+              { skip: false, parsed: parseApprover(row['Approver2']), label: '审2', key: 'lv2' },
+              { skip: false, parsed: parseApprover(row['Dissminater']), label: '发布', key: 'dis' }
             ];
             var foundCurrent = false;
             for (var i = 0; i < steps.length; i++) {
@@ -83,14 +99,15 @@
               var step = steps[i];
               var inner = '';
               if (step.skip) {
-                inner = '<div style="text-align:center;min-width:55px;"><span class="badge bg-secondary" style="font-size:10px;">N/A</span></div>';
+                inner = '<div style="text-align:center;min-width:100px;"><span class="badge bg-secondary" style="font-size:10px;">N/A</span></div>';
               } else if (step.parsed) {
                 var bc = step.parsed.action.includes('拒绝') ? 'bg-danger' : 'bg-success';
-                inner = '<div style="text-align:center;min-width:55px;"><span class="badge ' + bc + '" style="font-size:10px;">' + step.parsed.action + '</span><br><small style="font-size:9px;color:#555;">' + step.parsed.name + '</small><br><small style="font-size:9px;color:#888;">' + step.parsed.date + '</small></div>';
+                inner = '<div style="text-align:center;min-width:100px;"><span class="badge ' + bc + '" style="font-size:10px;">' + step.parsed.action + '</span><br><small style="font-size:9px;color:#555;">' + step.parsed.name + '</small><br><small style="font-size:9px;color:#888;">' + step.parsed.date + '</small></div>';
               } else if (step.isCurrent) {
-                inner = '<div style="text-align:center;min-width:55px;"><span class="badge bg-warning text-dark" style="font-size:10px;">待审批</span><br><small style="font-size:9px;color:#aaa;">' + step.label + '</small></div>';
+                var approver = getPendingApprover(row['MachineType'], step.key);
+                inner = '<div style="text-align:center;min-width:100px;"><span class="badge bg-warning text-dark" style="font-size:10px;">待审批</span><br><small style="font-size:9px;color:#555;">' + (approver || step.label) + '</small></div>';
               } else {
-                inner = '<div style="text-align:center;min-width:55px;"><span class="badge" style="background:#dee2e6;color:#aaa;font-size:10px;">待</span><br><small style="font-size:9px;color:#ccc;">' + step.label + '</small></div>';
+                inner = '<div style="text-align:center;min-width:100px;"><span class="badge" style="background:#dee2e6;color:#aaa;font-size:10px;">待</span><br><small style="font-size:9px;color:#ccc;">' + step.label + '</small></div>';
               }
               html += inner;
               if (i < steps.length - 1) html += arrow;
@@ -181,6 +198,7 @@
         
         let objArrayApprovallist = r[0];
         let objArrayEmail = r[1];
+        emailConfig = objArrayEmail;
         let mail = r[2];
 
         // 筛选正在审批过程中的任务（排除已完成状态、拒绝状态和表头行）
