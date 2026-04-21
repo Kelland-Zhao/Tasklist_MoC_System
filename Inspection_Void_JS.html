@@ -1,0 +1,277 @@
+<script>
+  $(document).ready(() => {
+    let title = $('#title').text();
+    let styledText1 = '<span style="color: red; font-weight: bold;">点检</span>';
+    let styledText2 = '<span style="color: red; font-weight: bold;font-style:italic;">Inspection</span>';
+    let newText = title.replace('点检', styledText1).replace('Inspection', styledText2);
+    $('#title').html(newText)
+
+    Swal.fire({
+      title: '页面加载中/ Page Loading',
+      text: '页面加载中，请稍后.../ Page loading, please wait...',
+      icon: 'info',
+      allowOutsideClick: false,
+      showConfirmButton: false
+    });
+    //DataTables初始化
+    let table = $('#table').DataTable({
+
+      columns: [
+        { data: 'Unit' },
+        { data: 'Parts' },
+        { data: 'Inspection Std' },
+        { data: 'Tool' },
+        { data: 'Method' },
+        { data: 'Status' },
+        { data: 'Frequency' },
+        { data: 'Machine Type' },
+        { data: 'Resource' },
+        { data: 'Process' }
+
+      ],
+      columnDefs: [
+        {
+          targets: 10, // 表示最后一列
+          render: function (data, type, row, meta) {
+            return '<button class="btn btn-danger btn-sm">删除/ Delete</button>';
+          }
+        }
+      ],
+      pageLength: 100
+    });
+
+    google.script.run.withSuccessHandler((result) => {
+      if (result.length === 2) {
+
+        Swal.close();
+
+        Swal.fire({
+
+          title: '加载成功/ Loading Success',
+
+          icon: 'success'
+        });
+
+        let userEmail = result[1];
+        let data = result[0];
+
+        // 过滤机型数据，排除状态为"作废/ Void"的记录
+        let availableOptions = [];
+        let optionSet = new Set(); // 用于去重
+
+        data.forEach((r) => {
+          // 只显示状态为"生效/ Effective"的数据
+          if (r['Status'] === '生效/ Effective' && r['MachineType'] && r['Process']) {
+            // 以 "Process - MachineType" 格式组合
+            let optionText = `${r['Process']} - ${r['MachineType']}`;
+            let optionValue = r['MachineType']; // 保持原有的value值用于后续逻辑
+            optionSet.add(JSON.stringify({text: optionText, value: optionValue}));
+          }
+        });
+
+        // 转换为数组并排序
+        availableOptions = Array.from(optionSet).map(item => JSON.parse(item)).sort((a, b) => {
+          // 按Process排序，然后按MachineType排序
+          if (a.text.split(' - ')[0] !== b.text.split(' - ')[0]) {
+            return a.text.split(' - ')[0].localeCompare(b.text.split(' - ')[0]);
+          }
+          return a.text.split(' - ')[1].localeCompare(b.text.split(' - ')[1]);
+        });
+
+        // 动态生成机型选择下拉框
+        let machineTypeSelect = $('#MachineType');
+        machineTypeSelect.empty(); // 清空现有选项
+        
+        // 添加默认选项
+        machineTypeSelect.append('<option selected disabled>机型选择/ Machine Type</option>');
+        
+        // 添加过滤后的选项
+        availableOptions.forEach((option) => {
+          machineTypeSelect.append(`<option value="${option.value}">${option.text}</option>`);
+        });
+
+        $("#Confirm").click(() => {
+
+          let MachineType = $("#MachineType").val();
+
+          let Tasklist = [];
+
+          data.forEach((r) => {
+
+            if (r['MachineType'] == MachineType
+
+              &&
+
+              r['Status'] == '生效/ Effective') {
+
+              Tasklist.push(r["Tasklist"]);
+            }
+          })
+          table.clear().draw();
+
+          table.rows.add(JSON.parse(Tasklist[0])).draw();
+
+
+          $('#table tbody').on('click', ".btn", function () {
+            let row = table.row($(this).closest('tr'));
+            row.remove().draw();
+
+          });
+
+
+
+          $("#Void").click(async () => {
+            let reason;
+
+            // --- “班组确认” 检查是否有非“技术员”or“IDL”字段，自动判断是否提交班组审批 --- //
+            let production_Approval = false;
+
+
+            table.rows().every(function () {
+
+              let data = this.data();
+
+              if (!data.Resource.includes('技术员') && !data.Resource.includes('IDL')) {
+
+                production_Approval = true;
+              }
+            });
+
+            // --- ----- --- //
+
+            Swal.fire({
+
+              input: 'textarea',
+
+              inputLabel: '作废原因/ Reason for void',
+
+              inputPlaceholder: '请输入作废原因/ Please type in the reason for void',
+
+              showCancelButton: true,
+
+              inputValidator: (value) => {
+
+                if (!value) {
+
+                  return '作废原因不能为空/ Reason for void cannot be null';
+                }
+              }
+            }).then((firstValue) => {
+
+              if (firstValue.isConfirmed) {
+
+                reason = '作废原因/ Reason for void: ' + firstValue.value;
+
+                Swal.fire({
+
+                  title: '请等待/ Please waite',
+
+                  text: '等待服务器返回结果/ Waiting for the serve',
+
+                  icon: 'info',
+
+                  allowOutsideClick: false,
+
+                  showConfirmButton: false
+                })
+
+                let obj = table.data().toArray();
+
+                let process = obj[0].Process;
+
+                let data = JSON.stringify(obj);
+
+                let timestamp = new Date().getTime();
+
+                date = new Date(timestamp)
+
+                let year = date.getFullYear();
+
+                let month = ('0' + (date.getMonth() + 1)).slice(-2);
+
+                let day = ('0' + date.getDate()).slice(-2);
+
+                let hours = ('0' + date.getHours()).slice(-2);
+
+                let minutes = ('0' + date.getMinutes()).slice(-2);
+
+                let seconds = ('0' + date.getSeconds()).slice(-2);
+
+                let formattedDate = year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
+
+                let loginInfo = $("#Code").text() + "_" + $("#Name").text() + " " + formattedDate;
+
+                let status = "作废待审批/ Void Pending";
+
+                google.script.run.withSuccessHandler((r) => {
+
+                  if (r == true) {
+
+                    Swal.close();
+
+                    Swal.fire({
+
+                      title: '操作成功/ Success',
+
+                      icon: 'success'
+                    });
+
+                  } else {
+
+                    Swal.close();
+
+                    Swal.fire({
+
+                      title: '操作失败/ Fail',
+
+                      icon: 'error'
+                    });
+                  }
+                }).dataSave_IN(data, loginInfo, reason, status, userEmail, process, production_Approval)
+
+              }
+            })
+          })
+        })
+
+
+      } else {
+
+        Swal.close();
+        Swal.fire({
+          title: '加载失败/ Loading Fail',
+          icon: 'error'
+        });
+
+
+      };
+
+    }).getINData()
+  });
+
+  $('#table').on('dblclick', 'td', function () {
+    let cell = $('#table').DataTable().cell(this);
+    let originalValue = cell.data();
+    let myInput = $('<input class="form-control">').val(originalValue);
+    cell.data(myInput.prop('outerHTML')).draw();
+    $(".form-control").focus();
+    // console.log(myInput);
+    $('.form-control').on("blur", function () {
+      let newValue = $(this).val();
+      // console.log("失去焦点");
+      if (newValue !== "") {
+        cell.data(newValue).draw();
+        // console.log("不为空");
+      } else {
+        cell.data(originalValue).draw();
+        // console.log("为空");
+      }
+    });
+
+
+
+
+  });
+
+
+</script>

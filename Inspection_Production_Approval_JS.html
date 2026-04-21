@@ -1,0 +1,455 @@
+<script>
+  $(document).ready(() => {
+    let title = $('#title').text();
+    let styledText1 = '<span style="color: red; font-weight: bold;">点检</span>';
+    let styledText2 = '<span style="color: red; font-weight: bold;font-style:italic;">Inspection</span>';
+    let newText = title.replace('点检', styledText1).replace('Inspection', styledText2);
+    $('#title').html(newText)
+
+    Swal.fire({
+      title: '页面加载中/ Page Loading',
+      text: '页面加载中，请稍后.../ Page loading, please wait...',
+      icon: 'info',
+      allowOutsideClick: false,
+      showConfirmButton: false
+    })
+    var table = $('#table').DataTable({
+
+      columns: [
+        { data: 'MachineType' },
+        { data: 'Operator' },
+        { data: 'Reason' },
+        { data: 'Production Approval (Y/N)' },
+        { data: 'Production Approver' },
+        { data: 'Production Comment' },
+        { data: 'Approver1' },
+        { data: 'Comment1' },
+        { data: 'Approver2' },
+        { data: 'Comment2' },
+        { data: 'Dissminater' },
+        { data: 'Status' },
+        { data: 'submitMail' }
+      ],
+      columnDefs: [
+        {
+          targets: 3, // Production Approval (Y/N)列 (索引3)
+          render: function (data, type, row, meta) {
+            if (type === 'display') {
+              let approval = data;
+              let badgeClass = '';
+              
+              if (approval === 'Y') {
+                badgeClass = 'bg-primary';
+              } else if (approval === 'N') {
+                badgeClass = 'bg-secondary';
+              } else {
+                badgeClass = 'bg-secondary';
+              }
+              
+              return '<span class="badge ' + badgeClass + ' d-flex justify-content-center">' + approval + '</span>';
+            }
+            return data;
+          }
+        },
+        {
+          targets: 11, // Status列 (索引11)
+          render: function (data, type, row, meta) {
+            if (type === 'display') {
+              let status = data;
+              let badgeClass = '';
+              
+              if (status === '待审批/ Pending') {
+                badgeClass = 'bg-warning text-dark';
+              } else if (status === '作废待审批/ Void Pending') {
+                badgeClass = 'bg-danger';
+              } else if (status === '拒绝/ Rejected') {
+                badgeClass = 'bg-danger';
+              } else if (status === '生效/ Effective') {
+                badgeClass = 'bg-success';
+              } else if (status === '取代/ Replace') {
+                badgeClass = 'bg-secondary';
+              } else if (status === '作废/ Void') {
+                badgeClass = 'bg-dark';
+              } else {
+                badgeClass = 'bg-secondary';
+              }
+              
+              return '<span class="badge ' + badgeClass + ' d-flex justify-content-center">' + status + '</span>';
+            }
+            return data;
+          }
+        },
+        {
+          targets: 13, // 最后3列的索引
+          render: function (data, type, row, meta) {
+            return '<button class="btn btn-info btn-sm">任务清单/ Detail Tasklist</button>';
+          }
+        },
+        {
+          targets: 14, // 最后2列的索引
+          render: function (data, type, row, meta) {
+            return '<button class="btn btn-warning btn-sm">保存意见/ Save Comment</button>';
+          }
+        },
+        {
+          targets: 15, // 最后一列的索引
+          render: function (data, type, row, meta) {
+            return '<button class="btn btn-success btn-sm">批准/ Approve</button> <button class="btn btn-danger btn-sm">拒绝/ Reject</button>';
+          }
+        }
+      ],
+      pageLength: 25
+    });
+
+
+    google.script.run.withSuccessHandler((r) => {
+
+      // r[2] = 'janus_xu@colpal.com';
+
+      if (r.length === 4) {
+        Swal.close();
+        Swal.fire({
+          title: '加载成功/ Loading Success',
+          icon: 'success'
+        });
+        let objArrayApprovallist = r[0];
+
+        let objArrayEmail = r[1];
+
+        let mail = r[2];
+
+        // mail = 'janus_xu@colpal.com'
+
+        console.log('objArrayEmail', objArrayEmail)
+
+        console.log('objArrayApprovallist', objArrayApprovallist);
+
+        let arrayApproval = objArrayEmail.filter((r) => { return r.Mail_Production == mail });
+
+        console.log("arrayApproval", arrayApproval);
+
+        let pendingItem = objArrayApprovallist.filter((r) => {
+
+          return r.Status !== "生效/ Effective"
+
+            &&
+
+            r['Production Approval (Y/N)'].includes('Y')
+
+            &&
+
+            r.Status !== "取代/ Replace"
+        });
+
+        console.log("pendingItem", pendingItem);
+
+        let listApproval = [];
+
+        arrayApproval.forEach((r) => {
+
+          let machineType = r.MachineType;
+
+          let item = pendingItem.filter((r) => { return r.MachineType == machineType; })
+
+          console.log('item', item)
+
+          if (item.length === 0) {
+            // console.log('数组为空');
+          } else {
+
+            // 批量添加 item 中的所有元素到 listApproval
+            Array.prototype.push.apply(listApproval, item);
+          };
+
+        })
+        console.log('listApproval', listApproval);
+        
+        if (listApproval.length === 0) {
+          Swal.fire({
+            title: '没有需要审批的内容',
+            text: 'No content requires approval',
+            icon: 'info',
+            confirmButtonText: '确定/ OK'
+          });
+        } else {
+          table.clear().draw();
+          table.rows.add(listApproval).draw();
+        }
+
+        $("#Name").text(mail);
+
+        let tableHTML = '<table id="diffTable" class="display" style="width:100%">';
+        tableHTML += "<thead>"
+        tableHTML += "<tr>"
+        tableHTML += "<th>单元/ Unit</th>"
+        tableHTML += "<th>部位及内容/ Parts</th>"
+        tableHTML += "<th>检查标准/ Inspection Std</th>"
+        tableHTML += "<th>使用工具/ Tool</th>"
+        tableHTML += "<th>方法/ Method</th>"
+        tableHTML += "<th>设备状态/ Status</th>"
+        tableHTML += "<th>检查频率/ Frequency</th>"
+        tableHTML += "<th>适用机型/ Machine Type</th>"
+        tableHTML += "<th>执行人/ Resource</th>"
+        tableHTML += "<th>工序/ Process</th>"
+        tableHTML += "</tr>"
+        tableHTML += "</thead>"
+        tableHTML += "</table>"
+
+        let diffTableData = [];
+        $("#table tbody").on('click', '.btn-info', function () {
+          Swal.fire({
+            title: '任务清单/ Tasklist',
+            html: tableHTML,
+            // height: '90%',
+            width: '90%'
+          });
+          // 获取当前行的数据
+          let rowData = table.row($(this).closest('tr')).data();
+
+          // 提取申请人/ Editor 信息
+          let editor = rowData['Operator'];
+          let item = r[0].filter((r) => { return r.Operator == editor });
+          let tasklist = JSON.parse(item[0].Tasklist);
+          // console.log(tasklist);
+
+          let diffTable = $('#diffTable').DataTable({
+
+            columns: [
+              { data: 'Unit' },
+              { data: 'Parts' },
+              { data: 'Inspection Std' },
+              { data: 'Tool' },
+              { data: 'Method' },
+              { data: 'Status' },
+              { data: 'Frequency' },
+              { data: 'Machine Type' },
+              { data: 'Resource' },
+              { data: 'Process' }
+
+            ],
+            pageLength: 100
+          });
+          diffTable.clear().rows.add(tasklist).draw(); // 填充并绘制 diffTable
+        })
+        // '批准'button
+        $("#table tbody").on('click', '.btn-success', function () {
+          // 获取当前行的数据
+          let rowData = table.row($(this).closest('tr')).data();
+          let operator = rowData['Operator'];
+          let submitMail = rowData['submitMail'];
+          let machineType = rowData['MachineType'];
+          let reason = rowData['Reason'];
+          // 获取approval 2的邮件地址
+          let item = objArrayEmail.filter((r) => { return r.MachineType == machineType });
+          let mailApprove1 = item[0].Mail_Approve1;
+          let mailDisseninate = item[0].Mail_Disseninate;
+          // console.log(item);
+          var timestamp = new Date().getTime();
+          date = new Date(timestamp)
+          var year = date.getFullYear();
+          var month = ('0' + (date.getMonth() + 1)).slice(-2);
+          var day = ('0' + date.getDate()).slice(-2);
+          var hours = ('0' + date.getHours()).slice(-2);
+          var minutes = ('0' + date.getMinutes()).slice(-2);
+          var seconds = ('0' + date.getSeconds()).slice(-2);
+          var formattedDate = year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
+          let mail = r[2];
+          let wordApproval = '批准/ Approve' + " " + mail + " " + formattedDate;
+          let approve2Array = [operator, wordApproval, submitMail, mailApprove1, machineType, reason, mailDisseninate];
+          Swal.fire({
+            title: '请等待/ Please waite',
+            text: '等待服务器返回结果/ Waiting for the serve',
+            icon: 'info',
+            allowOutsideClick: false,
+            showConfirmButton: false
+          })
+          google.script.run.withSuccessHandler((r) => {
+            if (r == true) {
+              Swal.close();
+              Swal.fire({
+                title: '操作成功/ Success',
+                icon: 'success'
+              });
+              let rowIdx = table.row($(this).closest('tr')).index();
+              table.cell(rowIdx, 4).data(wordApproval).draw();
+              table.cell(rowIdx, 11).data('待审批/ Pending').draw()
+            } else {
+              Swal.close();
+              Swal.fire({
+                title: '操作失败/ Fail',
+                icon: 'error'
+              });
+            }
+          }).save_Production_Approve_IN(approve2Array);
+        })
+        //'拒绝'button
+        $("#table tbody").on('click', '.btn-danger', function () {
+          // 获取当前行的数据
+          let rowData = table.row($(this).closest('tr')).data();
+          let operator = rowData['Operator'];
+          let submitMail = rowData['submitMail'];
+          let machineType = rowData['MachineType'];
+          let reason = rowData['Reason'];
+          let item = objArrayEmail.filter((r) => { return r.MachineType == machineType });
+          let mailApprove1 = item[0].Mail_Approve1;
+          let mailDisseninate = item[0].Mail_Disseninate;
+          var timestamp = new Date().getTime();
+          date = new Date(timestamp)
+          var year = date.getFullYear();
+          var month = ('0' + (date.getMonth() + 1)).slice(-2);
+          var day = ('0' + date.getDate()).slice(-2);
+          var hours = ('0' + date.getHours()).slice(-2);
+          var minutes = ('0' + date.getMinutes()).slice(-2);
+          var seconds = ('0' + date.getSeconds()).slice(-2);
+          var formattedDate = year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
+          let mail = r[2];
+          let wordApproval = '拒绝/ Reject' + " " + mail + " " + formattedDate;
+          let approve2Array = [operator, wordApproval, submitMail, machineType, mailApprove1, reason, mailDisseninate];
+          Swal.fire({
+            title: '请等待/ Please waite',
+            text: '等待服务器返回结果/ Waiting for the serve',
+            icon: 'info',
+            allowOutsideClick: false,
+            showConfirmButton: false
+          })
+          google.script.run.withSuccessHandler((r) => {
+            if (r == true) {
+              Swal.close();
+              Swal.fire({
+                title: '操作成功/ Success',
+                icon: 'success'
+              });
+              let rowIdx = table.row($(this).closest('tr')).index();
+              table.cell(rowIdx, 4).data(wordApproval).draw();
+              table.cell(rowIdx, 11).data('拒绝/ Rejected').draw()
+            } else {
+              Swal.close();
+              Swal.fire({
+                title: '操作失败/ Fail',
+                icon: 'error'
+              });
+            }
+          }).save_Production_Approve_IN(approve2Array);
+        })
+
+
+      } else {
+        Swal.close();
+        Swal.fire({
+          title: '加载失败/ Loading Fail',
+          icon: 'error'
+        });
+      }
+    }).getApprovaldata_IN()
+
+
+    // 双击 "Comment2" 列使其变为可编辑
+    $('#table tbody').on('dblclick', 'td:nth-child(6)', function () {
+      var cell = table.cell(this);
+      var originalValue = cell.data();
+      cell.data('<input class="form-control" value="' + originalValue + '">').draw();
+      $(".form-control").focus();
+      $(".form-control").on("blur", function () {
+        var newValue = $(this).val();
+        cell.data(newValue).draw();
+      })
+    });
+
+    $("#table tbody").on('click', '.btn-warning', function () {
+      // 获取当前行的数据
+      let rowData = table.row($(this).closest('tr')).data();
+      // 提取Comment信息
+      let comment = rowData['Production Comment'];
+      let machineType = rowData['MachineType'];
+      let operator = rowData['Operator'];
+      let userEmail = rowData['submitMail'];
+      let reason = rowData['Reason'];
+      let commentArray = [operator, comment, userEmail, machineType, reason];
+      //  console.log(commentArray);
+      Swal.fire({
+        title: '请等待/ Please waite',
+        text: '等待服务器返回结果/ Waiting for the serve',
+        icon: 'info',
+        allowOutsideClick: false,
+        showConfirmButton: false
+      })
+      google.script.run.withSuccessHandler((r) => {
+
+        if (r == true) {
+          Swal.close();
+          Swal.fire({
+            title: '操作成功/ Success',
+            icon: 'success'
+          });
+        } else {
+          Swal.close();
+          Swal.fire({
+            title: '操作失败/ Fail',
+            icon: 'error'
+          });
+        }
+      }).save_Production_Commet_IN(commentArray);
+
+    })
+
+  })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</script>

@@ -1,0 +1,178 @@
+<html>
+
+<head>
+  <base target="_top">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+</head>
+
+<body>
+
+  <h1 class="mt-4" style="margin-left: 20px;" id="title"> 任务清单变更管理 - 点检/ Tasklist MoC - Inspection</h1>
+  <h2 class="mt-4" style="margin-left: 20px;"> 新建/ Create </h2>
+  <hr class="border border-danger border-2 opacity-50">
+  <div class="row">
+    <div class="col-md-2">
+      <span id="Name" style="font-weight: bold; margin-left: 20px;" class="form-control-plaintext ">姓名/ Name:<?=name; ?></span>
+    </div>
+    <div class="col-md-2">
+      <span id="Code" style="font-weight: bold; margin-left: 20px;" class="form-control-plaintext ">工号/ JobNumber:<?=jobNumber; ?></span>
+    </div>
+  </div>
+  <hr class="border border-danger border-2 opacity-50">
+
+  <div class="container mt-5">
+    <div class="row">
+      <div class="col-md-6">
+        <h3>审批信息维护/ Approval Info Maintenance</h3>
+        <div class="form-group row align-items-center">
+          
+          <label for="approval1" class="col-md-6 mt-3">班组审批人/ Production Approval</label>
+          <div class="col-md-6 mt-3">
+            <div class="input-group">
+              <input type="text" class="form-control" id="production_Approval" placeholder="请输入邮箱前缀">
+              <div class="input-group-append">
+                <span class="input-group-text">@colpal.com</span>
+              </div>
+            </div>
+          </div>
+
+          <label for="approval1" class="col-md-6 mt-3">一级审批人/ Leve 1 Approval</label>
+          <div class="col-md-6 mt-3">
+            <div class="input-group">
+              <input type="text" class="form-control" id="approval1" placeholder="请输入邮箱前缀">
+              <div class="input-group-append">
+                <span class="input-group-text">@colpal.com</span>
+              </div>
+            </div>
+          </div>
+
+          <label for="approval2" class="col-md-6 mt-3 ">二级审批人/ Leve 2 Approval</label>
+          <div class="col-md-6 mt-3 ">
+            <div class="input-group">
+              <input type="email" class="form-control" id="approval2" placeholder="请输入邮箱前缀">
+              <div class="input-group-append">
+                <span class="input-group-text">@colpal.com</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group row align-items-center">
+          <label for="Dissminater" class="col-md-6 mt-3">文档分发人/ Dissminater</label>
+          <div class="col-md-6 mt-3">
+            <div class="input-group">
+              <input type="email" class="form-control" id="Dissminater">
+              <div class="input-group-append">
+                <span class="input-group-text">@colpal.com</span>
+              </div>
+            </div>
+          </div>
+
+          <label for="ccMail" class="col-md-6 mt-3">相关知悉人/ ccMail</label>
+          <div class="col-md-6 mt-3">
+            <div class="input-group">
+              <input type="email" class="form-control" id="ccMail" placeholder="多个邮箱以“,”分隔">
+              <div class="input-group-append">
+                <span class="input-group-text">@colpal.com</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
+      <div class="col-md-6">
+        <h3>任务信息维护/ Tasklist Info Maintenance</h3>
+
+        <div class="form-group row align-items-center">
+          <label for="machineType" class="col-md-4 col-form-label mt-3">机型代码/ MachineType</label>
+          <div class="col-md-8 mt-3">
+            <input type="text" class="form-control" id="machineType">
+          </div>
+        </div>
+
+        <div class="form-group row align-items-center">
+          <label for="process" class="col-md-4 col-form-label mt-3">工序/ Process</label>
+          <div class="col-md-8 mt-3">
+            <select class="form-control" id="process">
+              <option value="">请选择工序</option>
+              <option value="IM">IM</option>
+              <option value="PK">PK</option>
+              <option value="TF">TF</option>
+            </select>
+          </div>
+        </div>
+
+        <!--
+        <div class="form-group row">
+          
+          <label for="approval" class="col-md-4 col-form-label mt-3">是否需要班组审批/Require team approval?</label>
+          
+          <div class="col-md-4 col-form-label mt-3">
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="approval" id="approvalYes" value="Y">
+              <label class="form-check-label" for="approvalYes">
+                是/Yes
+              </label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="approval" id="approvalNo" value="N" checked>
+              <label class="form-check-label" for="approvalNo">
+                否/No
+              </label>
+            </div>
+          </div>
+        </div>
+        -->
+
+        <div class="form-group row align-items-center mt-5">
+          <!-- <label class="col-md-4 col-form-label"></label> -->
+          <div class="col-md-12">
+            <button type="button" class="btn btn-success col-md-12" id="ConfirmInfo">确定/ Confirm</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+
+
+  <hr class="border border-danger border-2 opacity-50">
+
+  <button type="button" class="btn btn-success mt-4 mb-4" id="submitTasklist"
+    style="display: none; margin-left: 20px;">提交任务清单/ Submit Tasklist</button>
+  <table id="table" class="display" contenteditable="false" style="display: none;">
+    <thead>
+      <tr>
+        <th>适用机型/ Machine Type</th>
+        <th>单元/ Unit</th>
+        <th>部位及内容/ Parts</th>
+        <th>检查标准/ Inspection Std</th>
+        <th>使用工具/ Tool</th>
+        <th>方法/ Method</th>
+        <th>设备状态/ Status</th>
+        <th>检查频率/ Frequency</th>
+        <th>执行人/ Resource</th>
+        <th>工序/ Process</th>
+      </tr>
+    </thead>
+
+  </table>
+  </div>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous">
+    </script>
+  <?!=include("Inspection_Create_JS") ?>
+
+
+</html>

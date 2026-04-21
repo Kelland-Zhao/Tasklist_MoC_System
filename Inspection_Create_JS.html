@@ -1,0 +1,442 @@
+<script>
+  $(document).ready(() => {
+    let title = $('#title').text();
+    let styledText1 = '<span style="color: red; font-weight: bold;">点检</span>';
+    let styledText2 = '<span style="color: red; font-weight: bold;font-style:italic;">Inspection</span>';
+    let newText = title.replace('点检', styledText1).replace('Inspection', styledText2);
+    $('#title').html(newText)
+
+    Swal.fire({
+      title: '页面加载中/ Page Loading',
+      text: '页面加载中，请稍后.../ Page loading, please wait...',
+      icon: 'info',
+      allowOutsideClick: false,
+      showConfirmButton: false
+    });
+
+    google.script.run.withSuccessHandler((r) => {
+      if (r.length === 4) {
+        Swal.close();
+        Swal.fire({
+          title: '加载成功/ Loading Success',
+          icon: 'success'
+        });
+        console.log(r)
+        let nameText = $('#Name').text();
+        let nameParts = nameText.split(':');
+        let name = nameParts[1].trim();
+        let jobNumberText = $('#Code').text();
+        let jobNumberParts = jobNumberText.split(':');
+        let jobNumber = jobNumberParts[1].trim();
+        console.log(jobNumber);
+        let authorizationData = r[3];
+        console.log(authorizationData);
+        let correctData = authorizationData.filter((r) => { return r.ID == jobNumber });
+
+        console.log(correctData);
+
+        let production_Approval = correctData[0]['Production Approval'];
+        let approval1 = correctData[0]['Approval 1'];
+        let approval2 = correctData[0]['Approval 2'];
+        let dissminater = correctData[0].Dissminater;
+        let ccMail = correctData[0].ccMail;
+        let process = correctData[0].Process;
+        // console.log(approval1,approval2,dissminater,ccMail)
+
+        $("#production_Approval").val(production_Approval);
+
+        $('#approval1').val(approval1);
+
+        $('#approval2').val(approval2);
+
+        $('#Dissminater').val(dissminater);
+
+        $('#ccMail').val(ccMail);
+
+        $('#process').val(process);
+
+        let machineType_inlist = [];
+
+        r[1].forEach((r) => {
+          machineType_inlist.push(r.MachineType);
+        })
+        let machineTypeError = false;
+        $("#machineType").on('change', function () {
+          machineType_inlist.forEach((r) => {
+            if (r == $('#machineType').val()) {
+              machineTypeError = true;
+              Swal.fire({
+                title: '错误/ Error',
+                text: '该名称与现有机台重复/ The content is incomplete',
+                icon: 'error'
+              })
+              $("#machineType").val('');
+              return;
+            };//if
+
+
+
+          })// forEach
+        })//change;
+        $('#ConfirmInfo').click(() => {
+          let production_Approval = $("#production_Approval").val() + '@colpal.com';
+          let mailApprove1 = $('#approval1').val() + '@colpal.com';
+          let mailApprove2 = $('#approval2').val() + '@colpal.com';
+          let mailDissminater = $('#Dissminater').val() + '@colpal.com';
+          let mailCC = $('#ccMail').val().split(',').map(email => email.trim() + '@colpal.com').join(',');
+          let machineType = $('#machineType').val();
+          let process = $('#process').val();
+          // let judge_Production_Approval = $('input[name="approval"]:checked').val();
+
+          // console.log('judge_Production_Approval', judge_Production_Approval)
+
+          if ($('#machineType').val().trim() === ''
+            || $('#process').val().trim() === ''
+            || $('#approval1').val().trim() === ''
+            || $('#approval2').val().trim() === ''
+            || $('#Dissminater').val().trim() === ''
+            || $('#ccMail').val().trim() === ''
+            || $("#production_Approval").val().trim() === '') {
+            Swal.fire({
+              title: '错误/ Error',
+              text: '内容填写不完整/ The content is incomplete',
+              icon: 'error'
+            })
+          } else {
+            Swal.fire({
+              title: '确认？/ Confirm?',
+              text: '是否确认上述信息？/ Do you confirm the above information?',
+              icon: 'question',
+              showCancelButton: true,
+              confirmButtonText: '是的/ Yes',
+              cancelButtonText: '取消/ Cancel'
+            })
+              .then((result) => {
+                if (result.isConfirmed) {
+                  //将填写的内容block住
+                  $("#approval1,#approval2,#Dissminater,#ccMail,#machineType,#process,#ConfirmInfo,#production_Approval,input[name='approval']").prop('disabled', true);
+
+                  let objDatabase = {};
+
+                  objDatabase.MachineType = machineType;
+
+                  objDatabase.Mail_production_Approval = production_Approval;
+
+                  objDatabase.Process = process;
+
+                  objDatabase.Mail_Approve1 = mailApprove1;
+
+                  objDatabase.Mail_Approve2 = mailApprove2;
+
+                  objDatabase.Mail_Disseninate = mailDissminater;
+
+                  objDatabase.Mail_CC = mailCC;
+
+                  // objDatabase.judge_Production_Approval = judge_Production_Approval;
+
+                  // console.log('objDatabase', objDatabase)
+
+                  // 生成默认的100条数据
+                  let defaultData = [];
+                  for (let i = 1; i <= 100; i++) {
+                    defaultData.push({
+                      "Machine Type": machineType,
+                      Unit: "",
+                      Parts: '',
+                      'Inspection Std': '',
+                      'Tool': '',
+                      'Method': '',
+                      Status: '',
+                      Frequency: '',
+                      Resource: '',
+                      Process: process,
+                    });
+                  };
+                  // 根据输入内容来显示或隐藏表格
+                  $('#table,#submitTasklist').css('display', 'table');
+                  //DataTables初始化
+                  let table = $('#table').DataTable({
+                    columns: [
+                      { data: 'Machine Type' },
+                      { data: 'Unit' },
+                      { data: 'Parts' },
+                      { data: 'Inspection Std' },
+                      { data: 'Tool' },
+                      { data: 'Method' },
+                      {
+                        data: 'Status',
+                        render: function (data, type, row) {
+                          return `
+                                                                                      <div class="input-group" >
+                                                                                        <select class="form-control" id="LineStatus">
+                                                                                          <option value="开机/ Start">开机/ Start</option>
+                                                                                          <option value="停机/ Stop">停机/ Stop</option>
+                                                                                          <option value="开/停机/ Start/Stop">开/停机/ Start/Stop</option>
+                                                                                        </select>
+                                                                                      </div>
+                                                                                      `;
+                        }
+                      },
+                      {
+                        data: 'Frequency',
+                        render: function (data, type, row) {
+                          return `
+                                                                                      <div class="input-group" >
+                                                                                        <select class="form-control" id="Frequency">
+                                                                                          <option value="日检/ Daily">日检/ Daily</option>
+                                                                                          <option value="周检/ Weekly">周检/ Weekly</option>
+                                                                                          <option value="月检/ Monthly">月检/ Monthly</option>
+                                                                                          <option value="季检/ Quarterly">季检/ Quarterly</option>
+                                                                                          <option value="年检/ Yearly">年检/ Yearly</option>
+                                                                                        </select>
+                                                                                      </div>
+                                                                                      `;
+                        }
+                      },
+                      {
+                        data: 'Resource',
+                        render: function (data, type, row) {
+                          // 在执行人列中渲染一个带有两个选项的下拉列表
+                          return `
+                                                                                      <div class="input-group">
+                                                                                        <select class="form-control" id ="Resource">
+                                                                                          <option value="技术员/ Technician">技术员/ Technician</option>
+                                                                                          <option value="操作员/ OPC">操作员/ OPC</option>
+                                                                                        </select>
+                                                                                      </div>
+                                                                                      `;
+                        }
+                      },
+                      { data: 'Process' }
+                    ],
+                    pageLength: 100
+                  });
+                  // console.log(defaultData);
+                  table.clear().draw();
+                  table.rows.add(defaultData).draw();
+
+                  // 监听表格单元格的双击事件
+                  $('#table').on('dblclick', 'td', function () {
+                    let cell = table.cell(this);
+                    let columnIndex = cell.index().column;
+                    
+                    // 如果是Status列（索引6）、Frequency列（索引7）、Resource列（索引8），不允许双击编辑（使用下拉框）
+                    if (columnIndex === 6 || columnIndex === 7 || columnIndex === 8) {
+                      return;
+                    }
+                    
+                    // 如果单元格中已经有input元素，说明正在编辑中，不重复创建
+                    let existingInput = cell.node().querySelector('input');
+                    if (existingInput) {
+                      existingInput.focus();
+                      // 将光标定位到文本末尾
+                      let length = existingInput.value.length;
+                      existingInput.setSelectionRange(length, length);
+                      return;
+                    }
+                    
+                    // 获取单元格的原始值
+                    let cellNode = cell.node();
+                    let originalValue = '';
+                    
+                    // 先尝试从单元格的文本内容获取（最可靠的方法）
+                    let textContent = $(cellNode).text().trim();
+                    if (textContent) {
+                      originalValue = textContent;
+                    } else {
+                      // 如果文本内容为空，尝试从cell.data()获取
+                      let cellData = cell.data();
+                      if (cellData && typeof cellData === 'string' && !cellData.includes('<input') && !cellData.includes('<select')) {
+                        originalValue = cellData;
+                      }
+                    }
+                    
+                    // 创建一个输入框并设置值为单元格原始内容
+                    let input = $('<input type="text" class="form-control">').val(originalValue);
+                    cell.data(input.prop('outerHTML')).draw(false);
+                    
+                    // 使用setTimeout确保DOM更新后再操作
+                    setTimeout(function() {
+                      let inputElement = cell.node().querySelector('input');
+                      if (inputElement) {
+                        // 确保输入框的值是正确的
+                        if (inputElement.value !== originalValue) {
+                          inputElement.value = originalValue;
+                        }
+                        inputElement.focus();
+                        // 将光标定位到文本末尾，而不是选中所有文本，方便在原有基础上修改
+                        let length = inputElement.value.length;
+                        inputElement.setSelectionRange(length, length);
+                        
+                        // 监听输入框的失去焦点事件（使用one确保只绑定一次）
+                        $(inputElement).off('blur').on('blur', function () {
+                          let newValue = $(this).val().trim();
+                          cell.data(newValue).draw(false);
+                        });
+                      }
+                    }, 10);
+                  });
+
+
+                  $('#submitTasklist').click(() => {
+                    Swal.fire({
+                      title: '确认？/ Confirm?',
+                      text: '是否确认上述信息？/ Do you confirm the above information?',
+                      icon: 'question',
+                      showCancelButton: true,
+                      confirmButtonText: '是的/ Yes',
+                      cancelButtonText: '取消/ Cancel'
+                    }).then((result) => {
+                      if (result.isConfirmed) {
+                        Swal.fire({
+                          title: '请等待/ Please waite',
+                          text: '等待服务器返回结果/ Waiting for the serve',
+                          icon: 'info',
+                          allowOutsideClick: false,
+                          showConfirmButton: false
+                        });
+                        let timestamp = new Date().getTime();
+                        date = new Date(timestamp)
+                        let year = date.getFullYear();
+                        let month = ('0' + (date.getMonth() + 1)).slice(-2);
+                        let day = ('0' + date.getDate()).slice(-2);
+                        let hours = ('0' + date.getHours()).slice(-2);
+                        let minutes = ('0' + date.getMinutes()).slice(-2);
+                        let seconds = ('0' + date.getSeconds()).slice(-2);
+                        let formattedDate = year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
+
+                        let rowsData = table.rows().data().toArray();
+                        let dataWithoutEmptyCells = [];
+
+                        rowsData.forEach(rowData => {
+                          let hasEmptyCell = false;
+                          for (let key in rowData) {
+                            // console.log(key)
+                            if (key === 'Machine Type' || key === 'Process' || key === 'Status' || key === 'Frequency' || key === 'Resource') {
+                              continue; // 跳过特定属性
+                            }
+                            // console.log(key+':'+rowData[key],rowData[key].length)
+                            if (rowData[key].length == 0) {
+                              hasEmptyCell = true;
+                              // console.log(rowData.Strategy)
+                              break;
+                            }
+                          }
+                          if (hasEmptyCell === false) {
+
+                            rowData['Status'] = $("#LineStatus").val();
+                            rowData.Frequency = $("#Frequency").val();
+                            rowData.Resource = $("#Resource").val();
+                            // dataWithoutEmptyCells.push(rowData);
+                          }
+                          // console.log(hasEmptyCell)
+                          if (hasEmptyCell === false) {
+                            dataWithoutEmptyCells.push(rowData);
+                          }
+                        });
+
+                        let currentData = JSON.stringify(dataWithoutEmptyCells);
+                        let loginInfo = $("#Code").text() + "_" + $("#Name").text() + " " + formattedDate;
+                        let reason = "新建/ New";
+                        let status = "待审批/ Pending";
+                        let process = $('#process').val();
+
+                        let dataforHistory = [
+                          machineType,
+                          currentData,
+                          loginInfo,
+                          reason,
+                          status,
+                          process
+                        ]
+
+                        console.log('dataWithoutEmptyCells', dataWithoutEmptyCells)
+
+                        // --- '班组确认' 检查 `Resource` 字段是否包含非 '技术员' 或 'IDL' 的值 --- //
+
+                        objDatabase.judge_Production_Approval = 'N';
+
+                        for (let i = 0; i < dataWithoutEmptyCells.length; i++) {
+
+                          let resourceValue = dataWithoutEmptyCells[i].Resource.trim();
+
+                          if (!resourceValue.includes('技术员') && !resourceValue.includes('IDL')) {
+
+                            objDatabase.judge_Production_Approval = 'Y';
+
+                            break; // 终止循环，因为只要找到一个不符合条件的就可以确认需要审批
+                          }
+                        }
+
+                        console.log('objDatabase.judge_Production_Approval', objDatabase.judge_Production_Approval);
+
+                        // --- --- --- //
+
+                        console.log('objDatabase', objDatabase)
+
+                        let data = [objDatabase, dataforHistory];
+
+                        google.script.run.withSuccessHandler((r) => {
+                          if (r == true) {
+                            Swal.close();
+                            Swal.fire({
+                              title: '操作成功/ Success',
+                              icon: 'success'
+                            });
+                          } else {
+                            Swal.close();
+                            Swal.fire({
+                              title: '操作失败/ Fail',
+                              icon: 'error'
+                            });
+                          }
+                        }).submitRequest_IN(data);
+                        // console.log(objDatabase);
+
+                      };
+                    });
+                  })
+                }
+              })
+
+          }
+        });
+
+
+
+      } else {
+        Swal.close();
+        Swal.fire({
+          title: '加载失败/ Loading Fail',
+          icon: 'error'
+        });
+      };
+
+    }).getApprovaldata_IN()
+
+
+
+  });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</script>
