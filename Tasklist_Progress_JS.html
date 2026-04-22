@@ -106,23 +106,30 @@
                 foundCurrent = true;
               }
             }
-            var arrow = '<span style="color:#ccc;padding:0 4px;font-size:14px;">&#9658;</span>';
-            var html = '<div style="display:flex;align-items:center;flex-wrap:nowrap;width:100%;">';
+            var arrow = '<span style="color:#ccc;font-size:14px;padding-top:4px;flex-shrink:0;">&#9658;</span>';
+            var html = '<div style="display:flex;align-items:flex-start;flex-wrap:nowrap;width:100%;gap:2px;">';
             for (var i = 0; i < steps.length; i++) {
               var step = steps[i];
-              var inner = '';
+              var badge, line1, line2;
               if (step.skip) {
-                inner = '<div style="flex:1;text-align:center;"><span class="badge bg-secondary" style="font-size:12px;width:100%;">N/A</span></div>';
+                badge = '<div style="background:#6c757d;color:#fff;border-radius:4px;padding:4px 0;font-size:12px;font-weight:600;width:100%;">N/A</div>';
+                line1 = ''; line2 = '';
               } else if (step.parsed) {
-                var bc = step.parsed.action.includes('拒绝') ? 'bg-danger' : 'bg-success';
-                inner = '<div style="flex:1;text-align:center;"><span class="badge ' + bc + '" style="font-size:12px;width:100%;">' + step.parsed.action + '</span><br><small style="font-size:11px;color:#555;">' + step.parsed.name + '</small><br><small style="font-size:11px;color:#888;">' + step.parsed.date + '</small></div>';
+                var bg = step.parsed.action.includes('拒绝') ? '#dc3545' : '#198754';
+                badge = '<div style="background:' + bg + ';color:#fff;border-radius:4px;padding:4px 0;font-size:12px;font-weight:600;width:100%;">' + step.parsed.action + '</div>';
+                line1 = '<small style="font-size:11px;color:#555;">' + step.parsed.name + '</small>';
+                line2 = '<small style="font-size:11px;color:#888;">' + step.parsed.date + '</small>';
               } else if (step.isCurrent) {
                 var approver = getPendingApprover(row['MachineType'], step.key);
-                inner = '<div style="flex:1;text-align:center;"><span class="badge bg-warning text-dark" style="font-size:12px;width:100%;">待审批</span><br><small style="font-size:11px;color:#555;">' + (approver || step.label) + '</small></div>';
+                badge = '<div style="background:#ffc107;color:#333;border-radius:4px;padding:4px 0;font-size:12px;font-weight:600;width:100%;">待审批</div>';
+                line1 = '<small style="font-size:11px;color:#555;">' + (approver || step.label) + '</small>';
+                line2 = '';
               } else {
-                inner = '<div style="flex:1;text-align:center;"><span class="badge" style="background:#dee2e6;color:#aaa;font-size:12px;width:100%;">待</span><br><small style="font-size:11px;color:#ccc;">' + step.label + '</small></div>';
+                badge = '<div style="background:#dee2e6;color:#aaa;border-radius:4px;padding:4px 0;font-size:12px;font-weight:600;width:100%;">待</div>';
+                line1 = '<small style="font-size:11px;color:#ccc;">' + step.label + '</small>';
+                line2 = '';
               }
-              html += inner;
+              html += '<div style="flex:1;text-align:center;">' + badge + (line1 ? '<br>' + line1 : '') + (line2 ? '<br>' + line2 : '') + '</div>';
               if (i < steps.length - 1) html += arrow;
             }
             html += '</div>';
