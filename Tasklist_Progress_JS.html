@@ -106,21 +106,21 @@
                 foundCurrent = true;
               }
             }
-            var arrow = '<span style="color:#ccc;padding:0 3px;">&#9658;</span>';
-            var html = '<div style="display:flex;align-items:center;flex-wrap:nowrap;">';
+            var arrow = '<span style="color:#ccc;padding:0 4px;font-size:14px;">&#9658;</span>';
+            var html = '<div style="display:flex;align-items:center;flex-wrap:nowrap;width:100%;">';
             for (var i = 0; i < steps.length; i++) {
               var step = steps[i];
               var inner = '';
               if (step.skip) {
-                inner = '<div style="text-align:center;min-width:100px;"><span class="badge bg-secondary" style="font-size:10px;">N/A</span></div>';
+                inner = '<div style="flex:1;text-align:center;"><span class="badge bg-secondary" style="font-size:12px;width:100%;">N/A</span></div>';
               } else if (step.parsed) {
                 var bc = step.parsed.action.includes('拒绝') ? 'bg-danger' : 'bg-success';
-                inner = '<div style="text-align:center;min-width:100px;"><span class="badge ' + bc + '" style="font-size:10px;">' + step.parsed.action + '</span><br><small style="font-size:9px;color:#555;">' + step.parsed.name + '</small><br><small style="font-size:9px;color:#888;">' + step.parsed.date + '</small></div>';
+                inner = '<div style="flex:1;text-align:center;"><span class="badge ' + bc + '" style="font-size:12px;width:100%;">' + step.parsed.action + '</span><br><small style="font-size:11px;color:#555;">' + step.parsed.name + '</small><br><small style="font-size:11px;color:#888;">' + step.parsed.date + '</small></div>';
               } else if (step.isCurrent) {
                 var approver = getPendingApprover(row['MachineType'], step.key);
-                inner = '<div style="text-align:center;min-width:100px;"><span class="badge bg-warning text-dark" style="font-size:10px;">待审批</span><br><small style="font-size:9px;color:#555;">' + (approver || step.label) + '</small></div>';
+                inner = '<div style="flex:1;text-align:center;"><span class="badge bg-warning text-dark" style="font-size:12px;width:100%;">待审批</span><br><small style="font-size:11px;color:#555;">' + (approver || step.label) + '</small></div>';
               } else {
-                inner = '<div style="text-align:center;min-width:100px;"><span class="badge" style="background:#dee2e6;color:#aaa;font-size:10px;">待</span><br><small style="font-size:9px;color:#ccc;">' + step.label + '</small></div>';
+                inner = '<div style="flex:1;text-align:center;"><span class="badge" style="background:#dee2e6;color:#aaa;font-size:12px;width:100%;">待</span><br><small style="font-size:11px;color:#ccc;">' + step.label + '</small></div>';
               }
               html += inner;
               if (i < steps.length - 1) html += arrow;
