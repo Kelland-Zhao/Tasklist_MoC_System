@@ -28,11 +28,14 @@
       autoWidth: false,
       scrollX: true,
       columnDefs: [
-        { targets: 1, width: '110px' },
-        { targets: 2, width: '110px' },
-        { targets: 3, width: '55px' },
-        { targets: 4, width: '450px' },
-        { targets: 5, width: '110px' },
+        { targets: 0, width: '100px' },
+        { targets: 1, width: '100px' },
+        { targets: 2, width: '100px' },
+        { targets: 3, width: '100px' },
+        { targets: 4, width: 'auto' },
+        { targets: 5, width: '100px' },
+        { targets: 6, width: '100px' },
+        { targets: 7, width: '100px' },
         { targets: 1, render: function(data, type, row, meta) {
           if (type === 'display') return '<span style="font-size:0.75em;">' + (data || '') + '</span>';
           return data;
