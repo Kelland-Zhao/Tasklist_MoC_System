@@ -2695,6 +2695,7 @@ function getPasswordData() {
   return result;
 }
 
+/* [已停用] report()
 function report() {
   //获取邮件地址
   let id = "1bYKTK5a63yJWRHzM_UPP6b4hwF67eZKEM5dCKLWR59U";
@@ -3067,6 +3068,7 @@ function report() {
   let subject = "Tasklist MoC System Report/ 任务变更管理系统报告 " + date;
   GmailApp.sendEmail(mailList, subject, "", { htmlBody: htmlTable });
 }
+*/ // [已停用] report() 结束
 
 function getINData() {
   var id = "1RQql-PrcBWiAQNeg7hQKcocpllSUMRhT5XPrDTVWoBY";
