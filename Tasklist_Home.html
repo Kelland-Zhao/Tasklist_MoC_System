@@ -1,0 +1,199 @@
+<html>
+
+<head>
+  <base target="_top">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <!-- <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css"> -->
+</head>
+
+<body>
+
+  <h1 class="mt-4" style="margin-left: 20px;"> 任务清单变更管理/ Tasklist MoC</h1>
+  <h2 class="mt-4" style="margin-left: 20px;"> 登录主页/ Login Home </h2>
+  <hr class="border border-danger border-2 opacity-50">
+  <span id="Name" class="form-control-plaintext" style="font-weight: bold; margin-left: 20px;"></span>
+  <hr class="border border-danger border-2 opacity-50 ">
+
+  <div class="container ">
+
+
+    <div class="row align-items-center mt-2">
+      <div class="col-md-6">
+        <!-- 图片 -->
+        <div id="image-container" style="height: 300px; /* 预估的高度 */ overflow: hidden;">
+          <img src="https://lh3.googleusercontent.com/u/0/d/1LBVCaenTuAbakhPUS4vYD--jTwD8TIah" alt="描述文字"
+            class="img-fluid" />
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="col-md-12 row">
+          <h3>登录信息/ Login Info</h3>
+        </div>
+        <div class="form-group row align-items-center mt-5"
+          action="https://script.google.com/a/macros/colpal.com/s/AKfycbwQQLTjqojw5DrCQlVht_krcyfT8Us21EAUfQf6f6E/dev"
+          method='get'>
+          <label for="jobNumber" class="col-md-3" style="font-weight: bold;">工号/ Job Number</label>
+          <div class="col-md-8">
+            <div class="input-group">
+              <div class="input-group-append ">
+                <span class="input-group-text">328</span>
+              </div>
+              <input type="number" class="form-control" id="jobNumber"
+                placeholder="请输入5位工号/ Please enter a 5-digit job number">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group row align-items-center mt-5"
+          action="https://script.google.com/a/macros/colpal.com/s/AKfycbwQQLTjqojw5DrCQlVht_krcyfT8Us21EAUfQf6f6E/dev"
+          method='get'>
+          <label for="name" class="col-md-3 " style="font-weight: bold;">姓名/ Name</label>
+          <div class="col-md-8">
+            <div class="input-group">
+              <input class="form-control" id="name" placeholder="自动生成/ Automatic Generated" disabled>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group row align-items-center mt-5">
+          <label for="PWD" class="col-md-3 " style="font-weight: bold;">密码/ Password</label>
+          <div class="col-md-8">
+            <div class="input-group">
+              <input type="password" class="form-control" id="PWD" placeholder="请输入密码/ please enter password">
+            </div>
+          </div>
+        </div>
+
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 按钮区域移出container，使用全宽布局 -->
+  <div class="row mt-3">
+    <div class="col-12">
+      <div class="row justify-content-center">
+        <div class="col-auto">
+          <div class="text-center">
+            <hr style="border: 1px solid #dee2e6; width: 100%; margin: 20px auto;">
+          </div>
+          <h5>保养任务清单/ PM Tasklist</h5>
+          <div class="row mt-3">
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-outline-info btn-block col-md-12 btn-sm" id="modify"
+                style="height:90px; font-weight:bold;" disabled>修改/ Modify</button>
+            </div>
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-outline-danger btn-block col-md-12 btn-sm" id="create"
+                style="height:90px; font-weight:bold;" disabled>新建/ Create</button>
+            </div>
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-outline-dark btn-block col-md-12 btn-sm" id="void"
+                style="height:90px; font-weight:bold;" disabled>作废/ Void</button>
+            </div>
+            <div class="col-md-auto ">
+              <button type="button" class="btn btn-outline-primary btn-block col-md-12 btn-sm" id="approval_Production"
+                style="height:90px; font-weight:bold;" disabled>班组审批/ Production
+                Approval</button>
+            </div>
+            <div class="col-md-auto ">
+              <button type="button" class="btn btn-outline-primary btn-block col-md-12 btn-sm" id="approval1"
+                style="height:90px; font-weight:bold;" disabled>审批1/ Approval Level 1</button>
+            </div>
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-outline-success btn-block col-md-12 btn-sm" id="approval2"
+                style="height:90px; font-weight:bold;" disabled>审批2/ Approval Level 2</button>
+            </div>
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-outline-warning btn-block col-md-12 btn-sm" id="dissminater"
+                style="height:90px; font-weight:bold;" disabled>分发/ Release</button>
+            </div>
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-outline-dark btn-block col-md-12 btn-sm" id="view"
+                style="height:90px; font-weight:bold;" disabled>查阅/ View</button>
+            </div>
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-outline-info btn-block col-md-12 btn-sm" id="progress"
+                style="height:90px; font-weight:bold;" disabled>审批进度/ Approval Progress</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row mt-3">
+    <div class="col-12">
+      <div class="row justify-content-center">
+        <div class="col-auto">
+          <div class="text-center">
+            <hr style="border: 1px solid #dee2e6; width: 100%; margin: 20px auto;">
+          </div>
+          <h5>点检任务清单/ Inspection Tasklist</h5>
+          <div class="row mt-3">
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-outline-info btn-block col-md-12 btn-sm" id="modify_IN"
+                style="height:90px; font-weight:bold;" disabled>修改/ Modify</button>
+            </div>
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-outline-danger btn-block col-md-12 btn-sm" id="create_IN"
+                style="height:90px; font-weight:bold;" disabled>新建/ Create</button>
+            </div>
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-outline-dark btn-block col-md-12 btn-sm" id="void_IN"
+                style="height:90px; font-weight:bold;" disabled>作废/ Void</button>
+            </div>
+            <div class="col-md-auto ">
+              <button type="button" class="btn btn-outline-primary btn-block col-md-12 btn-sm" id="approval_Production_IN"
+                style="height:90px; font-weight:bold;" disabled>班组审批/ Production
+                Approval</button>
+            </div>
+            <div class="col-md-auto ">
+              <button type="button" class="btn btn-outline-primary btn-block col-md-12 btn-sm" id="approval1_IN"
+                style="height:90px; font-weight:bold;" disabled>审批1/ Approval Level 1</button>
+            </div>
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-outline-success btn-block col-md-12 btn-sm" id="approval2_IN"
+                style="height:90px; font-weight:bold;" disabled>审批2/ Approval Level 2</button>
+            </div>
+
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-outline-warning btn-block col-md-12 btn-sm" id="dissminater_IN"
+                style="height:90px; font-weight:bold;" disabled>分发/ Release</button>
+            </div>
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-outline-dark btn-block col-md-12 btn-sm" id="view_IN"
+                style="height:90px; font-weight:bold;" disabled>查阅/ View</button>
+            </div>
+            <div class="col-md-auto">
+              <button type="button" class="btn btn-outline-info btn-block col-md-12 btn-sm" id="progress_IN"
+                style="height:90px; font-weight:bold;" disabled>审批进度/ Approval Progress</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+
+  </div>
+
+
+
+</body>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.js"></script>
+<!-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"
+  integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
+
+<?!=include("Sweetalert2_js") ?>
+
+<?!=include("Tasklist_Home_JS") ?>
+
+</html>

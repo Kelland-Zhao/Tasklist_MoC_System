@@ -1,0 +1,388 @@
+<script>
+  $(document).ready(() => {
+    let title = $('#title').text();
+    let styledText1 = '<span style="color: red; font-weight: bold;">保养</span>';
+    let styledText2 = '<span style="color: red; font-weight: bold;font-style:italic;">PM</span>';
+    let newText = title.replace('保养', styledText1).replace('PM', styledText2);
+    $('#title').html(newText)
+
+    Swal.fire({
+      title: '页面加载中/ Page Loading',
+      text: '页面加载中，请稍后.../ Page loading, please wait...',
+      icon: 'info',
+      allowOutsideClick: false,
+      showConfirmButton: false
+    })
+
+    var emailConfig = [];
+    var table = $('#table').DataTable({
+      columns: [
+        { data: 'MachineType' },
+        { data: 'Operator' },
+        { data: 'Reason' },
+        { data: 'Production Approval (Y/N)' },
+        { data: null, defaultContent: '' },
+        { data: 'Status' },
+        { data: 'submitMail' }
+      ],
+      autoWidth: false,
+      scrollX: true,
+      columnDefs: [
+        { targets: 0, width: '100px' },
+        { targets: 1, width: '100px' },
+        { targets: 2, width: '100px' },
+        { targets: 3, width: '100px' },
+        { targets: 4, width: 'auto', createdCell: function(td) { $(td).css('background-color', '#eaf3ff'); } },
+        { targets: 5, width: '100px' },
+        { targets: 6, width: '100px' },
+        { targets: 7, width: '100px' },
+        { targets: 1, render: function(data, type, row, meta) {
+          if (type === 'display') return '<span style="font-size:0.75em;">' + (data || '') + '</span>';
+          return data;
+        }},
+        { targets: 6, render: function(data, type, row, meta) {
+          if (type === 'display') return '<span style="font-size:0.75em;">' + (data || '') + '</span>';
+          return data;
+        }},
+        {
+          targets: 3, // Production Approval (Y/N)列 (索引3)
+          render: function (data, type, row, meta) {
+            if (type === 'display') {
+              let approval = data;
+              let badgeClass = '';
+              
+              if (approval === 'Y') {
+                badgeClass = 'bg-primary';
+              } else if (approval === 'N') {
+                badgeClass = 'bg-secondary';
+              } else {
+                badgeClass = 'bg-secondary';
+              }
+              
+              return '<span class="badge ' + badgeClass + ' d-flex justify-content-center">' + approval + '</span>';
+            }
+            return data;
+          }
+        },
+        {
+          targets: 4, // 审批流程列 (索引4)
+          render: function (data, type, row, meta) {
+            if (type !== 'display') return '';
+            function parseApprover(val) {
+              if (!val || !val.trim()) return null;
+              var action = '', name = '', date = '';
+              if (val.includes('批准作废')) action = '批准作废';
+              else if (val.includes('批准')) action = '批准';
+              else if (val.includes('拒绝')) action = '拒绝';
+              else action = val.substring(0, 4);
+              var emailMatch = val.match(/[\w.]+@[\w.]+/);
+              if (emailMatch) name = emailMatch[0].split('@')[0];
+              var dateMatch = val.match(/\d{4}-\d{2}-\d{2}/);
+              if (dateMatch) date = dateMatch[0];
+              return { action: action, name: name, date: date };
+            }
+            function getPendingApprover(machineType, key) {
+              var item = null;
+              for (var j = 0; j < emailConfig.length; j++) {
+                if (emailConfig[j].MachineType === machineType) { item = emailConfig[j]; break; }
+              }
+              if (!item) return '';
+              var email = '';
+              if (key === 'lv1') email = item['Mail_Approve1'] || '';
+              else if (key === 'lv2') email = item['Mail_Approve2'] || '';
+              else if (key === 'dis') email = item['Mail_Disseninate'] || '';
+              return email ? email.split('@')[0] : '';
+            }
+            var steps = [
+              { skip: row['Production Approval (Y/N)'] === 'N', parsed: parseApprover(row['Production Approver']), label: '班组', key: 'prod' },
+              { skip: false, parsed: parseApprover(row['Approver1']), label: '审1', key: 'lv1' },
+              { skip: false, parsed: parseApprover(row['Approver2']), label: '审2', key: 'lv2' },
+              { skip: false, parsed: parseApprover(row['Dissminater']), label: '发布', key: 'dis' }
+            ];
+            var foundCurrent = false;
+            for (var i = 0; i < steps.length; i++) {
+              if (!foundCurrent && !steps[i].skip && !steps[i].parsed) {
+                steps[i].isCurrent = true;
+                foundCurrent = true;
+              }
+            }
+            var arrow = '<span style="color:#ccc;font-size:14px;padding-top:4px;flex-shrink:0;">&#9658;</span>';
+            var html = '<div style="display:flex;align-items:flex-start;flex-wrap:nowrap;width:100%;gap:2px;">';
+            for (var i = 0; i < steps.length; i++) {
+              var step = steps[i];
+              var badge, line1, line2;
+              if (step.skip) {
+                badge = '<div style="background:#6c757d;color:#fff;border-radius:4px;padding:4px 0;font-size:12px;font-weight:600;width:100%;">N/A</div>';
+                line1 = ''; line2 = '';
+              } else if (step.parsed) {
+                var bg = step.parsed.action.includes('拒绝') ? '#dc3545' : '#198754';
+                badge = '<div style="background:' + bg + ';color:#fff;border-radius:4px;padding:4px 0;font-size:12px;font-weight:600;width:100%;">' + step.parsed.action + '</div>';
+                line1 = '<small style="font-size:11px;color:#555;">' + step.parsed.name + '</small>';
+                line2 = '<small style="font-size:11px;color:#888;">' + step.parsed.date + '</small>';
+              } else if (step.isCurrent) {
+                var approver = getPendingApprover(row['MachineType'], step.key);
+                badge = '<div style="background:#ffc107;color:#333;border-radius:4px;padding:4px 0;font-size:12px;font-weight:600;width:100%;">待审批</div>';
+                line1 = '<small style="font-size:11px;color:#555;">' + (approver || step.label) + '</small>';
+                line2 = '';
+              } else {
+                badge = '<div style="background:#dee2e6;color:#aaa;border-radius:4px;padding:4px 0;font-size:12px;font-weight:600;width:100%;">待</div>';
+                line1 = '<small style="font-size:11px;color:#ccc;">' + step.label + '</small>';
+                line2 = '';
+              }
+              html += '<div style="flex:1;text-align:center;">' + badge + (line1 ? '<br>' + line1 : '') + (line2 ? '<br>' + line2 : '') + '</div>';
+              if (i < steps.length - 1) html += arrow;
+            }
+            html += '</div>';
+            return html;
+          }
+        },
+        {
+          targets: 5, // Status列 (索引5)
+          render: function (data, type, row, meta) {
+            if (type === 'display') {
+              let status = data;
+              let badgeClass = '';
+              
+              if (status === '待审批/ Pending') {
+                badgeClass = 'bg-warning text-dark';
+              } else if (status === '作废待审批/ Void Pending') {
+                badgeClass = 'bg-danger';
+              } else if (status === '拒绝/ Rejected') {
+                badgeClass = 'bg-danger';
+              } else if (status === '生效/ Effective') {
+                badgeClass = 'bg-success';
+              } else if (status === '取代/ Replace') {
+                badgeClass = 'bg-secondary';
+              } else if (status === '作废/ Void') {
+                badgeClass = 'bg-dark';
+              } else {
+                badgeClass = 'bg-secondary';
+              }
+              
+              var parts = status.split('/ ');
+              var cn = parts[0] || status;
+              var en = parts.slice(1).join('/ ') || '';
+              return '<div class="badge ' + badgeClass + '" style="display:flex;flex-direction:column;align-items:center;line-height:1.3;white-space:normal;"><span>' + cn + '</span>' + (en ? '<small style="font-size:0.8em;">' + en + '</small>' : '') + '</div>';
+            }
+            return data;
+          }
+        },
+        {
+          targets: 2, // 变更原因列 (索引2)
+          render: function (data, type, row, meta) {
+            if (type === 'display') {
+              let reason = data;
+              // 提取主要变更原因（"变更原因/ Reason for change:"后面的内容）
+              let mainReason = '';
+              if (reason && reason.includes('变更原因/ Reason for change:')) {
+                let parts = reason.split('变更原因/ Reason for change:');
+                if (parts.length > 1) {
+                  let afterReason = parts[1].trim();
+                  // 查找"新增条目数"的位置，取"新增条目数"前的内容作为主要变更原因
+                  let addIndex = afterReason.indexOf('新增条目数');
+                  if (addIndex > 0) {
+                    mainReason = afterReason.substring(0, addIndex).trim();
+                  } else {
+                    // 如果没有"新增条目数"，取第一个空格前的内容
+                    let firstSpaceIndex = afterReason.indexOf(' ');
+                    if (firstSpaceIndex > 0) {
+                      mainReason = afterReason.substring(0, firstSpaceIndex);
+                    } else {
+                      mainReason = afterReason;
+                    }
+                  }
+                }
+              } else {
+                mainReason = reason;
+              }
+              
+                             return '<span class="badge bg-info d-flex justify-content-center" style="min-width: 80px;">' + mainReason + '</span> <span class="badge bg-warning text-dark ms-2" style="cursor:pointer;min-width:80px;display:flex;flex-direction:column;align-items:center;line-height:1.3;"><span>详情</span><small style="font-size:0.8em;">Details</small></span>';
+            }
+            return data;
+          }
+        },
+        {
+          targets: 7, // 任务清单列 (索引7)
+          render: function (data, type, row, meta) {
+            return '<button class="btn btn-info btn-sm">任务清单/ Detail Tasklist</button>';
+          }
+        }
+      ],
+      pageLength: 25
+    });
+
+    google.script.run.withSuccessHandler((r) => {
+      if (r.length === 4) {
+        Swal.close();
+        Swal.fire({
+          title: '加载成功/ Loading Success',
+          icon: 'success'
+        })
+        
+        let objArrayApprovallist = r[0];
+        let objArrayEmail = r[1];
+        emailConfig = objArrayEmail;
+        let mail = r[2];
+
+        // 筛选正在审批过程中的任务（排除已完成状态、拒绝状态和表头行）
+        let progressItems = objArrayApprovallist.filter((r) => {
+          // 排除表头行（通常表头行的Status字段为空或包含表头信息）
+          if (!r.Status || r.Status.includes('状态') || r.Status.includes('Status')) {
+            return false;
+          }
+          
+          return r.Status !== "生效/ Effective" 
+            && r.Status !== "取代/ Replace" 
+            && r.Status !== "作废/ Void"
+            && r.Status !== "拒绝/ Rejected";
+        });
+
+        console.log('progressItems', progressItems);
+
+        if (progressItems.length === 0) {
+          Swal.fire({
+            title: '没有正在审批的内容',
+            text: 'No content is currently under approval',
+            icon: 'info',
+            confirmButtonText: '确定/ OK'
+          });
+        } else {
+          table.clear().draw();
+          table.rows.add(progressItems).draw();
+        }
+
+        $("#Name").text(mail);
+
+        let tableHTML = '<table id="diffTable" class="display" style="width:100%">';
+        tableHTML += "<thead>"
+        tableHTML += "<tr>"
+        tableHTML += "<th>机型/ Machine Type</th>"
+        tableHTML += "<th>任务编号/ Task No.</th>"
+        tableHTML += "<th>单元/ Section</th>"
+        tableHTML += "<th>功能/ Function</th>"
+        tableHTML += "<th>失效模式/ Failure Mode</th>"
+        tableHTML += "<th>任务类型/ Task Type</th>"
+        tableHTML += "<th>任务描述/ Task Description</th>"
+        tableHTML += "<th>频率/ Frecuency</th>"
+        tableHTML += "<th>设备状态/ Line Status</th>"
+        tableHTML += "<th>保养策略/ Strategy</th>"
+        tableHTML += "<th>执行人/ Resource</th>"
+        tableHTML += "<th>人数/ No. Resources</th>"
+        tableHTML += "<th>技能等级/ Skill Level</th>"
+        tableHTML += "<th>技能/ Tools & Equip</th>"
+        tableHTML += "<th>预估时间/ Estimated Time</th>"
+        tableHTML += "</tr>"
+        tableHTML += "</thead>"
+        tableHTML += "</table>"
+
+        $("#table tbody").on('click', '.btn-info', function () {
+          Swal.fire({
+            title: '任务清单/ Tasklist',
+            html: tableHTML,
+            height: '90%',
+            width: '90%'
+          });
+          
+          let rowData = table.row($(this).closest('tr')).data();
+          let editor = rowData['Operator'];
+          let item = r[0].filter((r) => { return r.Operator == editor });
+          let tasklist = JSON.parse(item[0].Tasklist);
+
+          let diffTable = $('#diffTable').DataTable({
+            columns: [
+              { data: 'MachineType' },
+              { data: 'Task No' },
+              { data: 'Section' },
+              { data: 'Function' },
+              { data: 'Failure Mode' },
+              { data: 'Task Type' },
+              { data: 'Task Description' },
+              { data: 'Frecuency' },
+              { data: 'Line Status' },
+              { data: 'Strategy' },
+              { data: 'Resource' },
+              { data: 'No Resources' },
+              { data: 'Skill Level' },
+              { data: 'Tools & Equip' },
+              { data: 'Estimated Time' }
+            ],
+            pageLength: 100
+          });
+          
+          diffTable.clear().rows.add(tasklist).draw();
+        });
+
+                 // 变更原因详情按钮点击事件
+         $("#table tbody").on('click', '.bg-warning', function () {
+           let rowData = table.row($(this).closest('tr')).data();
+           let reason = rowData['Reason'];
+           
+           // 解析变更原因内容，提取各个部分
+           let reasonParts = {};
+           if (reason && reason.includes('变更原因/ Reason for change:')) {
+             let parts = reason.split('变更原因/ Reason for change:');
+             if (parts.length > 1) {
+               let afterReason = parts[1].trim();
+               
+               // 提取主要变更原因
+               let addIndex = afterReason.indexOf('新增条目数');
+               if (addIndex > 0) {
+                 reasonParts['mainReason'] = afterReason.substring(0, addIndex).trim();
+               } else {
+                 reasonParts['mainReason'] = afterReason;
+               }
+               
+               // 提取新增条目数
+               let addMatch = afterReason.match(/新增条目数\/ Number of add: (\d+)/);
+               if (addMatch) {
+                 reasonParts['addCount'] = addMatch[1];
+               }
+               
+               // 提取删除条目数
+               let deleteMatch = afterReason.match(/删除条目数\/ Number of delete: (\d+)/);
+               if (deleteMatch) {
+                 reasonParts['deleteCount'] = deleteMatch[1];
+               }
+               
+               // 提取修改条目数
+               let editMatch = afterReason.match(/修改条目数\/ Number of edit: (\d+)/);
+               if (editMatch) {
+                 reasonParts['editCount'] = editMatch[1];
+               }
+             }
+           }
+           
+                       // 构建表格HTML
+            let tableHTML = '<table class="table table-bordered table-striped">';
+            tableHTML += '<thead><tr><th>项目/ Item</th><th>内容/ Content</th></tr></thead>';
+            tableHTML += '<tbody>';
+            tableHTML += '<tr><td>主要变更原因/ Main Reason</td><td>' + (reasonParts['mainReason'] || '') + '</td></tr>';
+            if (reasonParts['addCount']) {
+              tableHTML += '<tr><td>新增条目数/ Number of Add</td><td>' + reasonParts['addCount'] + '</td></tr>';
+            }
+            if (reasonParts['deleteCount']) {
+              tableHTML += '<tr><td>删除条目数/ Number of Delete</td><td>' + reasonParts['deleteCount'] + '</td></tr>';
+            }
+            if (reasonParts['editCount']) {
+              tableHTML += '<tr><td>修改条目数/ Number of Edit</td><td>' + reasonParts['editCount'] + '</td></tr>';
+            }
+            tableHTML += '</tbody></table>';
+           
+           Swal.fire({
+             title: '变更原因详情/ Change Reason Details',
+             html: tableHTML,
+             width: '80%',
+             confirmButtonText: '确定/ OK'
+           });
+         });
+
+      } else {
+        Swal.close();
+        Swal.fire({
+          title: '加载失败/ Loading Fail',
+          icon: 'error'
+        });
+      }
+    }).getApprovaldata();
+  });
+</script> 

@@ -1,0 +1,81 @@
+<html>
+
+<head>
+  <base target="_top">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+</head>
+
+<body>
+
+  <h1 class="mt-4" style="margin-left: 20px;" id="title"> 任务清单变更管理 - 保养/ Tasklist MoC - PM</h1>
+  <h2 class="mt-4" style="margin-left: 20px;"> 作废/ Void </h2>
+  <hr class="border border-danger border-2 opacity-50">
+  <div class="row">
+    <div class="col-md-2">
+      <span id="Name" style="font-weight: bold; margin-left: 20px;" class="form-control-plaintext ">姓名/ Name:<?=name; ?></span>
+    </div>
+    <div class="col-md-2">
+      <span id="Code" style="font-weight: bold; margin-left: 20px;" class="form-control-plaintext ">工号/ JobNumber:<?=jobNumber; ?></span>
+    </div>
+  </div>
+  <hr class="border border-danger border-2 opacity-50">
+
+  <div class="container row">
+    <div class="col-md-3">
+      <select id="MachineType" class="form-select" aria-label="Default select example">
+        <option selected disabled>机型选择/ Machine Tpye</option>
+        <? for(var i=0;i<data.length;i++){ ?>
+        <option value=<?=data[i]; ?>>
+          <?=data[i]; ?>
+        </option>
+        <? } ?>
+      </select>
+    </div>
+    <div class="col-md-9">
+      <button type="button" class="btn btn-success" id="Confirm">确定/ Confirm</button>
+
+      <!-- <button type="button" class="btn btn-danger" id="Add">增加/ Add</button> -->
+
+      <button type="button" class="btn btn-warning" id="Void">作废/ Void</button>
+    </div>
+  </div>
+  <hr class="border border-danger border-2 opacity-50">
+
+  <table id="table" class="display" contenteditable="false">
+    <thead>
+      <tr>
+        <th>机型/ Machine Type</th>
+        <th>任务编号/ Task No.</th>
+        <th>单元/ Section</th>
+        <th>功能/ Function</th>
+        <th>失效模式/ Failure Mode</th>
+        <th>任务类型/ Task Type</th>
+        <th>任务描述/ Task Description</th>
+        <th>频率/ Frecuency</th>
+        <th>设备状态/ Line Status</th>
+        <th>保养策略/ Strategy</th>
+        <th>执行人/ Resource</th>
+        <th>人数/ No. Resources</th>
+        <th>技能等级/ Skill Level</th>
+        <th>技能/ Tools & Equip</th>
+        <th>预估时间/ Estimated Time</th>
+        <th>功能/ Option</th>
+      </tr>
+    </thead>
+
+  </table>
+
+
+</body>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"
+  integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
+<?!=include("Tasklist_void_JS") ?>
+
+
+</html>
