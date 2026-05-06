@@ -24,6 +24,13 @@
 
         $("#Name").text(mail);
 
+        google.script.run
+          .withSuccessHandler(function(r) {
+            if (r.pmCount > 0) $('#badge_pm').text(r.pmCount).show();
+            if (r.inCount > 0) $('#badge_in').text(r.inCount).show();
+          })
+          .getPendingCountsForUser(mail);
+
         if (r.length == 2) {
           Swal.close();
           Swal.fire({
