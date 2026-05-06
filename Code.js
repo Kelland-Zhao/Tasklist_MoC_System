@@ -196,52 +196,22 @@ function getReleaseWebPage() {
 }
 
 function getPendingCountsForUser(userEmail) {
-  var emailPrefix = userEmail.replace(/@.*$/, "");
-  var pmCount = getPendingCountForDb("1bYKTK5a63yJWRHzM_UPP6b4hwF67eZKEM5dCKLWR59U", emailPrefix);
-  var inCount = getPendingCountForDb("1RQql-PrcBWiAQNeg7hQKcocpllSUMRhT5XPrDTVWoBY", emailPrefix);
+  var pmCount = getPendingCountForDb("1bYKTK5a63yJWRHzM_UPP6b4hwF67eZKEM5dCKLWR59U", null);
+  var inCount = getPendingCountForDb("1RQql-PrcBWiAQNeg7hQKcocpllSUMRhT5XPrDTVWoBY", null);
   return { pmCount: pmCount, inCount: inCount };
 }
 
 function getPendingCountForDb(dbId, emailPrefix) {
   var ss = SpreadsheetApp.openById(dbId);
   var wsHistory = ss.getSheetByName("Tasklist_history");
-  var wsMail = ss.getSheetByName("Database for Web");
-  if (!wsHistory || !wsMail) return 0;
+  if (!wsHistory) return 0;
 
   var historyData = wsHistory.getRange(2, 1, wsHistory.getLastRow() - 1, 15).getValues();
-  var mailData = wsMail.getRange(2, 1, wsMail.getLastRow() - 1, 7).getValues();
-
-  var emailLookup = {};
-  mailData.forEach(function(r) {
-    var mt = (r[0] || "").toString().trim();
-    if (mt) {
-      emailLookup[mt] = {
-        approver1: (r[2] || "").toString().trim(),
-        approver2: (r[3] || "").toString().trim(),
-        dissminater: (r[4] || "").toString().trim(),
-        production: (r[6] || "").toString().trim()
-      };
-    }
-  });
 
   var count = 0;
   historyData.forEach(function(row) {
-    var machineType = (row[0] || "").toString().trim();
-    var ec = emailLookup[machineType];
-    if (!ec) return;
-
     var status = (row[12] || "").toString().trim();
-    var productionApproval = (row[10] || "").toString().trim();
-    var productionApprover = (row[4] || "").toString().trim();
-    var approver1 = (row[6] || "").toString().trim();
-    var approver2 = (row[8] || "").toString().trim();
-
-    if (status === "待审批/ Pending") {
-      if (productionApproval === "Y" && !productionApprover && ec.production === emailPrefix) { count++; return; }
-      if (!approver1 && ec.approver1 === emailPrefix) { count++; return; }
-      if (approver1 && !approver2 && ec.approver2 === emailPrefix) { count++; return; }
-    }
-    if (status === "待发放/ Wait for Dissminater" && ec.dissminater === emailPrefix) {
+    if (status === "待审批/ Pending" || status === "待发放/ Wait for Dissminater") {
       count++;
     }
   });
