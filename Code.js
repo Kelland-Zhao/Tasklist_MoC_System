@@ -238,20 +238,23 @@ function dataSave(
 
     let ws_mailAddress = ss.getSheetByName("Database for Web");
 
-    let data = ws_mailAddress.getSheetValues(
-      2,
-      1,
-      ws_mailAddress.getLastRow(),
-      ws_mailAddress.getLastColumn()
-    );
+    // 使用 getRange/getValues 比 getSheetValues 更安全
+    let data = ws_mailAddress
+      .getRange(2, 1, ws_mailAddress.getLastRow() - 1, ws_mailAddress.getLastColumn())
+      .getValues();
 
     let machineType = JSON.parse(obj)[0].MachineType;
 
+    console.log("machineType", machineType);
+
     let row = data.filter((r) => {
-      return r[0] == machineType;
+      return r[0].toString().trim() == machineType.trim();
     });
 
-    console.log("machineType", machineType);
+    if (row.length === 0) {
+      console.error("Database for Web 中未找到机型: " + machineType);
+      return false;
+    }
 
     let production_Approval_words = "";
 
@@ -365,16 +368,19 @@ function dataSave_IN(
 
     let ws_mailAddress = ss.getSheetByName("Database for Web");
 
-    let data = ws_mailAddress.getSheetValues(
-      2,
-      1,
-      ws_mailAddress.getLastRow(),
-      ws_mailAddress.getLastColumn()
-    );
+    // 使用 getRange/getValues 比 getSheetValues 更安全
+    let data = ws_mailAddress
+      .getRange(2, 1, ws_mailAddress.getLastRow() - 1, ws_mailAddress.getLastColumn())
+      .getValues();
 
     let row = data.filter((r) => {
-      return r[0] == machineType;
+      return r[0].toString().trim() == machineType.trim();
     });
+
+    if (row.length === 0) {
+      console.error("Database for Web 中未找到机型: " + machineType);
+      return false;
+    }
 
     let recipient;
 

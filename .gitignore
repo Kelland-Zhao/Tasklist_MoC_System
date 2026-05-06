@@ -7,6 +7,9 @@ appsscript.json
 Thumbs.db
 desktop.ini
 
+# MCP 配置（含本地路径，不提交）
+.mcp.json
+
 # 编辑器/IDE
 .vscode/
 !.vscode/settings.json

@@ -251,6 +251,13 @@
                                       icon: 'error'
                                     });
                                   }
+                                }).withFailureHandler((err) => {
+                                  swal.close();
+                                  swal.fire({
+                                    title: '系统错误/ System Error',
+                                    text: '服务器执行异常，请联系管理员。错误信息: ' + err.message,
+                                    icon: 'error'
+                                  });
                                 }).dataSave_IN(data, loginInfo, reason, status, userEmail, process, production_Approval)
                               }
 
