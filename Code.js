@@ -195,7 +195,7 @@ function getReleaseWebPage() {
   return webPageUrl;
 }
 
-function getPendingCountsForUser(userEmail) {
+function getPendingCountsForUser() {
   var pmCount = getPendingCountForDb("1bYKTK5a63yJWRHzM_UPP6b4hwF67eZKEM5dCKLWR59U", null);
   var inCount = getPendingCountForDb("1RQql-PrcBWiAQNeg7hQKcocpllSUMRhT5XPrDTVWoBY", null);
   return { pmCount: pmCount, inCount: inCount };

@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__gsheets__sheets_get_metadata",
+      "mcp__gsheets__sheets_get_values",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(clasp push *)",
+      "Bash(git commit --amend -m ' *)",
+      "Bash(clasp deployments *)",
+      "Bash(clasp deploy *)",
+      "Bash(mkdir -p \"/c/Users/zhaok/Desktop/Tasklist_MoC_DBTrigger\")",
+      "Read(//c/Users/zhaok/Desktop/**)",
+      "Bash(clasp clone *)",
+      "mcp__gsheets__sheets_append_values"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "gsheets"
+  ]
+}
