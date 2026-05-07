@@ -195,6 +195,30 @@ function getReleaseWebPage() {
   return webPageUrl;
 }
 
+function getPendingCountsForUser() {
+  var pmCount = getPendingCountForDb("1bYKTK5a63yJWRHzM_UPP6b4hwF67eZKEM5dCKLWR59U", null);
+  var inCount = getPendingCountForDb("1RQql-PrcBWiAQNeg7hQKcocpllSUMRhT5XPrDTVWoBY", null);
+  return { pmCount: pmCount, inCount: inCount };
+}
+
+function getPendingCountForDb(dbId, emailPrefix) {
+  var ss = SpreadsheetApp.openById(dbId);
+  var wsHistory = ss.getSheetByName("Tasklist_history");
+  if (!wsHistory) return 0;
+
+  var historyData = wsHistory.getRange(2, 1, wsHistory.getLastRow() - 1, 15).getValues();
+
+  var count = 0;
+  historyData.forEach(function(row) {
+    var status = (row[12] || "").toString().trim();
+    if (status === "待审批/ Pending" || status === "待发放/ Wait for Dissminater") {
+      count++;
+    }
+  });
+
+  return count;
+}
+
 function getData() {
   var id = "1bYKTK5a63yJWRHzM_UPP6b4hwF67eZKEM5dCKLWR59U";
   var ss = SpreadsheetApp.openById(id);
@@ -238,20 +262,23 @@ function dataSave(
 
     let ws_mailAddress = ss.getSheetByName("Database for Web");
 
-    let data = ws_mailAddress.getSheetValues(
-      2,
-      1,
-      ws_mailAddress.getLastRow(),
-      ws_mailAddress.getLastColumn()
-    );
+    // 使用 getRange/getValues 比 getSheetValues 更安全
+    let data = ws_mailAddress
+      .getRange(2, 1, ws_mailAddress.getLastRow() - 1, ws_mailAddress.getLastColumn())
+      .getValues();
 
     let machineType = JSON.parse(obj)[0].MachineType;
 
+    console.log("machineType", machineType);
+
     let row = data.filter((r) => {
-      return r[0] == machineType;
+      return r[0].toString().trim() == machineType.trim();
     });
 
-    console.log("machineType", machineType);
+    if (row.length === 0) {
+      console.error("Database for Web 中未找到机型: " + machineType);
+      return false;
+    }
 
     let production_Approval_words = "";
 
@@ -365,16 +392,19 @@ function dataSave_IN(
 
     let ws_mailAddress = ss.getSheetByName("Database for Web");
 
-    let data = ws_mailAddress.getSheetValues(
-      2,
-      1,
-      ws_mailAddress.getLastRow(),
-      ws_mailAddress.getLastColumn()
-    );
+    // 使用 getRange/getValues 比 getSheetValues 更安全
+    let data = ws_mailAddress
+      .getRange(2, 1, ws_mailAddress.getLastRow() - 1, ws_mailAddress.getLastColumn())
+      .getValues();
 
     let row = data.filter((r) => {
-      return r[0] == machineType;
+      return r[0].toString().trim() == machineType.trim();
     });
+
+    if (row.length === 0) {
+      console.error("Database for Web 中未找到机型: " + machineType);
+      return false;
+    }
 
     let recipient;
 

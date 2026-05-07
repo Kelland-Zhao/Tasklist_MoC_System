@@ -10,6 +10,11 @@
       allowOutsideClick: false,
       showConfirmButton: false
     })
+    google.script.run.withSuccessHandler(function(r) {
+      if (r.pmCount > 0) $('#badge_pm').text(r.pmCount).show();
+      if (r.inCount > 0) $('#badge_in').text(r.inCount).show();
+    }).getPendingCountsForUser();
+
     google.script.run.withSuccessHandler((r) => {
 
       URL = r;

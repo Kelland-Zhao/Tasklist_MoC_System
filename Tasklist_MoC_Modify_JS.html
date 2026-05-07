@@ -565,9 +565,17 @@
                                           Swal.close();
                                           Swal.fire({
                                             title: '操作失败/ Fail',
+                                            text: '请检查机型是否在Database for Web中已配置，或联系管理员。',
                                             icon: 'error'
                                           });
                                         }
+                                      }).withFailureHandler((err) => {
+                                        Swal.close();
+                                        Swal.fire({
+                                          title: '系统错误/ System Error',
+                                          text: '服务器执行异常，请联系管理员。错误信息: ' + err.message,
+                                          icon: 'error'
+                                        });
                                       }).dataSave(
                                         data,
                                         loginInfo,
