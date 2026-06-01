@@ -1,425 +1,135 @@
 <script>
-  // let url_exec = 'https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec';
-  // let url_dev = 'https://script.google.com/a/macros/colpal.com/s/AKfycbwQQLTjqojw5DrCQlVht_krcyfT8Us21EAUfQf6f6E/dev';
+  // ===== 双语 SweetAlert helper（规范 §8） =====
+  const swalTitle = (cn, en) => `${cn}<span style="display:block;font-size:0.65em;color:#888;font-weight:400;line-height:1.3;margin-top:4px;">${en}</span>`;
+  const swalHtml  = (cn, en) => `<div>${cn}<div style="font-size:0.85em;color:#888;margin-top:6px;line-height:1.4;">${en}</div></div>`;
+
+  // ===== 卡片 ID → 子页面 page key（与 Code.js doGet templateFiles 对齐） =====
+  const PAGE_MAP = {
+    modify: 'modify', create: 'create', void: 'void',
+    approval_Production: 'Production_Approval', approval1: 'approve1', approval2: 'approve2',
+    dissminater: 'dissminater', view: 'viewer', progress: 'progress',
+    modify_IN: 'Inspection_Edit', create_IN: 'Inspection_Create', void_IN: 'Inspection_Void',
+    approval_Production_IN: 'Inspection_Production_Approval', approval1_IN: 'Inspection_Approve1',
+    approval2_IN: 'Inspection_Approve2', dissminater_IN: 'Inspection_Dissminater',
+    view_IN: 'Inspection_View', progress_IN: 'Inspection_Progress'
+  };
+
+  const SS_KEY = 'tlmoc_session'; // sessionStorage key（只存工号/姓名，不存密码）
+
+  let webUrl = '';      // Web App 部署地址
+  let accounts = [];    // getPasswordData 返回的账号表
+  let currentUser = null; // { jobNumber, name, authorization }
+
   $(document).ready(() => {
-    console.log("start")
     Swal.fire({
-      title: '页面加载中/ Page Loading',
-      text: '页面加载中，请稍后.../ Page loading, please wait...',
-      icon: 'info',
-      allowOutsideClick: false,
-      showConfirmButton: false
-    })
-    google.script.run.withSuccessHandler(function(r) {
-      if (r.pmCount > 0) $('#badge_pm').text(r.pmCount).show();
-      if (r.inCount > 0) $('#badge_in').text(r.inCount).show();
+      title: swalTitle('页面加载中', 'Page Loading'),
+      html: swalHtml('正在获取数据，请稍候。', 'Fetching data, please wait.'),
+      allowOutsideClick: false, showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    // 并行：部署地址（跳转用）
+    google.script.run.withSuccessHandler((r) => { webUrl = r; }).getReleaseWebPage();
+
+    // 并行：待办数量 Badge（审批进度）
+    google.script.run.withSuccessHandler((r) => {
+      if (r && r.pmCount > 0) { $('#badge_pm').text(r.pmCount).show(); $('#tabBadgePm').text(r.pmCount).show(); }
+      if (r && r.inCount > 0) { $('#badge_in').text(r.inCount).show(); $('#tabBadgeIn').text(r.inCount).show(); }
     }).getPendingCountsForUser();
 
-    google.script.run.withSuccessHandler((r) => {
+    // 账号表（登录校验用）
+    google.script.run
+      .withSuccessHandler((r) => {
+        accounts = (r && r[0]) ? r[0] : [];
+        Swal.close();
+        restoreSession(); // 尝试从 sessionStorage 恢复登录态
+      })
+      .withFailureHandler((err) => {
+        Swal.fire({ icon: 'error', title: swalTitle('加载失败', 'Loading Fail'), html: swalHtml('请刷新重试。', String(err && err.message || err)) });
+      })
+      .getPasswordData();
 
-      URL = r;
+    // 输入 5 位工号即回显姓名（不暴露权限）
+    $('#jobNumber').on('input', function () {
+      const acc = findAccount($(this).val());
+      if (acc) { $('#nameEcho').show().find('span').text(acc.Name); }
+      else { $('#nameEcho').hide(); }
+    });
 
-      console.log(URL)
+    $('#PWD').on('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+    $('#loginBtn').on('click', doLogin);
+    $('#reloginBtn').on('click', logout);
 
-      google.script.run.withSuccessHandler((r) => {
+    // 功能卡点击 → 跳转子页面（密码已在登录时校验）
+    $('.nav-card').on('click', function () {
+      if (!currentUser) { Swal.fire({ icon: 'warning', title: swalTitle('请先登录', 'Please log in first') }); return; }
+      const pageKey = PAGE_MAP[this.id];
+      if (!pageKey) return;
+      if (!webUrl) { Swal.fire({ icon: 'info', title: swalTitle('地址加载中，请稍候', 'Loading URL, please wait') }); return; }
+      let url = webUrl + '?page=' + encodeURIComponent(pageKey)
+        + '&jobNumber=' + encodeURIComponent(currentUser.jobNumber)
+        + '&name=' + encodeURIComponent(currentUser.name);
+      window.open(url);
+    });
+  });
 
-        console.log(r);
+  // 按工号查账号（兼容 JobNumber 为数字或字符串）
+  function findAccount(jn) {
+    const key = String(jn || '').trim();
+    if (key.length !== 5) return null;
+    return accounts.find((a) => String(a.JobNumber).trim() === key) || null;
+  }
 
-        let mail = r[1];
+  function doLogin() {
+    const jn = String($('#jobNumber').val() || '').trim();
+    const acc = findAccount(jn);
+    if (!acc) { Swal.fire({ icon: 'warning', title: swalTitle('工号不存在', 'Job number not found') }); return; }
+    if (String($('#PWD').val()) !== String(acc.PWD)) {
+      Swal.fire({ icon: 'error', title: swalTitle('密码错误', 'Password Error') });
+      return;
+    }
+    enterWorkspace({ jobNumber: jn, name: acc.Name, authorization: acc.Authorization });
+    try { sessionStorage.setItem(SS_KEY, JSON.stringify({ jobNumber: jn, name: acc.Name })); } catch (e) {}
+  }
 
-        $("#Name").text(mail);
+  function logout() {
+    currentUser = null;
+    try { sessionStorage.removeItem(SS_KEY); } catch (e) {}
+    $('#workspace').hide();
+    $('#loginCard').show();
+    $('#jobNumber, #PWD').val('');
+    $('#nameEcho').hide();
+  }
 
-        if (r.length == 2) {
-          Swal.close();
-          Swal.fire({
-            title: '加载成功/ Loading Success',
-            icon: 'success'
-          }).then(() => {
-            let data = r[0];
+  // 刷新后从 sessionStorage 恢复，权限实时从 accounts 重新取（保证最新）
+  function restoreSession() {
+    let saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem(SS_KEY) || 'null'); } catch (e) {}
+    if (!saved || !saved.jobNumber) return;
+    const acc = findAccount(saved.jobNumber);
+    if (!acc) { try { sessionStorage.removeItem(SS_KEY); } catch (e) {} return; }
+    enterWorkspace({ jobNumber: String(saved.jobNumber).trim(), name: acc.Name, authorization: acc.Authorization });
+  }
 
-            $('#jobNumber').on('input', function () {
-                             // 重置所有按钮为disabled状态
-               $('#modify, #create, #view, #dissminater, #approval1, #approval2, #progress, #progress_IN').prop('disabled', true);
-              $('#name,#PWD').val('');
-              let jobNumber = $('#jobNumber').val();
-                             if (jobNumber.length === 5) {
-                 let account = data.filter((r) => { return r.JobNumber === jobNumber });
-                 let name = account[0].Name;
-                 let password = account[0].PWD;
-                 $('#name').val(name);
-                 
-                 // 审批进度按钮对所有用户都可用
-                 $('#progress,#progress_IN').prop('disabled', false);
+  // 进入工作区：按权限渲染卡片
+  function enterWorkspace(user) {
+    currentUser = user;
+    const perms = String(user.authorization || '').split(',').map((s) => s.trim()).filter(Boolean);
 
-                let correctData = data.filter((r) => { return r.JobNumber === jobNumber });
-                let authorizationText = correctData[0].Authorization;
-                let authorizationParts = authorizationText.split(',');
-                authorizationParts = authorizationParts.map(part => part.trim());
+    let pmCount = 0, inCount = 0;
+    $('.fn-col').each(function () {
+      const need = $(this).data('perm');
+      const ok = need === '*' || perms.includes(String(need));
+      $(this).toggle(ok);
+      if (ok) { ($(this).closest('#pmGrid').length ? pmCount++ : inCount++); }
+    });
+    // 仅剩“审批进度”一张卡 → 提示无操作权限
+    $('#pmEmpty').toggle(pmCount <= 1);
+    $('#inEmpty').toggle(inCount <= 1);
 
-                console.log('authorizationParts', authorizationParts)
-                // 创建一个包含所有权限的数组
-                const allPermissions = ['编辑', '查阅', '发放', '审批1', '审批2', '班组审批', '作废'];
-
-                // 遍历所有权限，检查是否在authorizationParts中
-                for (const permission of allPermissions) {
-                  if (authorizationParts.includes(permission)) {
-                    // 如果权限匹配，执行相应的操作
-                    switch (permission) {
-                      case '编辑':
-                        $('#modify, #create,#modify_IN, #create_IN').prop('disabled', false);
-                        // console.log('编辑');
-                        break;
-                      case '查阅':
-                        $('#view,#view_IN').prop('disabled', false);
-                        // console.log('查阅');
-                        break;
-                      case '发放':
-                        $('#dissminater,#dissminater_IN').prop('disabled', false);
-                        // console.log('发放');
-                        break;
-                      case '审批1':
-                        $('#approval1,#approval1_IN').prop('disabled', false);
-                        // console.log('审批1');
-                        break;
-                      case '审批2':
-                        $('#approval2,#approval2_IN').prop('disabled', false);
-                        // console.log('审批2');
-                        break;
-                      case '班组审批':
-                        $('#approval_Production,#approval_Production_IN').prop('disabled', false);
-                        // console.log('审批2');
-                        break;
-                      case '作废':
-                        $('#void,#void_IN').prop('disabled', false);
-                        // console.log('审批2');
-                        break;
-                    }
-                  }
-                }
-
-
-                $('#approval1').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=approve1';
-                    // 添加姓名和工号作为查询参数
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-
-                });
-
-                $('#approval_Production').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=Production_Approval';
-                    // 添加姓名和工号作为查询参数
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-
-                });
-
-                $('#approval_Production_IN').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=Inspection_Production_Approval';
-                    // 添加姓名和工号作为查询参数
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-
-                });
-
-                $('#approval1_IN').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=Inspection_Approve1';
-                    // 添加姓名和工号作为查询参数
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-
-                });
-
-                $('#approval2').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=approve2';
-                    // 添加姓名和工号作为查询参数
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-                });
-
-                $('#approval2_IN').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=Inspection_Approve2';
-                    // 添加姓名和工号作为查询参数
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-                });
-
-                $('#create').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=create';
-                    // 添加姓名和工号作为查询参数
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-                });
-
-                $('#create_IN').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=Inspection_Create';
-                    // 添加姓名和工号作为查询参数
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-                });
-
-                $('#dissminater').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=dissminater';
-                    // 添加姓名和工号作为查询参数
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-                });
-
-                $('#dissminater_IN').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=Inspection_Dissminater';
-                    // 添加姓名和工号作为查询参数
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-                });
-
-                $('#modify').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=modify';
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-                });
-
-                $('#modify_IN').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=Inspection_Edit';
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-                });
-
-                $('#view').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=viewer';
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-                });
-
-                $('#view_IN').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=Inspection_View';
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                  }
-                });
-
-                $('#void').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=void';
-                    // 添加姓名和工号作为查询参数
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-
-                });
-
-                $('#void_IN').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=Inspection_Void';
-                    // 添加姓名和工号作为查询参数
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-
-                });
-
-                $('#progress').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=progress';
-                    // 添加姓名和工号作为查询参数
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-                });
-
-                $('#progress_IN').click(() => {
-                  let pwdInput = $('#PWD').val();
-                  if (password === pwdInput) {
-                    let url = URL + '?page=Inspection_Progress';
-                    // 添加姓名和工号作为查询参数
-                    url += '&jobNumber=' + encodeURIComponent(jobNumber);
-                    url += '&name=' + encodeURIComponent(name);
-                    window.open(url);
-                  } else {
-                    Swal.fire({
-                      title: '密码错误/ Password Error',
-                      icon: 'error'
-                    });
-                    // console.log('密码错误');
-                  }
-                });
-
-              }
-
-            });
-
-          })
-        } else {
-          Swal.close();
-          Swal.fire({
-            title: '加载失败/ Loading Fail',
-            icon: 'error'
-          });
-        }
-      }).getPasswordData()
-    }).getReleaseWebPage()
-
-  })
-
+    $('#uName').text(user.name);
+    $('#uPerm').text('已登录 / ' + perms.length + ' 项权限');
+    $('#loginCard').hide();
+    $('#workspace').show();
+  }
 </script>

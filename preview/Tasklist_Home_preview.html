@@ -6,18 +6,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>任务清单变更管理 / Tasklist MoC</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet"
-    integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     body { background: #f5f6f8; }
     .bg-nav { background: #E60012 !important; }
 
     /* ===== 登录卡片（初始） ===== */
     .login-card {
-      background: #fff; border: 1px solid #e9ecef; border-radius: 10px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04); padding: 24px 26px;
-      max-width: 560px; margin: 28px auto 8px;
+      background: #fff;
+      border: 1px solid #e9ecef;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      padding: 24px 26px;
+      max-width: 560px;
+      margin: 28px auto 8px;
     }
     .login-card .login-head { display:flex; align-items:center; gap:10px; margin-bottom:20px; }
     .login-card .login-head i { color:#E60012; font-size:24px; }
@@ -34,7 +38,8 @@
     /* ===== 登录后：顶部细条 ===== */
     .user-bar {
       background:#fff; border-left:4px solid #E60012; border-radius:4px;
-      box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:8px 16px; margin:12px 0 16px;
+      box-shadow:0 1px 3px rgba(0,0,0,0.04);
+      padding:8px 16px; margin:12px 0 16px;
       display:flex; align-items:center; gap:12px; flex-wrap:wrap;
     }
     .user-bar .u-name { font-weight:600; color:#E60012; font-size:15px; }
@@ -43,7 +48,7 @@
     .user-bar .spacer { flex:1; }
     .user-bar .btn-relogin { font-size:12px; padding:3px 12px; }
 
-    /* ===== Tabs（规范 §4.4） ===== */
+    /* ===== Tabs（规范 §4.7） ===== */
     .nav-tabs { border-bottom:2px solid #e9ecef; }
     .nav-tabs .nav-link {
       color:#6c757d; border:none; font-size:13px; padding:8px 18px;
@@ -78,6 +83,7 @@
     .nav-card .icon { font-size:26px; margin-bottom:6px; }
     .nav-card .title-cn { font-size:14px; font-weight:600; line-height:1.2; }
     .nav-card .title-en { font-size:11px; color:#888; margin-top:2px; line-height:1.2; }
+    /* 按工作流分色：编辑=蓝 / 审批=橙 / 查阅·进度=绿 */
     .grp-edit   .icon { color:#0d6efd; }
     .grp-approve .icon { color:#fd7e14; }
     .grp-view   .icon { color:#198754; }
@@ -86,7 +92,9 @@
       font-size:11px; font-weight:600; padding:1px 7px; border-radius:10px;
     }
 
-    .empty-hint { text-align:center; color:#adb5bd; padding:48px 0; font-size:14px; }
+    .empty-hint {
+      text-align:center; color:#adb5bd; padding:48px 0; font-size:14px;
+    }
     .empty-hint i { font-size:34px; display:block; margin-bottom:10px; }
   </style>
 </head>
@@ -111,7 +119,10 @@
     <div class="login-card" id="loginCard">
       <div class="login-head">
         <i class="bi bi-person-badge"></i>
-        <div><div class="t-cn">登录</div><div class="t-en">Login</div></div>
+        <div>
+          <div class="t-cn">登录</div>
+          <div class="t-en">Login</div>
+        </div>
       </div>
       <div class="mb-3">
         <label class="field-label" for="jobNumber">工号 <span class="en">Job Number</span></label>
@@ -129,6 +140,9 @@
       </div>
       <div class="d-grid">
         <button class="btn btn-login text-white" id="loginBtn">登录 / Login</button>
+      </div>
+      <div class="login-hint" style="color:#0d6efd;">
+        预览演示账号 / Demo: <strong>12345</strong>（全权限） · <strong>23456</strong>（仅审批1+查阅） · 密码均为 <strong>1234</strong>
       </div>
     </div>
 
@@ -148,13 +162,15 @@
       <!-- Tabs -->
       <ul class="nav nav-tabs" id="moduleTabs" role="tablist">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="tab-pm" data-bs-toggle="tab" data-bs-target="#pane-pm" type="button" role="tab">
+          <button class="nav-link active" id="tab-pm" data-bs-toggle="tab" data-bs-target="#pane-pm"
+                  type="button" role="tab">
             <span class="tab-cn">保养任务清单<span class="tab-badge" id="tabBadgePm" style="display:none;"></span></span>
             <span class="tab-en">PM TASKLIST</span>
           </button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-in" data-bs-toggle="tab" data-bs-target="#pane-in" type="button" role="tab">
+          <button class="nav-link" id="tab-in" data-bs-toggle="tab" data-bs-target="#pane-in"
+                  type="button" role="tab">
             <span class="tab-cn">点检任务清单<span class="tab-badge" id="tabBadgeIn" style="display:none;"></span></span>
             <span class="tab-en">INSPECTION TASKLIST</span>
           </button>
@@ -243,13 +259,74 @@
     <div style="height:30px;"></div>
   </div>
 
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // ====== 预览用模拟数据 ======
+    const DEMO_ACCOUNTS = {
+      '12345': { Name: '张工 / Zhang', PWD: '1234', Authorization: '编辑, 查阅, 发放, 审批1, 审批2, 班组审批, 作废' },
+      '23456': { Name: '李工 / Li',    PWD: '1234', Authorization: '审批1, 查阅' }
+    };
+    const PENDING = { pm: 3, in: 5 }; // 模拟 getPendingCountsForUser
+    const swalTitle = (cn, en) => `${cn}<span style="display:block;font-size:0.65em;color:#888;font-weight:400;line-height:1.3;margin-top:4px;">${en}</span>`;
+
+    function showWorkspace(acc) {
+      const perms = acc.Authorization.split(',').map(s => s.trim());
+
+      // 只显示有权限的卡（审批进度 data-perm="*" 永远显示）
+      let pmCount = 0, inCount = 0;
+      $('.fn-col').each(function () {
+        const need = $(this).data('perm');
+        const ok = need === '*' || perms.includes(String(need));
+        $(this).toggle(ok);
+        if (ok) { ($(this).closest('#pmGrid').length ? pmCount++ : inCount++); }
+      });
+      // 若某模块只剩“审批进度”一张卡 → 提示无操作权限
+      $('#pmEmpty').toggle(pmCount <= 1);
+      $('#inEmpty').toggle(inCount <= 1);
+
+      // Badge：审批进度待办数
+      if (PENDING.pm > 0) { $('#badge_pm').text(PENDING.pm).show(); $('#tabBadgePm').text(PENDING.pm).show(); }
+      if (PENDING.in > 0) { $('#badge_in').text(PENDING.in).show(); $('#tabBadgeIn').text(PENDING.in).show(); }
+
+      $('#uName').text(acc.Name);
+      $('#uPerm').text('已登录 / ' + perms.length + ' 项权限');
+      $('#loginCard').hide();
+      $('#workspace').show();
+    }
+
+    function doLogin() {
+      const jn = $('#jobNumber').val();
+      const acc = DEMO_ACCOUNTS[jn];
+      if (!acc) { Swal.fire({ icon:'warning', title:swalTitle('工号不存在','Job number not found') }); return; }
+      if ($('#PWD').val() !== acc.PWD) { Swal.fire({ icon:'error', title:swalTitle('密码错误','Password Error') }); return; }
+      window._currentAcc = acc;
+      showWorkspace(acc);
+    }
+
+    $(document).ready(function () {
+      // 输入 5 位工号即回显姓名（不暴露权限，登录后才显示）
+      $('#jobNumber').on('input', function () {
+        const acc = DEMO_ACCOUNTS[$(this).val()];
+        if (acc) { $('#nameEcho').show().find('span').text(acc.Name); }
+        else { $('#nameEcho').hide(); }
+      });
+      $('#PWD').on('keydown', e => { if (e.key === 'Enter') doLogin(); });
+      $('#loginBtn').on('click', doLogin);
+      $('#reloginBtn').on('click', function () {
+        window._currentAcc = null;
+        $('#workspace').hide();
+        $('#loginCard').show();
+        $('#jobNumber, #PWD').val('');
+        $('#nameEcho').hide();
+      });
+
+      // 点击功能卡（密码已在登录时校验，直接跳转）
+      $('.nav-card').on('click', function () {
+        const titleCn = $(this).find('.title-cn').text();
+        Swal.fire({ icon:'success', title:swalTitle('跳转：' + titleCn, 'Navigating...'), timer:1100, showConfirmButton:false });
+      });
+    });
+  </script>
 </body>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"
-  integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
-
-<?!=include("Sweetalert2_js") ?>
-
-<?!=include("Tasklist_Home_JS") ?>
-
 </html>

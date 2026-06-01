@@ -1,0 +1,7 @@
+# 默认忽略所有文件，再显式放行需要推送到 GAS 的源码
+**/**
+
+# 放行：清单 + 根目录源码（Code.js + 各页面 .html）
+!appsscript.json
+!*.js
+!*.html
