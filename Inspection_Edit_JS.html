@@ -1,4 +1,8 @@
 <script>
+  // 双语 SweetAlert helper (§8)
+  const swalTitle = (cn, en) => `${cn}<span style="display:block;font-size:0.65em;color:#888;font-weight:400;line-height:1.3;margin-top:4px;">${en}</span>`;
+  const swalHtml = (cn, en) => `<div>${cn}<div style="font-size:0.85em;color:#888;margin-top:6px;line-height:1.4;">${en}</div></div>`;
+
   $(document).ready(() => {
     let title = $('#title').text();
     let styledText1 = '<span style="color: red; font-weight: bold;">点检</span>';
@@ -7,11 +11,10 @@
     $('#title').html(newText)
 
     swal.fire({
-      title: '页面加载中/ Page Loading',
-      text: '页面加载中，请稍后.../ Page loading, please wait...',
-      icon: 'info',
+      title: swalTitle('加载中...', 'Loading...'),
       allowOutsideClick: false,
-      showConfirmButton: false
+      showConfirmButton: false,
+      didOpen: () => swal.showLoading()
     });
     //DataTables初始化
     var table = $('#table').DataTable({
@@ -47,8 +50,10 @@
       if (result.length === 2) {
         swal.close();
         swal.fire({
-          title: '加载成功/ Loading Success',
-          icon: 'success'
+          icon: 'success',
+          title: swalTitle('加载成功', 'Loading Success'),
+          timer: 1500,
+          showConfirmButton: false
         });
 
         let userEmail = result[1];
@@ -102,12 +107,11 @@
           });
           
           if (hasPendingApproval) {
-            Swal.fire({
-              title: '无法编辑/ Cannot Edit',
-              text: '该机型已有未完成的审批申请，无法再次提交修改申请。如需提交新的修改申请，请先完成上一次的审批流程。',
+            swal.fire({
               icon: 'warning',
-              confirmButtonText: '确定/ OK',
-              showCancelButton: false
+              title: swalTitle('无法编辑', 'Cannot Edit'),
+              html: swalHtml('该机型已有未完成的审批申请，无法再次提交修改申请。如需提交新的修改申请，请先完成上一次的审批流程。', 'This machine type already has a pending approval. Please complete the previous flow before submitting again.'),
+              confirmButtonText: '确定 / OK'
             });
             return;
           }
@@ -160,6 +164,8 @@
               inputLabel: '变更原因/ Reason for change',
               inputPlaceholder: '请输入变更原因/ Please type in the reason for change',
               showCancelButton: true,
+              confirmButtonText: '下一步 / Next',
+              cancelButtonText: '取消 / Cancel',
               inputValidator: (value) => {
                 if (!value) {
                   return '变更原因不能为空/ Reason for change cannot be null';
@@ -172,8 +178,9 @@
                   input: 'textarea',
                   inputLabel: '编辑条数/ Number of edits',
                   inputPlaceholder: '请输入编辑条数/ Please type in the number of edits',
-                  // inputAttributes: { 'aria-label': '请输入变更原因/ Please type in the reason for change' },
                   showCancelButton: true,
+                  confirmButtonText: '下一步 / Next',
+                  cancelButtonText: '取消 / Cancel',
                   inputValidator: (value) => { if (!value) { return '编辑条数不能为空/ Number of edits cannot be null'; } else if (!/^\d+$/.test(value)) { return '请输入有效的数字/ Please enter a valid number'; } }
                 }).then((secondValue) => {
                   if (secondValue.isConfirmed) {
@@ -182,8 +189,9 @@
                       input: 'textarea',
                       inputLabel: '新增条数/ Number of Add',
                       inputPlaceholder: '请输入新增条数/ Please type in the number of add',
-                      // inputAttributes: { 'aria-label': '请输入变更原因/ Please type in the reason for change' },
                       showCancelButton: true,
+                      confirmButtonText: '下一步 / Next',
+                      cancelButtonText: '取消 / Cancel',
                       inputValidator: (value) => { if (!value) { return '新增条数不能为空/ Number of adds cannot be null'; } else if (!/^\d+$/.test(value)) { return '请输入有效的数字/ Please enter a valid number'; } }
                     }).then((thirdValue) => {
                       if (thirdValue.isConfirmed) {
@@ -192,8 +200,9 @@
                           input: 'textarea',
                           inputLabel: '删除条数/ Number of Delete',
                           inputPlaceholder: '请输入删除条数/ Please type in the number of delete',
-                          // inputAttributes: { 'aria-label': '请输入变更原因/ Please type in the reason for change' },
                           showCancelButton: true,
+                          confirmButtonText: '下一步 / Next',
+                          cancelButtonText: '取消 / Cancel',
                           inputValidator: (value) => { if (!value) { return '删除条数不能为空/ Number of delete cannot be null'; } else if (!/^\d+$/.test(value)) { return '请输入有效的数字/ Please enter a valid number'; } }
                         }).then((forthValue) => {
                           if (forthValue.isConfirmed) {
@@ -201,21 +210,22 @@
                             DELitem = '删除条目数/ Number of delete: ' + forthValue.value;
 
                             swal.fire({
-                              icon: 'question',
-                              title: '确认提交?/ Sure to submit?',
-                              text: '一旦提交不可修改/ Once submitted it cannot be modified',
+                              icon: 'warning',
+                              title: swalTitle('确认提交？', 'Confirm Submit?'),
+                              html: swalHtml('一旦提交不可修改。', 'Once submitted it cannot be modified.'),
                               showCancelButton: true,
-                              confirmButtonText: '是的/ Yes',
-                              cancelButtonText: '取消/ Cancel'
+                              confirmButtonText: '确认提交 / Submit',
+                              cancelButtonText: '取消 / Cancel',
+                              confirmButtonColor: '#E60012'
                             }).then((result) => {
 
                               if (result.isConfirmed) {
                                 swal.fire({
-                                  title: '请等待/ Please waite',
-                                  text: '等待服务器返回结果/ Waiting for the serve',
-                                  icon: 'info',
+                                  title: swalTitle('提交中...', 'Submitting...'),
+                                  html: swalHtml('等待服务器返回结果', 'Waiting for the server'),
                                   allowOutsideClick: false,
-                                  showConfirmButton: false
+                                  showConfirmButton: false,
+                                  didOpen: () => swal.showLoading()
                                 })
                                 var obj = table.data().toArray();
                                 let process = obj[0].Process;
@@ -241,22 +251,27 @@
                                   if (r == true) {
                                     swal.close();
                                     swal.fire({
-                                      title: '操作成功/ Success',
-                                      icon: 'success'
+                                      icon: 'success',
+                                      title: swalTitle('操作成功', 'Success'),
+                                      timer: 1500,
+                                      showConfirmButton: false
                                     });
                                   } else {
                                     swal.close();
                                     swal.fire({
-                                      title: '操作失败/ Fail',
-                                      icon: 'error'
+                                      icon: 'error',
+                                      title: swalTitle('操作失败', 'Fail'),
+                                      html: swalHtml('请检查机型是否在 Database for Web 中已配置，或联系管理员。', 'Please verify the machine type is configured in Database for Web, or contact admin.'),
+                                      confirmButtonText: '确定 / OK'
                                     });
                                   }
                                 }).withFailureHandler((err) => {
                                   swal.close();
                                   swal.fire({
-                                    title: '系统错误/ System Error',
-                                    text: '服务器执行异常，请联系管理员。错误信息: ' + err.message,
-                                    icon: 'error'
+                                    icon: 'error',
+                                    title: swalTitle('系统错误', 'System Error'),
+                                    html: swalHtml('服务器执行异常，请联系管理员。', '错误信息 / Error: ' + err.message),
+                                    confirmButtonText: '确定 / OK'
                                   });
                                 }).dataSave_IN(data, loginInfo, reason, status, userEmail, process, production_Approval)
                               }
@@ -281,8 +296,9 @@
 
         swal.close();
         swal.fire({
-          title: '加载失败/ Loading Fail',
-          icon: 'error'
+          icon: 'error',
+          title: swalTitle('加载失败', 'Loading Fail'),
+          confirmButtonText: '确定 / OK'
         });
 
 

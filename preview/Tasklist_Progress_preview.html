@@ -1,5 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <base target="_top">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>任务清单变更管理 - 审批进度 / Tasklist MoC - Progress (PREVIEW)</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.css" />
+
+  <style>
+    body { background: #f5f6f8; }
+    .bg-nav { background: #E60012 !important; }
+    .section-title {
+      font-size: 13px; font-weight: 700; color: #6c757d; letter-spacing: 1px;
+      margin: 18px 0 10px; border-left: 3px solid #E60012; padding-left: 10px;
+    }
+    #table thead th,
+    .dataTables_scrollHead thead th {
+      background-color: #E60012 !important; color: white !important;
+      position: sticky; top: 0; z-index: 10; text-align: center !important;
+    }
+    #table thead th small, #diffTable thead th small { font-size: 0.8em; font-weight: 400; opacity: 0.85; }
+    #table th, #table td { padding: 5px 6px; font-size: 12px; vertical-align: middle; text-align: center; }
+    #table td:nth-child(3) {
+      text-align: left; max-width: 220px; word-wrap: break-word; overflow-wrap: break-word;
+    }
+    #table tbody tr.odd > td { background: #f5f5f5; }
+    #table tbody tr.even > td { background: #fff; }
+    table.dataTable thead > tr > th.sorting,
+    table.dataTable thead > tr > th.sorting_asc,
+    table.dataTable thead > tr > th.sorting_desc { background-image: none !important; }
+
+    /* 状态徽章 §4.8 */
+    .st-badge { display:inline-flex; flex-direction:column; align-items:center;
+      font-size:11px; font-weight:600; padding:3px 10px; border-radius:12px; line-height:1.25; white-space:normal; }
+    .st-badge small { font-size:0.82em; font-weight:400; opacity:.85; }
+    .st-new       { background:#cfe2ff; color:#084298; }
+    .st-pending   { background:#fff3cd; color:#856404; }
+    .st-effective { background:#d4edda; color:#155724; }
+    .st-replace   { background:#e2e3e5; color:#41464b; }
+    .st-void      { background:#f8d7da; color:#842029; }
+
+    /* Y/N 徽章 */
+    .yn-badge { display:inline-flex; flex-direction:column; align-items:center;
+      font-size:11px; font-weight:600; padding:2px 10px; border-radius:12px; line-height:1.2; }
+    .yn-badge small { font-size:0.8em; font-weight:400; opacity:.85; }
+    .yn-y { background:#cfe2ff; color:#084298; }
+    .yn-n { background:#e2e3e5; color:#41464b; }
+
+    /* 变更原因列 */
+    .reason-main { display:inline-block; font-size:11px; background:#eef2f7; color:#41464b;
+      padding:3px 10px; border-radius:12px; max-width:160px; white-space:normal; word-break:break-word; }
+    .btn-reason-detail { font-size:11px; padding:1px 8px; margin-top:4px; }
+
+    /* 审批流程 stepper（紧凑步进条，详情走 title 悬浮） */
+    .flow { display:flex; align-items:flex-start; justify-content:center; }
+    .flow-node { display:flex; flex-direction:column; align-items:center; flex:0 0 auto; width:42px; }
+    .flow-dot { width:24px; height:24px; border-radius:50%; display:flex; align-items:center;
+      justify-content:center; font-size:13px; font-weight:700; line-height:1; }
+    .flow-dot.done    { background:#198754; color:#fff; }
+    .flow-dot.reject  { background:#dc3545; color:#fff; }
+    .flow-dot.current { background:#ffc107; color:#333; box-shadow:0 0 0 3px rgba(255,193,7,0.25); }
+    .flow-dot.wait    { background:#fff; border:2px solid #dee2e6; color:#adb5bd; }
+    .flow-dot.na      { background:#e9ecef; color:#adb5bd; }
+    .flow-label { font-size:10px; color:#888; margin-top:3px; line-height:1.1; }
+    .flow-node.is-current .flow-label { color:#b8860b; font-weight:700; }
+    .flow-conn { flex:1 1 auto; height:2px; background:#dee2e6; min-width:6px; margin-top:11px; }
+    .flow-conn.done { background:#198754; }
+    .flow-caption { font-size:11px; text-align:center; margin-top:6px; color:#555; }
+    .flow-caption .who { color:#b8860b; font-weight:600; }
+    .flow-caption.reject { color:#842029; font-weight:600; }
+    .flow-caption.released { color:#155724; font-weight:600; }
+
+    /* 弹窗内嵌套表格统一红底白字表头 §4.7 */
+    #diffTable thead th, .reason-detail-table thead th {
+      background:#E60012 !important; color:#fff !important; text-align:center !important; }
+    #diffTable th, #diffTable td { padding:5px 6px; font-size:12px; vertical-align:middle; text-align:center; }
+    #diffTable td:nth-child(7) { text-align:left; max-width:260px; word-wrap:break-word; overflow-wrap:break-word; }
+    .reason-detail-table td { font-size:13px; vertical-align:middle; }
+
+    /* 待我审批汇总条 §4.9 */
+    .summary-bar { background:#fff; border-left:4px solid #E60012; border-radius:4px;
+      box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:10px 16px; margin:0 0 14px;
+      display:flex; align-items:center; gap:24px; flex-wrap:wrap; }
+    .sb-item { display:flex; align-items:center; gap:10px; }
+    .sb-num { font-size:26px; font-weight:700; color:#6c757d; line-height:1; min-width:28px; text-align:center; }
+    .sb-mine .sb-num { color:#E60012; }
+    .sb-label { font-size:12px; color:#333; line-height:1.2; }
+    .sb-label small { color:#888; font-size:0.8em; }
+    .sb-spacer { flex:1; }
+    .sb-toggle label { font-size:12px; color:#333; cursor:pointer; }
+    .sb-toggle .form-check-input { cursor:pointer; }
+    .sb-toggle .form-check-input:checked { background-color:#E60012; border-color:#E60012; }
+
+    /* 行左侧状态色边框 */
+    #table tbody td:first-child { border-left:4px solid transparent; }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg bg-nav">
+    <div class="container-fluid">
+      <a class="navbar-brand" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
+        <span style="background:#fff;color:#E60012;font-weight:bold;border-radius:6px;padding:6px 10px;font-family:Arial;">Colgate</span>
+        <span style="color:white;font-family:Arial,Helvetica,sans-serif;line-height:1.2;">
+          <span style="font-size:xx-large;font-weight:bold;">任务清单变更管理</span><br>
+          <span style="font-size:14px;font-weight:400;opacity:0.85;">Tasklist MoC · 保养 PM</span>
+        </span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="container-fluid px-3">
+
+    <div class="section-title">审批进度 / APPROVAL PROGRESS</div>
+    <div class="d-flex gap-4 mb-3" style="font-size:13px;font-weight:600;color:#333;">
+      <span><i class="bi bi-person-circle" style="color:#E60012;margin-right:4px;"></i>陈磊 (PREVIEW)</span>
+      <span style="color:#6c757d;">32801001</span>
+    </div>
+
+    <div class="summary-bar" id="summaryBar" style="display:none;">
+      <div class="sb-item sb-mine">
+        <span class="sb-num" id="sbMine">0</span>
+        <span class="sb-label">待我审批<br><small>Pending on me</small></span>
+      </div>
+      <div class="sb-item">
+        <span class="sb-num" id="sbTotal">0</span>
+        <span class="sb-label">审批中总计<br><small>In progress</small></span>
+      </div>
+      <span class="sb-spacer"></span>
+      <div class="form-check form-switch sb-toggle">
+        <input class="form-check-input" type="checkbox" id="onlyMine">
+        <label class="form-check-label" for="onlyMine">只看待我审批 / Only mine</label>
+      </div>
+    </div>
+
+    <table id="table" class="display" style="width:100%;">
+      <thead>
+        <tr>
+          <th>机型<br><small>Machine Type</small></th>
+          <th>申请人<br><small>Editor</small></th>
+          <th>变更原因<br><small>Reason</small></th>
+          <th>需要班组审批<br><small>Production Approval (Y/N)</small></th>
+          <th>审批流程<br><small>Approval Flow</small></th>
+          <th>状态<br><small>Status</small></th>
+          <th>提交邮箱<br><small>Submit Mail</small></th>
+          <th>任务清单<br><small>Tasklist</small></th>
+        </tr>
+      </thead>
+    </table>
+
+    <div style="height:30px;"></div>
+  </div>
+
+</body>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- ====== MOCK：模拟 google.script.run.getApprovaldata() 返回 ====== -->
 <script>
-  // 双语 SweetAlert helper (§8)
+  function buildTasklist(mt, n) {
+    var arr = [];
+    for (var i = 1; i <= n; i++) {
+      arr.push({
+        'MachineType': mt, 'Task No': mt.substring(0, 2).toUpperCase() + '-' + String(i).padStart(2, '0'),
+        'Section': '注塑单元', 'Function': '锁模', 'Failure Mode': '磨损',
+        'Task Type': i % 2 ? '检查' : '更换', 'Task Description': '检查锁模缸端盖是否泄漏并记录压力值，必要时更换密封圈',
+        'Frecuency': '月检', 'Line Status': '停机', 'Strategy': '预防性维护',
+        'Resource': '技术员', 'No Resources': '1', 'Skill Level': 'L2', 'Tools & Equip': '扳手/塞尺',
+        'Estimated Time': '30min'
+      });
+    }
+    return JSON.stringify(arr);
+  }
+
+  var MOCK = [
+    // r[0] 审批列表
+    [
+      {
+        MachineType: 'Husky-H400', Operator: '工号/ JobNumber:  32812345_姓名/ Name:  赵凯兰 2026-05-30 09:12',
+        Reason: '变更原因/ Reason for change:新增2项锁模检查项 新增条目数/ Number of add: 2 删除条目数/ Number of delete: 0 修改条目数/ Number of edit: 1',
+        'Production Approval (Y/N)': 'Y',
+        'Production Approver': '批准/ Approve li.qiang@colpal.com 2026-05-30',
+        'Approver1': '批准/ Approve wang.fang@colpal.com 2026-05-31', 'Approver2': '', 'Dissminater': '',
+        Status: '待审批/ Pending', submitMail: 'zhao.kailan@colpal.com',
+        Tasklist: buildTasklist('Husky-H400', 6)
+      },
+      {
+        MachineType: 'Engel-VC200', Operator: '工号/ JobNumber:  32867890_姓名/ Name:  孙强 2026-05-29 14:03',
+        Reason: '变更原因/ Reason for change:更新点检频率 新增条目数/ Number of add: 0 删除条目数/ Number of delete: 1 修改条目数/ Number of edit: 3',
+        'Production Approval (Y/N)': 'N',
+        'Production Approver': '', 'Approver1': '批准/ Approve wang.fang@colpal.com 2026-05-30',
+        'Approver2': '批准/ Approve chen.lei@colpal.com 2026-05-31', 'Dissminater': '',
+        Status: '待审批/ Pending', submitMail: 'sun.qiang@colpal.com',
+        Tasklist: buildTasklist('Engel-VC200', 4)
+      },
+      {
+        MachineType: 'Arburg-A570', Operator: '工号/ JobNumber:  32855512_姓名/ Name:  周敏 2026-06-01 08:30',
+        Reason: '变更原因/ Reason for change:新建整套保养清单 新增条目数/ Number of add: 12 删除条目数/ Number of delete: 0 修改条目数/ Number of edit: 0',
+        'Production Approval (Y/N)': 'Y',
+        'Production Approver': '', 'Approver1': '', 'Approver2': '', 'Dissminater': '',
+        Status: '待审批/ Pending', submitMail: 'zhou.min@colpal.com',
+        Tasklist: buildTasklist('Arburg-A570', 12)
+      },
+      {
+        MachineType: 'Negri-NB90', Operator: '工号/ JobNumber:  32844423_姓名/ Name:  吴磊 2026-05-28 16:45',
+        Reason: '变更原因/ Reason for change:作废过时清单 新增条目数/ Number of add: 0 删除条目数/ Number of delete: 0 修改条目数/ Number of edit: 0',
+        'Production Approval (Y/N)': 'N',
+        'Production Approver': '', 'Approver1': '批准/ Approve wang.fang@colpal.com 2026-05-29',
+        'Approver2': '批准/ Approve chen.lei@colpal.com 2026-05-30',
+        'Dissminater': '批准/ Approve disseminate.team@colpal.com 2026-05-31',
+        Status: '作废待审批/ Void Pending', submitMail: 'wu.lei@colpal.com',
+        Tasklist: buildTasklist('Negri-NB90', 3)
+      },
+      // 以下应被过滤掉（不显示）
+      {
+        MachineType: 'Filtered-X', Operator: 'x', Reason: 'x', 'Production Approval (Y/N)': 'N',
+        Status: '生效/ Effective', submitMail: 'x', Tasklist: '[]'
+      }
+    ],
+    // r[1] emailConfig
+    [
+      { MachineType: 'Husky-H400', Mail_Production: 'prod.lead@colpal.com', Mail_Approve1: 'wang.fang@colpal.com', Mail_Approve2: 'chen.lei@colpal.com', Mail_Disseninate: 'disseminate.team@colpal.com' },
+      { MachineType: 'Engel-VC200', Mail_Production: 'prod.lead@colpal.com', Mail_Approve1: 'wang.fang@colpal.com', Mail_Approve2: 'chen.lei@colpal.com', Mail_Disseninate: 'disseminate.team@colpal.com' },
+      { MachineType: 'Arburg-A570', Mail_Production: 'chen.lei@colpal.com', Mail_Approve1: 'wang.fang@colpal.com', Mail_Approve2: 'chen.lei@colpal.com', Mail_Disseninate: 'disseminate.team@colpal.com' }
+    ],
+    // r[2] mail（当前登录用户邮箱）
+    'chen.lei@colpal.com',
+    // r[3] 占位
+    {}
+  ];
+
+  window.google = {
+    script: {
+      run: {
+        withSuccessHandler: function (cb) {
+          return { getApprovaldata: function () { setTimeout(() => cb(MOCK), 400); } };
+        }
+      }
+    }
+  };
+</script>
+
+<!-- ====== 真实页面 JS（与 Tasklist_Progress_JS.html 同步） ====== -->
+<script>
   const swalTitle = (cn, en) => `${cn}<span style="display:block;font-size:0.65em;color:#888;font-weight:400;line-height:1.3;margin-top:4px;">${en}</span>`;
   const swalHtml = (cn, en) => `<div>${cn}<div style="font-size:0.85em;color:#888;margin-top:6px;line-height:1.4;">${en}</div></div>`;
 
@@ -13,7 +262,6 @@
 
     var emailConfig = [];
 
-    // 解析审批人字段：动作 / 姓名 / 日期
     function parseApprover(val) {
       if (!val || !val.trim()) return null;
       var action = '';
@@ -29,7 +277,6 @@
       return { action: action, name: name, date: date };
     }
 
-    // 某节点配置的审批人完整邮箱（从邮件链配置取）
     function getApproverEmail(machineType, key) {
       var item = null;
       for (var j = 0; j < emailConfig.length; j++) {
@@ -43,13 +290,11 @@
       return '';
     }
 
-    // 当前待审批节点的审批人（邮箱 @ 前前缀，沿用现有显示规则）
     function getPendingApprover(machineType, key) {
       var email = getApproverEmail(machineType, key);
       return email ? email.split('@')[0] : '';
     }
 
-    // 构建审批四步（班组/审1/审2/发布）
     function buildSteps(row) {
       return [
         { skip: row['Production Approval (Y/N)'] === 'N', parsed: parseApprover(row['Production Approver']), label: '班组', key: 'prod' },
@@ -59,7 +304,6 @@
       ];
     }
 
-    // 当前待审批步骤下标（第一个未跳过且未完成的）
     function findCurrentIdx(steps) {
       for (var i = 0; i < steps.length; i++) {
         if (!steps[i].skip && !steps[i].parsed) return i;
@@ -67,7 +311,6 @@
       return -1;
     }
 
-    // 该行当前待审批人的完整邮箱（无则空）
     function pendingApproverEmail(row) {
       var steps = buildSteps(row);
       var idx = findCurrentIdx(steps);
@@ -75,17 +318,15 @@
       return getApproverEmail(row['MachineType'], steps[idx].key);
     }
 
-    // 行左侧状态色边框颜色
     function statusBorderColor(status) {
       if (status === '待审批/ Pending') return '#ffc107';
       if (status === '作废待审批/ Void Pending' || status === '拒绝/ Rejected') return '#dc3545';
       return '#adb5bd';
     }
 
-    var userMail = '';        // 当前用户邮箱（小写，r[2]）
-    var onlyMineFlag = false; // 只看待我审批
+    var userMail = '';
+    var onlyMineFlag = false;
 
-    // 提取主要变更原因
     function extractMainReason(reason) {
       if (!reason) return '';
       if (!reason.includes('变更原因/ Reason for change:')) return reason;
@@ -96,7 +337,6 @@
       return firstSpaceIndex > 0 ? afterReason.substring(0, firstSpaceIndex) : afterReason;
     }
 
-    // 解析申请人字段：工号 / 姓名（格式：工号/ JobNumber:  xxxxx_姓名/ Name:  姓名 时间戳）
     function parseOperator(val) {
       if (!val) return { job: '', name: '' };
       var job = '', name = '';
@@ -109,14 +349,14 @@
 
     var table = $('#table').DataTable({
       columns: [
-        { data: 'MachineType' },                  // 0 机型
-        { data: 'Operator' },                      // 1 申请人
-        { data: 'Reason' },                        // 2 变更原因
-        { data: 'Production Approval (Y/N)' },     // 3 需要班组审批
-        { data: null, defaultContent: '' },        // 4 审批流程
-        { data: 'Status' },                        // 5 状态
-        { data: 'submitMail' },                    // 6 提交邮箱
-        { data: null, defaultContent: '' }         // 7 任务清单
+        { data: 'MachineType' },
+        { data: 'Operator' },
+        { data: 'Reason' },
+        { data: 'Production Approval (Y/N)' },
+        { data: null, defaultContent: '' },
+        { data: 'Status' },
+        { data: 'submitMail' },
+        { data: null, defaultContent: '' }
       ],
       autoWidth: false,
       scrollX: true,
@@ -133,7 +373,6 @@
         { targets: 4, width: 'auto', createdCell: function (td) { $(td).css('background-color', '#f4f9ff'); } },
         { targets: 5, width: '100px' },
         { targets: 7, width: '120px' },
-        // 申请人：工号 / 姓名 两行显示
         {
           targets: 1, render: function (data, type) {
             if (type !== 'display') return data;
@@ -143,14 +382,12 @@
               '<div style="font-weight:600;color:#333;">' + (o.name || '') + '</div></div>';
           }
         },
-        // 提交邮箱：缩小字号
         {
           targets: 6, render: function (data, type) {
             if (type === 'display') return '<span style="font-size:0.75em;">' + (data || '') + '</span>';
             return data;
           }
         },
-        // 需要班组审批 Y/N
         {
           targets: 3, render: function (data, type) {
             if (type !== 'display') return data;
@@ -159,7 +396,6 @@
             return '<span class="yn-badge yn-n">' + (data || '-') + '</span>';
           }
         },
-        // 审批流程：紧凑步进条，明细悬浮 title
         {
           targets: 4, render: function (data, type, row) {
             if (type !== 'display') return '';
@@ -187,7 +423,6 @@
               }
             }
             html += '</div>';
-            // 单行当前状态说明
             if (hasReject) {
               html += '<div class="flow-caption reject">已拒绝 / Rejected</div>';
             } else if (currentIdx === -1) {
@@ -200,7 +435,6 @@
             return html;
           }
         },
-        // 状态徽章 §4.8 / §5
         {
           targets: 5, render: function (data, type) {
             if (type !== 'display') return data;
@@ -220,7 +454,6 @@
               (en ? '<small>' + en + '</small>' : '') + '</span>';
           }
         },
-        // 变更原因：主因 + 详情按钮（专属 class，避免与状态 bg-warning 冲突）
         {
           targets: 2, render: function (data, type) {
             if (type !== 'display') return data;
@@ -229,7 +462,6 @@
               '<button type="button" class="btn btn-outline-secondary btn-sm btn-reason-detail d-block mx-auto">详情 / Details</button>';
           }
         },
-        // 任务清单按钮
         {
           targets: 7, render: function () {
             return '<button type="button" class="btn btn-info btn-sm btn-tasklist-detail">任务清单 / Detail</button>';
@@ -249,7 +481,6 @@
       emailConfig = r[1];
       userMail = (r[2] || '').toString().trim().toLowerCase();
 
-      // 「只看待我审批」自定义过滤（仅作用于主表，不影响弹窗内 #diffTable）
       $.fn.dataTable.ext.search.push(function (settings, dataArr, dataIndex) {
         if (settings.nTable.id !== 'table') return true;
         if (!onlyMineFlag) return true;
@@ -258,7 +489,6 @@
       });
       $('#onlyMine').on('change', function () { onlyMineFlag = this.checked; table.draw(); });
 
-      // 仅保留审批进行中的任务（排除已完成/拒绝/表头行）
       var progressItems = objArrayApprovallist.filter((row) => {
         if (!row.Status || row.Status.includes('状态') || row.Status.includes('Status')) return false;
         return row.Status !== '生效/ Effective'
@@ -271,7 +501,6 @@
       if (progressItems.length) table.rows.add(progressItems);
       table.draw();
 
-      // 汇总条：待我审批 / 审批中总计
       var mineCount = userMail
         ? progressItems.filter((row) => pendingApproverEmail(row).toLowerCase() === userMail).length
         : 0;
@@ -281,7 +510,6 @@
 
       Swal.fire({ icon: 'success', title: swalTitle('加载成功', 'Loading Success'), timer: 1500, showConfirmButton: false });
 
-      // 任务清单明细弹窗
       $('#table tbody').off('click', '.btn-tasklist-detail').on('click', '.btn-tasklist-detail', function () {
         var rowData = table.row($(this).closest('tr')).data();
         var item = objArrayApprovallist.filter((row) => row.Operator === rowData['Operator']);
@@ -311,7 +539,6 @@
         }).clear().rows.add(tasklist).draw();
       });
 
-      // 变更原因详情弹窗（专属 class）
       $('#table tbody').off('click', '.btn-reason-detail').on('click', '.btn-reason-detail', function () {
         var rowData = table.row($(this).closest('tr')).data();
         var reason = rowData['Reason'];
@@ -344,3 +571,5 @@
     }).getApprovaldata();
   });
 </script>
+
+</html>
