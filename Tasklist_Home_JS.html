@@ -42,7 +42,10 @@
       .withSuccessHandler((r) => {
         accounts = (r && r[0]) ? r[0] : [];
         Swal.close();
-        restoreSession(); // 尝试从 sessionStorage 恢复登录态
+        // EDS 跨项目免密登录：URL 带凭据时自动校验登录
+        if (!tryAutoLogin()) {
+          restoreSession(); // 尝试从 sessionStorage 恢复登录态
+        }
       })
       .withFailureHandler((err) => {
         Swal.fire({ icon: 'error', title: swalTitle('加载失败', 'Loading Fail'), html: swalHtml('请刷新重试。', String(err && err.message || err)) });
@@ -72,6 +75,27 @@
       window.open(url);
     });
   });
+
+  // EDS 跨项目免密登录：检测 URL 参数自动登录
+  function tryAutoLogin() {
+    const params = new URLSearchParams(window.location.search);
+    const jn = params.get('jobNumber');
+    const pw = params.get('pwd');
+    if (!jn || !pw) return false;
+    const acc = findAccount(jn);
+    if (!acc || String(pw) !== String(acc.PWD)) return false;
+    enterWorkspace({ jobNumber: jn, name: acc.Name, authorization: acc.Authorization });
+    try { sessionStorage.setItem(SS_KEY, JSON.stringify({ jobNumber: jn, name: acc.Name })); } catch (e) {}
+    // 清理 URL 中的密码参数，避免浏览器历史残留
+    if (window.history && window.history.replaceState) {
+      const clean = new URL(window.location);
+      clean.searchParams.delete('jobNumber');
+      clean.searchParams.delete('pwd');
+      clean.searchParams.delete('name');
+      window.history.replaceState(null, '', clean.toString());
+    }
+    return true;
+  }
 
   // 按工号查账号（兼容 JobNumber 为数字或字符串）
   function findAccount(jn) {
