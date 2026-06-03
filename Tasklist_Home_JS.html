@@ -76,24 +76,15 @@
     });
   });
 
-  // EDS 跨项目免密登录：检测 URL 参数自动登录
+  // EDS 跨项目免密登录：读取服务端注入的 URL 参数自动登录
   function tryAutoLogin() {
-    const params = new URLSearchParams(window.location.search);
-    const jn = params.get('jobNumber');
-    const pw = params.get('pwd');
+    const jn = (typeof TLMOC_URL_JN !== 'undefined') ? TLMOC_URL_JN : '';
+    const pw = (typeof TLMOC_URL_PWD !== 'undefined') ? TLMOC_URL_PWD : '';
     if (!jn || !pw) return false;
     const acc = findAccount(jn);
     if (!acc || String(pw) !== String(acc.PWD)) return false;
     enterWorkspace({ jobNumber: jn, name: acc.Name, authorization: acc.Authorization });
     try { sessionStorage.setItem(SS_KEY, JSON.stringify({ jobNumber: jn, name: acc.Name })); } catch (e) {}
-    // 清理 URL 中的密码参数，避免浏览器历史残留
-    if (window.history && window.history.replaceState) {
-      const clean = new URL(window.location);
-      clean.searchParams.delete('jobNumber');
-      clean.searchParams.delete('pwd');
-      clean.searchParams.delete('name');
-      window.history.replaceState(null, '', clean.toString());
-    }
     return true;
   }
 

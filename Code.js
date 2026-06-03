@@ -60,7 +60,13 @@ function doGet(e) {
     if (pageTitles.hasOwnProperty(templateName)) {
       tmp.pageTitle = pageTitles[templateName];
     }
-    
+
+    // EDS 跨项目免密登录：将 URL 参数注入 home 模板（GAS 沙箱 iframe 内无法读取部署 URL 参数）
+    if (templateName === "home") {
+      tmp.jobNumberUrl = e.parameter.jobNumber || '';
+      tmp.pwdUrl = e.parameter.pwd || '';
+    }
+
     if (templateName !== "home") {
       let name = e.parameter.name;
       let jobNumber = e.parameter.jobNumber;

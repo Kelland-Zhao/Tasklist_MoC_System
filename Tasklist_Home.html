@@ -250,6 +250,9 @@
 
 <?!=include("Sweetalert2_js") ?>
 
+<!-- EDS 跨项目免密登录：服务端注入 URL 参数（GAS 沙箱 iframe 无法读取部署 URL） -->
+<script>var TLMOC_URL_JN=<?!=JSON.stringify(jobNumberUrl)?>;var TLMOC_URL_PWD=<?!=JSON.stringify(pwdUrl)?>;</script>
+
 <?!=include("Tasklist_Home_JS") ?>
 
 </html>
