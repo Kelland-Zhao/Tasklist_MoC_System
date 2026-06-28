@@ -259,24 +259,23 @@
                       }
                     }
                     
-                    // 创建一个输入框并设置值为单元格原始内容
-                    let input = $('<input type="text" class="form-control">').val(originalValue);
-                    cell.data(input.prop('outerHTML')).draw(false);
-                    
+                    // 转义originalValue中的特殊字符，防止XSS，同时确保value属性在沙箱中正确渲染
+                    let escapedValue = String(originalValue || "").replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                    // 使用显式value属性替代prop('outerHTML')，避免GAS沙箱丢失value
+                    let inputHtml = '<input type="text" class="form-control" value="' + escapedValue + '">';
+                    cell.data(inputHtml).draw(false);
+
                     // 使用setTimeout确保DOM更新后再操作
                     setTimeout(function() {
                       let inputElement = cell.node().querySelector('input');
                       if (inputElement) {
-                        // 确保输入框的值是正确的
-                        if (inputElement.value !== originalValue) {
-                          inputElement.value = originalValue;
-                        }
                         inputElement.focus();
                         // 将光标定位到文本末尾，而不是选中所有文本，方便在原有基础上修改
                         let length = inputElement.value.length;
                         inputElement.setSelectionRange(length, length);
-                        
-                        // 监听输入框的失去焦点事件（使用one确保只绑定一次）
+
+                        // 监听输入框的失去焦点事件（空值直接保存，不再回退旧内容）
                         $(inputElement).off('blur').on('blur', function () {
                           let newValue = $(this).val().trim();
                           cell.data(newValue).draw(false);

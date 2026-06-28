@@ -619,11 +619,7 @@
                         newValue = newValue.trim();
                       }
                       
-                      if (newValue !== "") {
-                        cell.data(newValue).draw();
-                      } else {
-                        cell.data(originalValue).draw();
-                      }
+                      cell.data(newValue).draw();
                     });
                     
                     // 对于数字输入框，添加键盘事件限制

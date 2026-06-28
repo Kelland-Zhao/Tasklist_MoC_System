@@ -254,14 +254,7 @@
     // console.log(myInput);
     $('.form-control').on("blur", function () {
       let newValue = $(this).val();
-      // console.log("失去焦点");
-      if (newValue !== "") {
-        cell.data(newValue).draw();
-        // console.log("不为空");
-      } else {
-        cell.data(originalValue).draw();
-        // console.log("为空");
-      }
+      cell.data(newValue).draw();
     });
 
 
