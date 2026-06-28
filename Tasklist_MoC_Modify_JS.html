@@ -763,28 +763,28 @@
       
       cell.data(inputHtml).draw();
       
-      // 等待DOM更新后，聚焦输入框并将光标定位到文本末尾，方便在原有内容基础上编辑
+      // 等待DOM更新后，聚焦输入框并将光标定位到文本末尾
+      // 使用 cell.node() 精确查找当前单元格内的 input，避免 last() 误选下拉框
+      var cellNode = cell.node();
       setTimeout(function() {
-        var $input = $(".form-control").last();
-        $input.focus();
-        // 将光标定位到文本末尾，而不是选中所有文本
-        var length = $input.val().length;
-        if (length > 0) {
-          $input[0].setSelectionRange(length, length);
+        var $input = $(cellNode).find('input.form-control');
+        if ($input.length > 0) {
+          $input.focus();
+          var length = $input.val().length;
+          if (length > 0) {
+            $input[0].setSelectionRange(length, length);
+          }
         }
       }, 10);
-      // console.log(myInput);
-      $(".form-control").on("blur keydown", function (e) {
-        // Enter 键：确认内容并退出编辑
+
+      // 事件委托：仅作用于当前单元格内的 input，off() 防止累积
+      $(cellNode).off('blur keydown').on('blur keydown', 'input.form-control', function (e) {
         if (e.type === 'keydown' && e.which === 13) { return $(this).blur(); }
         if (e.type === 'keydown') { return; }
 
         var newValue = $(this).val();
-        // console.log("失去焦点");
 
-        // 如果是数字列，验证输入是否为有效数字
         if (isNumberColumn && newValue !== "") {
-          // 检查是否为有效数字（包括小数和负数）
           var numValue = parseFloat(newValue);
           if (isNaN(numValue)) {
             Swal.fire({
@@ -796,17 +796,15 @@
             cell.data(originalValue).draw();
             return;
           }
-          // 保存为数字字符串（保留用户输入的格式）
           newValue = newValue.trim();
         }
 
         cell.data(newValue).draw();
       });
-      
-      // 对于数字输入框，添加键盘事件限制（可选，但type="number"已经提供了基本限制）
+
+      // 数字列按键限制（委托到当前单元格）
       if (isNumberColumn) {
-        $(".form-control").on("keypress", function (e) {
-          // 允许数字、小数点、负号、退格、删除、Tab等
+        $(cellNode).on("keypress", 'input.form-control', function (e) {
           var char = String.fromCharCode(e.which);
           if (!/[0-9.\-]/.test(char) && !(e.which === 8 || e.which === 46 || e.which === 9 || e.which === 27 || e.which === 13 || (e.which === 65 && e.ctrlKey === true) || (e.which >= 35 && e.which <= 40))) {
             e.preventDefault();

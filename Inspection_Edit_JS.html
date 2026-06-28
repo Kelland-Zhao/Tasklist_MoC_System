@@ -310,15 +310,29 @@
   $('#table').on('dblclick', 'td', function () {
     var cell = $('#table').DataTable().cell(this);
     var originalValue = cell.data();
-    var myInput = $('<input class="form-control">').val(originalValue);
-    cell.data(myInput.prop('outerHTML')).draw();
-    $(".form-control").focus();
-    // console.log(myInput);
-    $('.form-control').on("blur", function () {
+    // 使用显式value属性，避免GAS沙箱丢失prop('outerHTML')
+    var escapedValue = String(originalValue || "").replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    var inputHtml = '<input class="form-control" value="' + escapedValue + '">';
+    cell.data(inputHtml).draw();
+
+    var cellNode = cell.node();
+    setTimeout(function() {
+      var $input = $(cellNode).find('input.form-control');
+      if ($input.length > 0) {
+        $input.focus();
+        var length = $input.val().length;
+        if (length > 0) {
+          $input[0].setSelectionRange(length, length);
+        }
+      }
+    }, 10);
+
+    // 事件委托到当前单元格，避免 bind 到全局 .form-control
+    $(cellNode).off('blur keydown').on('blur keydown', 'input.form-control', function (e) {
+      if (e.type === 'keydown' && e.which === 13) { return $(this).blur(); }
+      if (e.type === 'keydown') { return; }
       var newValue = $(this).val();
       cell.data(newValue).draw();
-    }).on("keydown", function (e) {
-      if (e.which === 13) { $(this).blur(); }
     });
 
 

@@ -248,15 +248,25 @@
   $('#table').on('dblclick', 'td', function () {
     let cell = $('#table').DataTable().cell(this);
     let originalValue = cell.data();
-    let myInput = $('<input class="form-control">').val(originalValue);
-    cell.data(myInput.prop('outerHTML')).draw();
-    $(".form-control").focus();
-    // console.log(myInput);
-    $('.form-control').on("blur", function () {
+    let escapedValue = String(originalValue || "").replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    let inputHtml = '<input class="form-control" value="' + escapedValue + '">';
+    cell.data(inputHtml).draw();
+
+    let cellNode = cell.node();
+    setTimeout(function() {
+      let $input = $(cellNode).find('input.form-control');
+      if ($input.length > 0) {
+        $input.focus();
+        let length = $input.val().length;
+        if (length > 0) { $input[0].setSelectionRange(length, length); }
+      }
+    }, 10);
+
+    $(cellNode).off('blur keydown').on('blur keydown', 'input.form-control', function (e) {
+      if (e.type === 'keydown' && e.which === 13) { return $(this).blur(); }
+      if (e.type === 'keydown') { return; }
       let newValue = $(this).val();
       cell.data(newValue).draw();
-    }).on("keydown", function (e) {
-      if (e.which === 13) { $(this).blur(); }
     });
 
 
