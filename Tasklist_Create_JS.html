@@ -598,9 +598,13 @@
                     }, 10);
                     
                     // 使用事件委托，只处理当前单元格的输入框
-                    $(cell.node()).on("blur", "input.editable-input", function () {
+                    $(cell.node()).on("blur keydown", "input.editable-input", function (e) {
+                      // Enter 键：确认内容并退出编辑
+                      if (e.type === 'keydown' && e.which === 13) { return $(this).blur(); }
+                      if (e.type === 'keydown') { return; } // 其他按键不处理
+
                       let newValue = $(this).val();
-                      
+
                       // 如果是数字列，验证输入是否为有效数字
                       if (isNumberColumn && newValue !== "") {
                         // 检查是否为有效数字（包括小数和负数）

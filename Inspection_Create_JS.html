@@ -276,9 +276,11 @@
                         inputElement.setSelectionRange(length, length);
 
                         // 监听输入框的失去焦点事件（空值直接保存，不再回退旧内容）
-                        $(inputElement).off('blur').on('blur', function () {
+                        $(inputElement).off('blur keydown').on('blur', function () {
                           let newValue = $(this).val().trim();
                           cell.data(newValue).draw(false);
+                        }).on('keydown', function (e) {
+                          if (e.which === 13) { $(this).blur(); }
                         });
                       }
                     }, 10);

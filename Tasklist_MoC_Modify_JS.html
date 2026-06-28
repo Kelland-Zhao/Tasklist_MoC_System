@@ -774,10 +774,14 @@
         }
       }, 10);
       // console.log(myInput);
-      $(".form-control").on("blur", function () {
+      $(".form-control").on("blur keydown", function (e) {
+        // Enter 键：确认内容并退出编辑
+        if (e.type === 'keydown' && e.which === 13) { return $(this).blur(); }
+        if (e.type === 'keydown') { return; }
+
         var newValue = $(this).val();
         // console.log("失去焦点");
-        
+
         // 如果是数字列，验证输入是否为有效数字
         if (isNumberColumn && newValue !== "") {
           // 检查是否为有效数字（包括小数和负数）
@@ -795,7 +799,7 @@
           // 保存为数字字符串（保留用户输入的格式）
           newValue = newValue.trim();
         }
-        
+
         cell.data(newValue).draw();
       });
       

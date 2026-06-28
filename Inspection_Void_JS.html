@@ -255,6 +255,8 @@
     $('.form-control').on("blur", function () {
       let newValue = $(this).val();
       cell.data(newValue).draw();
+    }).on("keydown", function (e) {
+      if (e.which === 13) { $(this).blur(); }
     });
 
 
