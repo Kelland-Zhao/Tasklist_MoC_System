@@ -4,6 +4,8 @@
     const swalHtml = (cn, en) => `<div>${cn}<div style="font-size:0.85em;color:#888;margin-top:6px;line-height:1.4;">${en}</div></div>`;
 
     $(document).ready(() => {
+      let addedCount = 0;
+      let deletedCount = 0;
       let title = $('#title').text();
       let styledText1 = '<span style="color: red; font-weight: bold;">保养</span>';
       let styledText2 = '<span style="color: red; font-weight: bold;font-style:italic;">PM</span>';
@@ -70,14 +72,14 @@
               // 清理数据值，去除首尾空格
               let dataValue = (data || "").toString().trim();
               let matchedOption = null;
-              
+
               // 如果数据有值，尝试匹配选项
               if (dataValue) {
                 options.forEach(function(option) {
                   // 精确匹配
                   if (dataValue === option) {
                     matchedOption = option;
-                  } 
+                  }
                   // 部分匹配：检查是否包含中文或英文部分
                   else if (!matchedOption) {
                     if ((dataValue.includes("预防性") || dataValue.includes("Preventive")) &&
@@ -90,12 +92,12 @@
                   }
                 });
               }
-              
+
               // 如果没有匹配到，默认使用第一个选项
               if (!matchedOption) {
                 matchedOption = options[0];
               }
-              
+
               // 生成下拉框HTML
               let selectHtml = '<select class="form-select form-select-sm strategy-select" style="width: 100%;">';
               options.forEach(function(option) {
@@ -103,7 +105,7 @@
                 selectHtml += '<option value="' + option + '" ' + selected + '>' + option + '</option>';
               });
               selectHtml += '</select>';
-              
+
               return selectHtml;
             },
           },
@@ -146,7 +148,7 @@
             render: function (data, type, row, meta) {
               let pdmValue = row["PdM?"];
               let isEditable = pdmValue === "是/ Yes";
-              
+
               if (isEditable) {
                 // 可编辑时显示下拉框
                 let options = [
@@ -213,9 +215,9 @@
         ],
         pageLength: 100,
       });
-  
+
       google.script.run.withSuccessHandler((result) => {
-  
+
         if (result.length === 2) {
           Swal.close();
           Swal.fire({
@@ -224,9 +226,9 @@
             timer: 1500,
             showConfirmButton: false
           });
-  
+
           // console.log("result", result);
-  
+
                     let userEmail = result[1];
           let data = result[0];
 
@@ -256,10 +258,10 @@
           // 动态生成机型选择下拉框
           let machineTypeSelect = $('#MachineType');
           machineTypeSelect.empty(); // 清空现有选项
-          
+
           // 添加默认选项
           machineTypeSelect.append('<option selected disabled>机型选择/ Machine Type</option>');
-          
+
           // 添加过滤后的选项
           availableOptions.forEach((option) => {
             machineTypeSelect.append(`<option value="${option.value}">${option.text}</option>`);
@@ -273,7 +275,7 @@
             let hasPendingApproval = data.some((r) => {
               return r.MachineType === MachineType && r.Status === "待审批/ Pending";
             });
-            
+
             if (hasPendingApproval) {
               Swal.fire({
                 icon: 'warning',
@@ -329,14 +331,23 @@
 
             table.clear().draw();
             table.rows.add(Tasklist[0]).draw();
-  
+
+            // 保存原始数据用于自动计算编辑条数
+            const originalData = JSON.parse(JSON.stringify(Tasklist[0]));
+            const PM_FIELDS = ['MachineType', 'Task No', 'Section', 'Function', 'Failure Mode',
+              'Task Type', 'Task Description', 'Frecuency', 'Line Status', 'Strategy',
+              'Resource', 'No Resources', 'Skill Level', 'Tools & Equip', 'Estimated Time',
+              'PdM?', 'Unit', 'Component', 'Logic', 'TagName', 'LL Limited', 'HH Limited'];
+            const rowsEqual = (a, b) => PM_FIELDS.every(f => (a[f] || '') === (b[f] || ''));
+            addedCount = 0;
+            deletedCount = 0;
+
             //  console.log(Tasklist)
-  
+
             // 添加按钮点击事件处理程序
             $("#table tbody").on("click", ".btn", function () {
-  
               var row = table.row($(this).closest("tr"));
-  
+              deletedCount++;
               row.remove().draw();
             });
 
@@ -348,7 +359,7 @@
               let rowData = row.data();
               let selectedValue = $radio.val();
               let previousValue = rowData["PdM?"] || "否/ No";
-              
+
               // 如果从"否/ No"变为"是/ Yes"，在任务编号后添加" - PdM"后缀
               if (previousValue !== "是/ Yes" && selectedValue === "是/ Yes") {
                 let taskNo = rowData["Task No"] || "";
@@ -357,7 +368,7 @@
                   rowData["Task No"] = taskNo + " - PdM";
                 }
               }
-              
+
               // 如果从"是/ Yes"变为"否/ No"，移除任务编号中的" - PdM"后缀
               if (previousValue === "是/ Yes" && selectedValue !== "是/ Yes") {
                 let taskNo = rowData["Task No"] || "";
@@ -366,11 +377,11 @@
                   rowData["Task No"] = taskNo.replace(" - PdM", "");
                 }
               }
-              
+
               // 更新行数据
               rowData["PdM?"] = selectedValue;
               row.data(rowData).draw(false);
-              
+
               // 更新相关列的编辑状态
               updateEditableCells(rowNode, selectedValue === "是/ Yes");
             });
@@ -382,7 +393,7 @@
               let row = table.row(rowNode);
               let rowData = row.data();
               let selectedValue = $select.val();
-              
+
               // 更新行数据
               rowData["Logic"] = selectedValue;
               row.data(rowData).draw(false);
@@ -395,7 +406,7 @@
               let row = table.row(rowNode);
               let rowData = row.data();
               let selectedValue = $select.val();
-              
+
               // 更新行数据
               rowData["Strategy"] = selectedValue;
               row.data(rowData).draw(false);
@@ -408,7 +419,7 @@
               let row = table.row(rowNode);
               let rowData = row.data();
               let selectedValue = $select.val();
-              
+
               // 更新行数据
               rowData["Line Status"] = selectedValue;
               row.data(rowData).draw(false);
@@ -421,7 +432,7 @@
               let row = table.row(rowNode);
               let rowData = row.data();
               let selectedValue = $select.val();
-              
+
               // 更新行数据
               rowData["Resource"] = selectedValue;
               row.data(rowData).draw(false);
@@ -431,35 +442,56 @@
             function updateEditableCells(rowNode, isEditable) {
               let row = table.row(rowNode);
               let rowData = row.data();
-              
+
               // 更新行数据中的PdM?值（如果还没有更新）
               if (rowData["PdM?"] !== (isEditable ? "是/ Yes" : "否/ No")) {
                 rowData["PdM?"] = isEditable ? "是/ Yes" : "否/ No";
                 row.data(rowData);
               }
-              
+
               // 重新绘制行以更新所有列的渲染（包括Logic列的下拉框）
               row.draw(false);
             }
 
             $("#Submit").click(async () => {
-              let reason, ADDitem, DELitem, EDITitem;
-  
-              // --- “班组确认” 检查是否有非“技术员”or“IDL”字段，自动判断是否提交班组审批 --- //
+
+              // --- "班组确认" 检查是否有非"技术员"or"IDL"字段，自动判断是否提交班组审批 --- //
               let production_Approval = false;
-  
-  
+
+
               table.rows().every(function () {
                 let data = this.data();
                 if (!data.Resource.includes('技术员') && !data.Resource.includes('IDL')) {
                   production_Approval = true;
                 }
               });
-  
+
               console.log('production_Approval', production_Approval);
-  
-              // --- ----- --- //
-  
+
+              // --- 自动计算增/删/编辑条数 --- //
+              const currentData = table.rows().data().toArray();
+
+              // 通过 Task No 匹配原始行，统计有变更的行数
+              const originalMap = new Map();
+              originalData.forEach(r => originalMap.set(r['Task No'], r));
+
+              let editedCount = 0;
+              currentData.forEach(r => {
+                if (!r._isNew) {
+                  const orig = originalMap.get(r['Task No']);
+                  if (orig && !rowsEqual(r, orig)) {
+                    editedCount++;
+                  }
+                }
+              });
+
+              const summaryCN = '编辑 ' + editedCount + ' 条 | 新增 ' + addedCount + ' 条 | 删除 ' + deletedCount + ' 条';
+              const summaryEN = 'Edit: ' + editedCount + ' | Add: ' + addedCount + ' | Delete: ' + deletedCount;
+
+              // 清理 _isNew 标记（不提交到后端）
+              currentData.forEach(r => delete r._isNew);
+
+              // --- 变更原因 --- //
               Swal.fire({
                 input: 'textarea',
                 inputLabel: '变更原因/ Reason for change',
@@ -474,139 +506,104 @@
                 }
               }).then((firstValue) => {
                 if (firstValue.isConfirmed) {
-                  reason = '变更原因/ Reason for change: ' + firstValue.value;
-                  return Swal.fire({
-                    input: 'textarea',
-                    inputLabel: '编辑条数/ Number of edits',
-                    inputPlaceholder: '请输入编辑条数/ Please type in the number of edits',
+                  const reason = '变更原因/ Reason for change: ' + firstValue.value
+                    + ' 修改条目数/ Number of edit: ' + editedCount
+                    + ' 新增条目数/ Number of add: ' + addedCount
+                    + ' 删除条目数/ Number of delete: ' + deletedCount;
+
+                  Swal.fire({
+                    icon: 'warning',
+                    title: swalTitle('确认提交？', 'Confirm Submit?'),
+                    html: swalHtml(
+                      summaryCN + '<br>一旦提交不可修改。',
+                      summaryEN + '<br>Once submitted it cannot be modified.'
+                    ),
                     showCancelButton: true,
-                    confirmButtonText: '下一步 / Next',
+                    confirmButtonText: '确认提交 / Submit',
                     cancelButtonText: '取消 / Cancel',
-                    inputValidator: (value) => { if (!value) { return '编辑条数不能为空/ Number of edits cannot be null'; } else if (!/^\d+$/.test(value)) { return '请输入有效的数字/ Please enter a valid number'; } }
-                  }).then((secondValue) => {
-                    if (secondValue.isConfirmed) {
-                      EDITitem = '修改条目数/ Number of edit: ' + secondValue.value;
+                    confirmButtonColor: '#E60012'
+                  }).then((result) => {
+
+                    if (result.isConfirmed) {
                       Swal.fire({
-                        input: 'textarea',
-                        inputLabel: '新增条数/ Number of Add',
-                        inputPlaceholder: '请输入新增条数/ Please type in the number of add',
-                        showCancelButton: true,
-                        confirmButtonText: '下一步 / Next',
-                        cancelButtonText: '取消 / Cancel',
-                        inputValidator: (value) => { if (!value) { return '新增条数不能为空/ Number of adds cannot be null'; } else if (!/^\d+$/.test(value)) { return '请输入有效的数字/ Please enter a valid number'; } }
-                      }).then((thirdValue) => {
-                        if (thirdValue.isConfirmed) {
-                          ADDitem = '新增条目数/ Number of add: ' + thirdValue.value;
-                          Swal.fire({
-                            input: 'textarea',
-                            inputLabel: '删除条数/ Number of Delete',
-                            inputPlaceholder: '请输入删除条数/ Please type in the number of delete',
-                            showCancelButton: true,
-                            confirmButtonText: '下一步 / Next',
-                            cancelButtonText: '取消 / Cancel',
-                            inputValidator: (value) => { if (!value) { return '删除条数不能为空/ Number of delete cannot be null'; } else if (!/^\d+$/.test(value)) { return '请输入有效的数字/ Please enter a valid number'; } }
-                          }).then((forthValue) => {
-                            if (forthValue.isConfirmed) {
-                              DELitem = '删除条目数/ Number of delete: ' + forthValue.value;
-
-                              Swal.fire({
-                                  icon: 'warning',
-                                  title: swalTitle('确认提交？', 'Confirm Submit?'),
-                                  html: swalHtml('一旦提交不可修改。', 'Once submitted it cannot be modified.'),
-                                  showCancelButton: true,
-                                  confirmButtonText: '确认提交 / Submit',
-                                  cancelButtonText: '取消 / Cancel',
-                                  confirmButtonColor: '#E60012'
-                                }).then((result) => {
-
-                                    if (result.isConfirmed) {
-                                      Swal.fire({
-                                        title: swalTitle('提交中...', 'Submitting...'),
-                                        html: swalHtml('等待服务器返回结果', 'Waiting for the server'),
-                                        allowOutsideClick: false,
-                                        showConfirmButton: false,
-                                        didOpen: () => Swal.showLoading()
-                                      })
-
-                                      var obj = table.data().toArray();
-
-                                      console.log('obj', obj)
-
-                                      // let process = obj[0].Process;
-
-                                      // console.log('process', process)
-
-                                      var data = JSON.stringify(obj);
-
-                                      var timestamp = new Date().getTime();
-
-                                      date = new Date(timestamp)
-
-                                      var year = date.getFullYear();
-
-                                      var month = ('0' + (date.getMonth() + 1)).slice(-2);
-
-                                      var day = ('0' + date.getDate()).slice(-2);
-
-                                      var hours = ('0' + date.getHours()).slice(-2);
-
-                                      var minutes = ('0' + date.getMinutes()).slice(-2);
-
-                                      var seconds = ('0' + date.getSeconds()).slice(-2);
-
-                                      var formattedDate = year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
-
-                                      var loginInfo = $("#Code").text() + "_" + $("#Name").text() + " " + formattedDate;
-
-                                      console.log("loginInfo", loginInfo, 'Code', $("#Code").text())
-
-                                      let status = "待审批/ Pending";
-
-                                      reason = reason + " " + ADDitem + " " + DELitem + " " + EDITitem;
-
-                                      google.script.run.withSuccessHandler((r) => {
-                                        if (r == true) {
-                                          Swal.close();
-                                          Swal.fire({
-                                            icon: 'success',
-                                            title: swalTitle('操作成功', 'Success'),
-                                            timer: 1500,
-                                            showConfirmButton: false
-                                          });
-                                        } else {
-                                          Swal.close();
-                                          Swal.fire({
-                                            icon: 'error',
-                                            title: swalTitle('操作失败', 'Fail'),
-                                            html: swalHtml('请检查机型是否在 Database for Web 中已配置，或联系管理员。', 'Please verify the machine type is configured in Database for Web, or contact admin.'),
-                                            confirmButtonText: '确定 / OK'
-                                          });
-                                        }
-                                      }).withFailureHandler((err) => {
-                                        Swal.close();
-                                        Swal.fire({
-                                          icon: 'error',
-                                          title: swalTitle('系统错误', 'System Error'),
-                                          html: swalHtml('服务器执行异常，请联系管理员。', '错误信息 / Error: ' + err.message),
-                                          confirmButtonText: '确定 / OK'
-                                        });
-                                      }).dataSave(
-                                        data,
-                                        loginInfo,
-                                        reason,
-                                        status,
-                                        userEmail,
-                                        process,
-                                        production_Approval)
-                                    }
-                                  })
-
-                            }
-                          })
-                        }
+                        title: swalTitle('提交中...', 'Submitting...'),
+                        html: swalHtml('等待服务器返回结果', 'Waiting for the server'),
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        didOpen: () => Swal.showLoading()
                       })
+
+                      var obj = table.data().toArray();
+
+                      console.log('obj', obj)
+
+                      // let process = obj[0].Process;
+
+                      // console.log('process', process)
+
+                      var data = JSON.stringify(obj);
+
+                      var timestamp = new Date().getTime();
+
+                      date = new Date(timestamp)
+
+                      var year = date.getFullYear();
+
+                      var month = ('0' + (date.getMonth() + 1)).slice(-2);
+
+                      var day = ('0' + date.getDate()).slice(-2);
+
+                      var hours = ('0' + date.getHours()).slice(-2);
+
+                      var minutes = ('0' + date.getMinutes()).slice(-2);
+
+                      var seconds = ('0' + date.getSeconds()).slice(-2);
+
+                      var formattedDate = year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
+
+                      var loginInfo = $("#Code").text() + "_" + $("#Name").text() + " " + formattedDate;
+
+                      console.log("loginInfo", loginInfo, 'Code', $("#Code").text())
+
+                      let status = "待审批/ Pending";
+
+                      google.script.run.withSuccessHandler((r) => {
+                        if (r == true) {
+                          Swal.close();
+                          Swal.fire({
+                            icon: 'success',
+                            title: swalTitle('操作成功', 'Success'),
+                            timer: 1500,
+                            showConfirmButton: false
+                          });
+                        } else {
+                          Swal.close();
+                          Swal.fire({
+                            icon: 'error',
+                            title: swalTitle('操作失败', 'Fail'),
+                            html: swalHtml('请检查机型是否在 Database for Web 中已配置，或联系管理员。', 'Please verify the machine type is configured in Database for Web, or contact admin.'),
+                            confirmButtonText: '确定 / OK'
+                          });
+                        }
+                      }).withFailureHandler((err) => {
+                        Swal.close();
+                        Swal.fire({
+                          icon: 'error',
+                          title: swalTitle('系统错误', 'System Error'),
+                          html: swalHtml('服务器执行异常，请联系管理员。', '错误信息 / Error: ' + err.message),
+                          confirmButtonText: '确定 / OK'
+                        });
+                      }).dataSave(
+                        data,
+                        loginInfo,
+                        reason,
+                        status,
+                        userEmail,
+                        process,
+                        production_Approval)
                     }
                   })
+
                 }
               })
             })
@@ -622,7 +619,7 @@
       })
         .getData();
     });
-  
+
     $("#table").on("dblclick", "td", function () {
       var table = $("#table").DataTable();
       var cell = table.cell(this);
@@ -630,18 +627,18 @@
       var rowIndex = cell.index().row;
       var row = table.row(rowIndex);
       var rowData = row.data();
-      
+
       // 确保rowData存在且是对象
       if (!rowData || typeof rowData !== 'object') {
         return;
       }
-      
+
       // 检查是否是Unit、Component、Logic、TagName、LL Limited、HH Limited列（索引16-21）
       if ([16, 17, 18, 19, 20, 21].indexOf(columnIndex) !== -1) {
         // 检查PdM?是否为"是/ Yes"
         let pdmValue = rowData["PdM?"] || "否/ No";
         let isEditable = pdmValue === "是/ Yes";
-        
+
         if (!isEditable) {
           Swal.fire({
             icon: 'warning',
@@ -652,57 +649,57 @@
           return;
         }
       }
-      
+
       // 如果是Line Status列（索引8），不允许双击编辑（使用下拉框）
       if (columnIndex === 8) {
         return;
       }
-      
+
       // 如果是Strategy列（索引9），不允许双击编辑（使用下拉框）
       if (columnIndex === 9) {
         return;
       }
-      
+
       // 如果是Resource列（索引10），不允许双击编辑（使用下拉框）
       if (columnIndex === 10) {
         return;
       }
-      
+
       // 如果是PdM?列（索引15），不允许双击编辑（使用单选按钮）
       if (columnIndex === 15) {
         return;
       }
-      
+
       // 如果是Logic列（索引18），不允许双击编辑（使用下拉框）
       if (columnIndex === 18) {
         return;
       }
-      
+
       // 如果是功能/ Option列（索引22），不允许双击编辑（操作按钮列）
       if (columnIndex === 22) {
         return;
       }
-      
+
       // 获取单元格的原始数据值
       // 优先从rowData获取原始数据（不受render函数影响）
       var originalValue = "";
       var columnKeys = [
-        "MachineType", "Task No", "Section", "Function", "Failure Mode", 
-        "Task Type", "Task Description", "Frecuency", "Line Status", 
-        "Strategy", "Resource", "No Resources", "Skill Level", 
-        "Tools & Equip", "Estimated Time", "PdM?", "Unit", "Component", 
+        "MachineType", "Task No", "Section", "Function", "Failure Mode",
+        "Task Type", "Task Description", "Frecuency", "Line Status",
+        "Strategy", "Resource", "No Resources", "Skill Level",
+        "Tools & Equip", "Estimated Time", "PdM?", "Unit", "Component",
         "Logic", "TagName", "LL Limited", "HH Limited"
       ];
-      
+
       // 首先从rowData获取原始数据值（这是最可靠的方式）
       if (columnIndex >= 0 && columnIndex < columnKeys.length && columnKeys[columnIndex]) {
         originalValue = rowData[columnKeys[columnIndex]] || "";
       }
-      
+
       // 如果rowData中没有值，尝试从单元格的实际DOM内容中提取
       if (!originalValue || originalValue === "") {
         var $cell = $(this);
-        
+
         // 检查单元格内是否有下拉框
         var $select = $cell.find('select');
         if ($select.length > 0) {
@@ -735,34 +732,34 @@
           }
         }
       }
-      
+
       // 确保originalValue是字符串类型
       if (originalValue === null || originalValue === undefined) {
         originalValue = "";
       } else {
         originalValue = String(originalValue);
       }
-      
+
       // 如果值为"请输入"，编辑时显示为空
       if (originalValue === "请输入") {
         originalValue = "";
       }
-      
+
       // 检查是否是LL Limited或HH Limited列（索引20, 21），使用数字输入框
       var isNumberColumn = (columnIndex === 20 || columnIndex === 21);
       var inputType = isNumberColumn ? 'number' : 'text';
       var step = isNumberColumn ? 'any' : null;
-      
+
       // 转义originalValue中的特殊字符，防止XSS攻击
       var escapedValue = String(originalValue || "").replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      
+
       // 直接在HTML字符串中设置value属性，确保值正确显示
-      var inputHtml = '<input class="form-control" type="' + inputType + '"' + 
-        (step ? ' step="' + step + '"' : '') + 
+      var inputHtml = '<input class="form-control" type="' + inputType + '"' +
+        (step ? ' step="' + step + '"' : '') +
         ' value="' + escapedValue + '">';
-      
+
       cell.data(inputHtml).draw();
-      
+
       // 等待DOM更新后，聚焦输入框并将光标定位到文本末尾
       // 使用 cell.node() 精确查找当前单元格内的 input，避免 last() 误选下拉框
       var cellNode = cell.node();
@@ -812,25 +809,26 @@
         });
       }
     });
-  
+
     $("#Add").click(() => {
+      addedCount++;
       var table = $("#table").DataTable();
-      
+
       // 获取当前选中的机型
       var currentMachineType = $("#MachineType").val() || "";
-      
+
       // 获取下一个任务编号
       var nextTaskNo = "";
       if (currentMachineType) {
         // 获取表格中所有现有的任务编号
         var allRows = table.rows().data().toArray();
         var taskNumbers = [];
-        
+
         allRows.forEach(function(row) {
           var taskNo = row["Task No"] || "";
           // 移除可能的" - PdM"后缀
           taskNo = taskNo.replace(" - PdM", "");
-          
+
           // 检查任务编号是否匹配当前机型格式（例如：6AX-01）
           if (taskNo && taskNo.startsWith(currentMachineType + "-")) {
             // 提取数字部分
@@ -843,7 +841,7 @@
             }
           }
         });
-        
+
         // 找到最大编号并+1
         if (taskNumbers.length > 0) {
           var maxNum = Math.max.apply(Math, taskNumbers);
@@ -858,7 +856,7 @@
         // 如果没有选中机型，使用默认值
         nextTaskNo = "请输入";
       }
-  
+
       var rowNode = table.row
         .add({
           MachineType: currentMachineType || "请输入",
@@ -883,12 +881,13 @@
           "TagName": "",
           "LL Limited": "",
           "HH Limited": "",
+          _isNew: true,
         })
         .draw()
         .node();
-  
+
       $(rowNode).css("color", "red").animate({ color: "black" });
-  
+
       $(rowNode).insertBefore(table.row(0).node());
     });
   </script>
