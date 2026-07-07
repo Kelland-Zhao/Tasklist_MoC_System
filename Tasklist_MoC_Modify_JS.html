@@ -618,9 +618,90 @@
         }
       })
         .getData();
+    $("#Add").click(() => {
+      addedCount++;
+      var table = $("#table").DataTable();
+
+      // 获取当前选中的机型
+      var currentMachineType = $("#MachineType").val() || "";
+
+      // 获取下一个任务编号
+      var nextTaskNo = "";
+      if (currentMachineType) {
+        // 获取表格中所有现有的任务编号
+        var allRows = table.rows().data().toArray();
+        var taskNumbers = [];
+
+        allRows.forEach(function(row) {
+          var taskNo = row["Task No"] || "";
+          // 移除可能的" - PdM"后缀
+          taskNo = taskNo.replace(" - PdM", "");
+
+          // 检查任务编号是否匹配当前机型格式（例如：6AX-01）
+          if (taskNo && taskNo.startsWith(currentMachineType + "-")) {
+            // 提取数字部分
+            var match = taskNo.match(new RegExp("^" + currentMachineType + "-(\\d+)$"));
+            if (match && match[1]) {
+              var num = parseInt(match[1], 10);
+              if (!isNaN(num)) {
+                taskNumbers.push(num);
+              }
+            }
+          }
+        });
+
+        // 找到最大编号并+1
+        if (taskNumbers.length > 0) {
+          var maxNum = Math.max.apply(Math, taskNumbers);
+          var nextNum = maxNum + 1;
+          // 格式化为两位数（例如：01, 02, 03...）
+          nextTaskNo = currentMachineType + "-" + nextNum.toString().padStart(2, "0");
+        } else {
+          // 如果没有现有编号，从01开始
+          nextTaskNo = currentMachineType + "-01";
+        }
+      } else {
+        // 如果没有选中机型，使用默认值
+        nextTaskNo = "请输入";
+      }
+
+      var rowNode = table.row
+        .add({
+          MachineType: currentMachineType || "请输入",
+          "Task No": nextTaskNo,
+          Section: "请输入",
+          Function: "请输入",
+          "Failure Mode": "请输入",
+          "Task Type": "请输入",
+          "Task Description": "请输入",
+          Frecuency: "请输入",
+          "Line Status": "",
+          Strategy: "",
+          Resource: "",
+          "No Resources": "请输入",
+          "Skill Level": "请输入",
+          "Tools & Equip": "请输入",
+          "Estimated Time": "请输入",
+          "PdM?": "否/ No",
+          "Unit": "",
+          "Component": "",
+          "Logic": "",
+          "TagName": "",
+          "LL Limited": "",
+          "HH Limited": "",
+          _isNew: true,
+        })
+        .draw()
+        .node();
+
+      $(rowNode).css("color", "red").animate({ color: "black" });
+
+      $(rowNode).insertBefore(table.row(0).node());
     });
 
-    $("#table").on("dblclick", "td", function () {
+  });
+
+  $("#table").on("dblclick", "td", function () {
       var table = $("#table").DataTable();
       var cell = table.cell(this);
       var columnIndex = cell.index().column;
@@ -810,84 +891,5 @@
       }
     });
 
-    $("#Add").click(() => {
-      addedCount++;
-      var table = $("#table").DataTable();
 
-      // 获取当前选中的机型
-      var currentMachineType = $("#MachineType").val() || "";
-
-      // 获取下一个任务编号
-      var nextTaskNo = "";
-      if (currentMachineType) {
-        // 获取表格中所有现有的任务编号
-        var allRows = table.rows().data().toArray();
-        var taskNumbers = [];
-
-        allRows.forEach(function(row) {
-          var taskNo = row["Task No"] || "";
-          // 移除可能的" - PdM"后缀
-          taskNo = taskNo.replace(" - PdM", "");
-
-          // 检查任务编号是否匹配当前机型格式（例如：6AX-01）
-          if (taskNo && taskNo.startsWith(currentMachineType + "-")) {
-            // 提取数字部分
-            var match = taskNo.match(new RegExp("^" + currentMachineType + "-(\\d+)$"));
-            if (match && match[1]) {
-              var num = parseInt(match[1], 10);
-              if (!isNaN(num)) {
-                taskNumbers.push(num);
-              }
-            }
-          }
-        });
-
-        // 找到最大编号并+1
-        if (taskNumbers.length > 0) {
-          var maxNum = Math.max.apply(Math, taskNumbers);
-          var nextNum = maxNum + 1;
-          // 格式化为两位数（例如：01, 02, 03...）
-          nextTaskNo = currentMachineType + "-" + nextNum.toString().padStart(2, "0");
-        } else {
-          // 如果没有现有编号，从01开始
-          nextTaskNo = currentMachineType + "-01";
-        }
-      } else {
-        // 如果没有选中机型，使用默认值
-        nextTaskNo = "请输入";
-      }
-
-      var rowNode = table.row
-        .add({
-          MachineType: currentMachineType || "请输入",
-          "Task No": nextTaskNo,
-          Section: "请输入",
-          Function: "请输入",
-          "Failure Mode": "请输入",
-          "Task Type": "请输入",
-          "Task Description": "请输入",
-          Frecuency: "请输入",
-          "Line Status": "",
-          Strategy: "",
-          Resource: "",
-          "No Resources": "请输入",
-          "Skill Level": "请输入",
-          "Tools & Equip": "请输入",
-          "Estimated Time": "请输入",
-          "PdM?": "否/ No",
-          "Unit": "",
-          "Component": "",
-          "Logic": "",
-          "TagName": "",
-          "LL Limited": "",
-          "HH Limited": "",
-          _isNew: true,
-        })
-        .draw()
-        .node();
-
-      $(rowNode).css("color", "red").animate({ color: "black" });
-
-      $(rowNode).insertBefore(table.row(0).node());
-    });
   </script>
