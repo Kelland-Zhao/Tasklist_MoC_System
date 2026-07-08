@@ -320,7 +320,10 @@
 
               table.cell(rowIdx, 6).data(wordApproval).draw();
 
-              table.cell(rowIdx, 11).data('作废待审批/ Void Pending').draw()
+              let newStatus = (reason.includes('作废') || reason.includes('void'))
+                ? '作废待审批/ Void Pending'
+                : '待审批/ Pending';
+              table.cell(rowIdx, 11).data(newStatus).draw()
             } else {
               Swal.close();
               Swal.fire({

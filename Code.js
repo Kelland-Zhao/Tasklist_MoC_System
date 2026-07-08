@@ -319,56 +319,14 @@ function dataSave(
     ]);
 
     let subject = "任务清单变更申请/ Tasklist MoC Application";
-    let htmlBody = "";
-    htmlBody +=
-      "<h3 style='display:inline'>您有一份保养任务变更申请需要审批</h3>";
-    htmlBody +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    htmlBody += "</tr>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "保养/ PM" +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      userEmail +
-      "</td>";
-    htmlBody += "</tr>";
-    htmlBody += "</table>";
-    htmlBody +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-    // let subject = "任务清单变更申请/ Tasklist MoC Application";
-    // let body =
-    //   "您的" +
-    //   machineType +
-    //   "机型任务清单发生变更，变更原因如下：\n" +
-    //   reason +
-    //   "\n请审批" +
-    //   "\n您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>系统登录</a>";
-    // 创建 HTML 内容
-    // let htmlBody = "<p>" + body + "</p>";
-    GmailApp.sendEmail(recipient, subject, "", {
-      htmlBody: htmlBody,
-    });
+    let bodyHtml = "";
+    bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您有一份保养任务变更申请需要审批 / You have a PM tasklist change request pending approval</p>";
+    bodyHtml += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "保养/ PM", reason, userEmail]]
+    );
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    GmailApp.sendEmail(recipient, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
     return true;
   } catch (e) {
     console.log(e);
@@ -443,46 +401,14 @@ function dataSave_IN(
     ]);
 
     let subject = "任务清单变更申请/ Tasklist MoC Application";
-    let htmlBody = "";
-    htmlBody +=
-      "<h3 style='display:inline'>您有一份点检任务变更申请需要审批</h3>";
-    htmlBody +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    htmlBody += "</tr>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "点检/ Inspection" +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      userEmail +
-      "</td>";
-    htmlBody += "</tr>";
-    htmlBody += "</table>";
-    htmlBody +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-    GmailApp.sendEmail(recipient, subject, "", {
-      htmlBody: htmlBody,
-    });
+    let bodyHtml = "";
+    bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您有一份点检任务变更申请需要审批 / You have an Inspection tasklist change request pending approval</p>";
+    bodyHtml += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "点检/ Inspection", reason, userEmail]]
+    );
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    GmailApp.sendEmail(recipient, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
     return true;
   } catch (e) {
     console.log(e);
@@ -669,53 +595,14 @@ function saveCommet1(r) {
 
   let subject =
     "任务清单变更申请 -- 审批意见/ Tasklist MoC Application -- Comment";
-
-  let htmlBody = "";
-  htmlBody += "<h3>您提交的任务清单审反馈意见如下：</h3>";
-
-  htmlBody +=
-    "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">修改意见/ Comment</th>';
-  htmlBody += "</tr>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    machineType +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    "保养/ PM" +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    reason +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    submitMail +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    comment +
-    "</td>";
-  htmlBody += "</tr>";
-  htmlBody += "</table>";
-  htmlBody +=
-    "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-  GmailApp.sendEmail(submitMail, subject, "", {
-    htmlBody: htmlBody,
-  });
+  let bodyHtml = "";
+  bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您提交的任务清单审反馈意见如下 / The feedback on your submitted tasklist is as follows:</p>";
+  bodyHtml += _buildMoCInfoTable(
+    ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "修改意见/ Comment"],
+    [[machineType, "保养/ PM", reason, submitMail, comment]]
+  );
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  GmailApp.sendEmail(submitMail, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
   // console.log(userEmail);
   return true;
 }
@@ -742,52 +629,14 @@ function save_Production_Commet(r) {
 
   let subject =
     "任务清单变更申请 -- 班组意见/ Tasklist MoC Application -- Production Comment";
-
-  let htmlBody = "";
-  htmlBody += "<h3>您提交的任务清单审反馈意见如下：</h3>";
-  htmlBody +=
-    "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">修改意见/ Comment</th>';
-  htmlBody += "</tr>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    machineType +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    "点检/ Inspection" +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    reason +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    submitMail +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    comment +
-    "</td>";
-  htmlBody += "</tr>";
-  htmlBody += "</table>";
-  htmlBody +=
-    "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-  GmailApp.sendEmail(submitMail, subject, "", {
-    htmlBody: htmlBody,
-  });
+  let bodyHtml = "";
+  bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您提交的任务清单审反馈意见如下 / The feedback on your submitted tasklist is as follows:</p>";
+  bodyHtml += _buildMoCInfoTable(
+    ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "修改意见/ Comment"],
+    [[machineType, "点检/ Inspection", reason, submitMail, comment]]
+  );
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  GmailApp.sendEmail(submitMail, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
   // console.log(userEmail);
   return true;
 }
@@ -810,53 +659,14 @@ function saveCommet1_IN(r) {
 
   let subject =
     "任务清单变更申请 -- 审批意见/ Tasklist MoC Application -- Comment";
-
-  let htmlBody = "";
-  htmlBody += "<h3>您提交的任务清单审反馈意见如下：</h3>";
-
-  htmlBody +=
-    "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">修改意见/ Comment</th>';
-  htmlBody += "</tr>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    machineType +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    "点检/ Inspection" +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    reason +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    submitMail +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    comment +
-    "</td>";
-  htmlBody += "</tr>";
-  htmlBody += "</table>";
-  htmlBody +=
-    "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-  GmailApp.sendEmail(submitMail, subject, "", {
-    htmlBody: htmlBody,
-  });
+  let bodyHtml = "";
+  bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您提交的任务清单审反馈意见如下 / The feedback on your submitted tasklist is as follows:</p>";
+  bodyHtml += _buildMoCInfoTable(
+    ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "修改意见/ Comment"],
+    [[machineType, "点检/ Inspection", reason, submitMail, comment]]
+  );
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  GmailApp.sendEmail(submitMail, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
   return true;
 }
 
@@ -882,52 +692,14 @@ function saveCommet2(r) {
 
   let subject =
     "任务清单变更申请 -- 审批意见/ Tasklist MoC Application -- Comment";
-
-  let htmlBody = "";
-  htmlBody += "<h3>您提交的任务清单审反馈意见如下：</h3>";
-  htmlBody +=
-    "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">修改意见/ Comment</th>';
-  htmlBody += "</tr>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    machineType +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    "保养/ PM" +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    reason +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    submitMail +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    comment +
-    "</td>";
-  htmlBody += "</tr>";
-  htmlBody += "</table>";
-  htmlBody +=
-    "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-  GmailApp.sendEmail(submitMail, subject, "", {
-    htmlBody: htmlBody,
-  });
+  let bodyHtml = "";
+  bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您提交的任务清单审反馈意见如下 / The feedback on your submitted tasklist is as follows:</p>";
+  bodyHtml += _buildMoCInfoTable(
+    ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "修改意见/ Comment"],
+    [[machineType, "保养/ PM", reason, submitMail, comment]]
+  );
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  GmailApp.sendEmail(submitMail, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
   // console.log(userEmail);
   return true;
 }
@@ -954,52 +726,14 @@ function save_Production_Commet_IN(r) {
 
   let subject =
     "任务清单变更申请 -- 班组意见/ Tasklist MoC Application -- Production Comment";
-
-  let htmlBody = "";
-  htmlBody += "<h3>您提交的任务清单审反馈意见如下：</h3>";
-  htmlBody +=
-    "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">修改意见/ Comment</th>';
-  htmlBody += "</tr>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    machineType +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    "点检/ Inspection" +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    reason +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    submitMail +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    comment +
-    "</td>";
-  htmlBody += "</tr>";
-  htmlBody += "</table>";
-  htmlBody +=
-    "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-  GmailApp.sendEmail(submitMail, subject, "", {
-    htmlBody: htmlBody,
-  });
+  let bodyHtml = "";
+  bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您提交的任务清单审反馈意见如下 / The feedback on your submitted tasklist is as follows:</p>";
+  bodyHtml += _buildMoCInfoTable(
+    ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "修改意见/ Comment"],
+    [[machineType, "点检/ Inspection", reason, submitMail, comment]]
+  );
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  GmailApp.sendEmail(submitMail, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
   // console.log(userEmail);
   return true;
 }
@@ -1022,52 +756,14 @@ function saveCommet2_IN(r) {
 
   let subject =
     "任务清单变更申请 -- 审批意见/ Tasklist MoC Application -- Comment";
-
-  let htmlBody = "";
-  htmlBody += "<h3>您提交的任务清单审反馈意见如下：</h3>";
-  htmlBody +=
-    "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">修改意见/ Comment</th>';
-  htmlBody += "</tr>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    machineType +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    "点检/ Inspection" +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    reason +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    submitMail +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    comment +
-    "</td>";
-  htmlBody += "</tr>";
-  htmlBody += "</table>";
-  htmlBody +=
-    "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-  GmailApp.sendEmail(submitMail, subject, "", {
-    htmlBody: htmlBody,
-  });
+  let bodyHtml = "";
+  bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您提交的任务清单审反馈意见如下 / The feedback on your submitted tasklist is as follows:</p>";
+  bodyHtml += _buildMoCInfoTable(
+    ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "修改意见/ Comment"],
+    [[machineType, "点检/ Inspection", reason, submitMail, comment]]
+  );
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  GmailApp.sendEmail(submitMail, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
   // console.log(userEmail);
   return true;
 }
@@ -1106,86 +802,26 @@ function saveApprove1(r) {
     let subjectLevel1 =
       "任务清单变更申请 -- 审批 1 通过/ Tasklist MoC Application -- Approval Level 1 Approved";
     let bodyInfo = "";
-    bodyInfo += "<h3 style='display:inline'>您的任务清变更申请已被</h3>";
-    bodyInfo +=
-      "<h3 style='display:inline;background-color:green;color:white'>批准</h3>";
-    bodyInfo += "<h3 style='display:inline'>，下面将会发送给";
-    bodyInfo += maiApproval2;
-    bodyInfo += "进行审批</h3>";
-    bodyInfo +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    bodyInfo += "<tr>";
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    bodyInfo += "</tr>";
-    bodyInfo += "<tr>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "保养/ PM" +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    bodyInfo += "</tr>";
-    bodyInfo += "</table>";
-    GmailApp.sendEmail(mailSubmit, subjectLevel1, "", { htmlBody: bodyInfo });
+    bodyInfo += "<p style='font-size:15px;margin:0 0 12px'>您的任务清变更申请已被 / Your tasklist change application has been <span style='background-color:#198754;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>批准 / Approved</span>，下面将会发送给 / It will be sent to " + maiApproval2 + " 进行审批 / for approval</p>";
+    bodyInfo += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "保养/ PM", reason, mailSubmit]]
+    );
+    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    GmailApp.sendEmail(mailSubmit, subjectLevel1, "", { htmlBody: _buildMoCEmailShell(subjectLevel1, bodyInfo) });
 
     //  邮件发送给Approval 2
     let subjectApproval2 =
       "任务清单变更申请 -- 审批 2/ Tasklist MoC Application -- Approval Level 2";
     let bodyApproval2 = "";
-    bodyApproval2 += "<h3>您的任务清单发生变更请审批</h3>";
-    bodyApproval2 +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    bodyApproval2 += "<tr>";
-    bodyApproval2 +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    bodyApproval2 +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    bodyApproval2 +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    bodyApproval2 +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    bodyApproval2 += "</tr>";
-    bodyApproval2 += "<tr>";
-    bodyApproval2 +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    bodyApproval2 +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "保养/ PM" +
-      "</td>";
-    bodyApproval2 +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    bodyApproval2 +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    bodyApproval2 += "</tr>";
-    bodyApproval2 += "</table>";
-    bodyApproval2 +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
+    bodyApproval2 += "<p style='font-size:15px;margin:0 0 12px'>您的任务清单发生变更请审批 / Your tasklist has changes, please approve</p>";
+    bodyApproval2 += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "保养/ PM", reason, mailSubmit]]
+    );
+    bodyApproval2 += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(maiApproval2, subjectApproval2, "", {
-      htmlBody: bodyApproval2,
+      htmlBody: _buildMoCEmailShell(subjectApproval2, bodyApproval2),
     });
 
     return true;
@@ -1198,45 +834,14 @@ function saveApprove1(r) {
 
     let subjectReject =
       "任务清单变更申请 -- 审批 1 拒绝/ Tasklist MoC Application -- Approval Level 1 Rejected";
-    let htmlBody = "";
-    htmlBody += "<h3 style='display:inline'>您的任务清变更申请已被</h3>";
-    htmlBody +=
-      "<h3 style='display:inline;background-color:red;color:white'>拒绝</h3>";
-    htmlBody +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    htmlBody += "</tr>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "保养/ PM" +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    htmlBody += "</tr>";
-    htmlBody += "</table>";
-    htmlBody +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-    GmailApp.sendEmail(mailSubmit, subjectReject, "", { htmlBody: htmlBody });
+    let bodyHtml = "";
+    bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您的任务清变更申请已被 / Your tasklist change application has been <span style='background-color:#842029;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>拒绝 / Rejected</span></p>";
+    bodyHtml += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "保养/ PM", reason, mailSubmit]]
+    );
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    GmailApp.sendEmail(mailSubmit, subjectReject, "", { htmlBody: _buildMoCEmailShell(subjectReject, bodyHtml) });
     return true;
   }
 }
@@ -1275,96 +880,28 @@ function save_Production_Approve(r) {
     ws_Tasklisthistory.getRange(rowNumber, 13).setValue(status);
 
     //  邮件发送给申请人
-
     let subjectLevel1 =
       "任务清单变更申请 -- 班组审批 通过/ Tasklist MoC Application -- Production Approval Approved";
     let bodyInfo = "";
-    bodyInfo += "<h3 style='display:inline'>您的任务清变更申请已被</h3>";
-    bodyInfo +=
-      "<h3 style='display:inline;background-color:green;color:white'>批准</h3>";
-    bodyInfo += "<h3 style='display:inline'>，下面将会发送给";
-    bodyInfo += maiApproval1;
-    bodyInfo += "进行审批</h3>";
-    bodyInfo +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    bodyInfo += "<tr>";
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    bodyInfo += "</tr>";
-    bodyInfo += "<tr>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "点检/ Inspection" +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    bodyInfo += "</tr>";
-    bodyInfo += "</table>";
-    bodyInfo +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-    GmailApp.sendEmail(mailSubmit, subjectLevel1, "", {
-      htmlBody: bodyInfo,
-    });
+    bodyInfo += "<p style='font-size:15px;margin:0 0 12px'>您的任务清变更申请已被 / Your tasklist change application has been <span style='background-color:#198754;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>批准 / Approved</span>，下面将会发送给 / It will be sent to " + maiApproval1 + " 进行审批 / for approval</p>";
+    bodyInfo += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "点检/ Inspection", reason, mailSubmit]]
+    );
+    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    GmailApp.sendEmail(mailSubmit, subjectLevel1, "", { htmlBody: _buildMoCEmailShell(subjectLevel1, bodyInfo) });
 
     //  邮件发送给Approval 1
     let subjectApproval2 =
       "任务清单变更申请 -- 审批 1/ Tasklist MoC Application -- Approval Level 1";
 
-    let htmlBody = "<h3>您的任务清单发生变更请审批</h3>";
-    htmlBody +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    htmlBody += "</tr>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "保养/ PM" +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    htmlBody += "</tr>";
-    htmlBody += "</table>";
-    htmlBody +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-    GmailApp.sendEmail(maiApproval1, subjectApproval2, "", {
-      htmlBody: htmlBody,
-    });
+    let bodyHtml = "<p style='font-size:15px;margin:0 0 12px'>您的任务清单发生变更请审批 / Your tasklist has changes, please approve</p>";
+    bodyHtml += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "保养/ PM", reason, mailSubmit]]
+    );
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    GmailApp.sendEmail(maiApproval1, subjectApproval2, "", { htmlBody: _buildMoCEmailShell(subjectApproval2, bodyHtml) });
 
     return true;
   } else {
@@ -1380,48 +917,14 @@ function save_Production_Approve(r) {
 
     let subjectReject =
       "任务清单变更申请 -- 班组审批 拒绝/ Tasklist MoC Application -- Production Approval Rejected";
-    let htmlBody = "";
-
-    htmlBody += "<h3 style='display:inline'>您的任务清变更申请已被</h3>";
-    htmlBody +=
-      "<h3 style='display:inline;background-color:red;color:white'>拒绝</h3>";
-    htmlBody +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    htmlBody += "</tr>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "保养/ PM" +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    htmlBody += "</tr>";
-    htmlBody += "</table>";
-    htmlBody +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-    GmailApp.sendEmail(mailSubmit, subjectReject, "", {
-      htmlBody: htmlBody,
-    });
+    let bodyHtml = "";
+    bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您的任务清变更申请已被 / Your tasklist change application has been <span style='background-color:#842029;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>拒绝 / Rejected</span></p>";
+    bodyHtml += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "保养/ PM", reason, mailSubmit]]
+    );
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    GmailApp.sendEmail(mailSubmit, subjectReject, "", { htmlBody: _buildMoCEmailShell(subjectReject, bodyHtml) });
     return true;
   }
 }
@@ -1464,87 +967,25 @@ function saveApprove1_IN(r) {
     let subjectLevel1 =
       "任务清单变更申请 -- 审批 1 通过/ Tasklist MoC Application -- Approval Level 1 Approved";
     let bodyInfo = "";
-    bodyInfo += "<h3 style='display:inline'>您的任务清变更申请已被</h3>";
-    bodyInfo +=
-      "<h3 style='display:inline;background-color:green;color:white'>批准</h3>";
-    bodyInfo += "<h3 style='display:inline'>，下面将会发送给";
-    bodyInfo += maiApproval2;
-    bodyInfo += "进行审批</h3>";
-    bodyInfo +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    bodyInfo += "<tr>";
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    bodyInfo += "</tr>";
-    bodyInfo += "<tr>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "点检/ Inspection" +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    bodyInfo += "</tr>";
-    bodyInfo += "</table>";
-    GmailApp.sendEmail(mailSubmit, subjectLevel1, "", { htmlBody: bodyInfo });
+    bodyInfo += "<p style='font-size:15px;margin:0 0 12px'>您的任务清变更申请已被 / Your tasklist change application has been <span style='background-color:#198754;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>批准 / Approved</span>，下面将会发送给 / It will be sent to " + maiApproval2 + " 进行审批 / for approval</p>";
+    bodyInfo += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "点检/ Inspection", reason, mailSubmit]]
+    );
+    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    GmailApp.sendEmail(mailSubmit, subjectLevel1, "", { htmlBody: _buildMoCEmailShell(subjectLevel1, bodyInfo) });
 
     //  邮件发送给Approval 2
     let subjectApproval2 =
       "任务清单变更申请 -- 审批 2/ Tasklist MoC Application -- Approval Level 2";
     let bodyApproval2 = "";
-    bodyApproval2 += "<h3>您的任务清单发生变更请审批</h3>";
-    bodyApproval2 +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    bodyApproval2 += "<tr>";
-    bodyApproval2 +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    bodyApproval2 +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    bodyApproval2 +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    bodyApproval2 +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    bodyApproval2 += "</tr>";
-    bodyApproval2 += "<tr>";
-    bodyApproval2 +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    bodyApproval2 +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "点检/ Inspection" +
-      "</td>";
-    bodyApproval2 +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    bodyApproval2 +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    bodyApproval2 += "</tr>";
-    bodyApproval2 += "</table>";
-    bodyApproval2 +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-    GmailApp.sendEmail(maiApproval2, subjectApproval2, "", {
-      htmlBody: bodyApproval2,
-    });
+    bodyApproval2 += "<p style='font-size:15px;margin:0 0 12px'>您的任务清单发生变更请审批 / Your tasklist has changes, please approve</p>";
+    bodyApproval2 += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "点检/ Inspection", reason, mailSubmit]]
+    );
+    bodyApproval2 += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    GmailApp.sendEmail(maiApproval2, subjectApproval2, "", { htmlBody: _buildMoCEmailShell(subjectApproval2, bodyApproval2) });
 
     return true;
   } else {
@@ -1555,47 +996,14 @@ function saveApprove1_IN(r) {
     let reason = r[5];
     let subjectReject =
       "任务清单变更申请 -- 审批 1 拒绝/ Tasklist MoC Application -- Approval Level 1 Rejected";
-    let htmlBody = "";
-    htmlBody += "<h3 style='display:inline'>您的任务清变更申请已被</h3>";
-    htmlBody +=
-      "<h3 style='display:inline;background-color:red;color:white'>拒绝</h3>";
-    htmlBody +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    htmlBody += "</tr>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "点检/ Inspection" +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    htmlBody += "</tr>";
-    htmlBody += "</table>";
-    htmlBody +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-    GmailApp.sendEmail(mailSubmit, subjectReject, "", {
-      htmlBody: htmlBody,
-    });
+    let bodyHtml = "";
+    bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您的任务清变更申请已被 / Your tasklist change application has been <span style='background-color:#842029;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>拒绝 / Rejected</span></p>";
+    bodyHtml += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "点检/ Inspection", reason, mailSubmit]]
+    );
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    GmailApp.sendEmail(mailSubmit, subjectReject, "", { htmlBody: _buildMoCEmailShell(subjectReject, bodyHtml) });
     return true;
   }
 }
@@ -1633,96 +1041,28 @@ function saveApprove2(r) {
     let subjectLevel1 =
       "任务清单变更申请 -- 审批 2 通过/ Tasklist MoC Application -- Approval Level 2 Approved";
     let bodyInfo = "";
-    bodyInfo += "<h3 style='display:inline'>您的任务清变更申请已被</h3>";
-    bodyInfo +=
-      "<h3 style='display:inline;background-color:green;color:white'>批准</h3>";
-    bodyInfo += "<h3 style='display:inline'>，下面将会发送给";
-    bodyInfo += mailDisseninate;
-    bodyInfo += "进行发放</h3>";
-    bodyInfo +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    bodyInfo += "<tr>";
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    bodyInfo += "</tr>";
-    bodyInfo += "<tr>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "保养/ PM" +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    bodyInfo += "</tr>";
-    bodyInfo += "</table>";
-    bodyInfo +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
+    bodyInfo += "<p style='font-size:15px;margin:0 0 12px'>您的任务清变更申请已被 / Your tasklist change application has been <span style='background-color:#198754;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>批准 / Approved</span>，下面将会发送给 / It will be sent to " + mailDisseninate + " 进行发放 / for dissemination</p>";
+    bodyInfo += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "保养/ PM", reason, mailSubmit]]
+    );
+    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(mailSubmit, subjectLevel1, "", {
-      htmlBody: bodyInfo,
+      htmlBody: _buildMoCEmailShell(subjectLevel1, bodyInfo),
       cc: maiApproval1,
     });
 
     let subjectApproval2 =
       "任务清单变更申请 -- 发放/ Tasklist MoC Application -- Approval Dissminater";
 
-    let htmlBody = "";
-    htmlBody += "<h3 style='display:inline'>有一份保养任务清变更申请已被</h3>";
-    htmlBody +=
-      "<h3 style='display:inline;background-color:green;color:white'>批准</h3>";
-    htmlBody += "<h3 style='display:inline'>，请进行发放";
-    htmlBody +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    htmlBody += "</tr>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "保养/ PM" +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    htmlBody += "</tr>";
-    htmlBody += "</table>";
-    htmlBody +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-    GmailApp.sendEmail(mailDisseninate, subjectApproval2, "", {
-      htmlBody: htmlBody,
-    });
+    let bodyHtml = "";
+    bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>有一份保养任务清变更申请已被 / A PM tasklist change application has been <span style='background-color:#198754;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>批准 / Approved</span>，请进行发放 / Please disseminate</p>";
+    bodyHtml += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "保养/ PM", reason, mailSubmit]]
+    );
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    GmailApp.sendEmail(mailDisseninate, subjectApproval2, "", { htmlBody: _buildMoCEmailShell(subjectApproval2, bodyHtml) });
 
     return true;
   } else {
@@ -1736,48 +1076,16 @@ function saveApprove2(r) {
 
     let subjectReject =
       "任务清单变更申请 -- 审批 2 拒绝/ Tasklist MoC Application -- Approval Level 2 Rejected";
-    let htmlBody = "";
-
-    htmlBody += "<h3 style='display:inline'>您的任务清变更申请已被</h3>";
-    htmlBody +=
-      "<h3 style='display:inline;background-color:red;color:white'>拒绝</h3>";
-    htmlBody +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    htmlBody += "</tr>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "保养/ PM" +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    htmlBody += "</tr>";
-    htmlBody += "</table>";
-    htmlBody +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
+    let bodyHtml = "";
+    bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您的任务清变更申请已被 / Your tasklist change application has been <span style='background-color:#842029;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>拒绝 / Rejected</span></p>";
+    bodyHtml += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "保养/ PM", reason, mailSubmit]]
+    );
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
     ws_Tasklisthistory.getRange(rowNumber, 13).setValue(status);
     GmailApp.sendEmail(mailSubmit, subjectReject, "", {
-      htmlBody: htmlBody,
+      htmlBody: _buildMoCEmailShell(subjectReject, bodyHtml),
       cc: mailApprove1,
     });
     return true;
@@ -1805,7 +1113,7 @@ function save_Production_Approve_IN(r) {
     let machineType = r[4];
     let reason = r[5];
     let mailDisseninate = r[6];
-    let status = "待审批/ Pendingr";
+    let status = "待审批/ Pending";
 
     ws_Tasklisthistory.getRange(rowNumber, 13).setValue(status);
 
@@ -1814,92 +1122,27 @@ function save_Production_Approve_IN(r) {
     let subjectLevel1 =
       "任务清单变更申请 -- 班组审批 通过/ Tasklist MoC Application -- Production Approval Approved";
     let bodyInfo = "";
-    bodyInfo += "<h3 style='display:inline'>您的任务清变更申请已被</h3>";
-    bodyInfo +=
-      "<h3 style='display:inline;background-color:green;color:white'>批准</h3>";
-    bodyInfo += "<h3 style='display:inline'>，下面将会发送给";
-    bodyInfo += maiApproval1;
-    bodyInfo += "进行审批</h3>";
-    bodyInfo +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    bodyInfo += "<tr>";
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    bodyInfo += "</tr>";
-    bodyInfo += "<tr>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "点检/ Inspection" +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    bodyInfo += "</tr>";
-    bodyInfo += "</table>";
-    bodyInfo +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-    GmailApp.sendEmail(mailSubmit, subjectLevel1, "", {
-      htmlBody: bodyInfo,
-    });
+    bodyInfo += "<p style='font-size:15px;margin:0 0 12px'>您的任务清变更申请已被 / Your tasklist change application has been <span style='background-color:#198754;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>批准 / Approved</span>，下面将会发送给 / It will be sent to " + maiApproval1 + " 进行审批 / for approval</p>";
+    bodyInfo += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "点检/ Inspection", reason, mailSubmit]]
+    );
+    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    GmailApp.sendEmail(mailSubmit, subjectLevel1, "", { htmlBody: _buildMoCEmailShell(subjectLevel1, bodyInfo) });
 
     //  邮件发送给Approval Level 1
 
     let subjectApproval2 =
       "任务清单变更申请 -- 审批 1/ Tasklist MoC Application -- Approval Level 1";
 
-    let htmlBody = "<h3>您的任务清单发生变更请审批</h3>";
-    htmlBody +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    htmlBody += "</tr>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "点检/ Inspection" +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    htmlBody += "</tr>";
-    htmlBody += "</table>";
-    htmlBody +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
+    let bodyHtml = "<p style='font-size:15px;margin:0 0 12px'>您的任务清单发生变更请审批 / Your tasklist has changes, please approve</p>";
+    bodyHtml += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "点检/ Inspection", reason, mailSubmit]]
+    );
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(maiApproval1, subjectApproval2, "", {
-      htmlBody: htmlBody,
+      htmlBody: _buildMoCEmailShell(subjectApproval2, bodyHtml),
       cc: mailSubmit,
     });
 
@@ -1916,50 +1159,15 @@ function save_Production_Approve_IN(r) {
     let reason = r[5];
     let subjectReject =
       "任务清单变更申请 -- 班组审批 拒绝/ Tasklist MoC Application -- Production Approval Rejected";
-    let htmlBody = "";
-
-    htmlBody += "<h3 style='display:inline'>您的任务清变更申请已被</h3>";
-    htmlBody +=
-      "<h3 style='display:inline;background-color:red;color:white'>拒绝</h3>";
-    htmlBody +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    htmlBody += "</tr>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "点检/ Inspection" +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    htmlBody += "</tr>";
-    htmlBody += "</table>";
-    htmlBody +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
+    let bodyHtml = "";
+    bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您的任务清变更申请已被 / Your tasklist change application has been <span style='background-color:#842029;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>拒绝 / Rejected</span></p>";
+    bodyHtml += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "点检/ Inspection", reason, mailSubmit]]
+    );
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
     ws_Tasklisthistory.getRange(rowNumber, 13).setValue(status);
-    GmailApp.sendEmail(mailSubmit, subjectReject, "", {
-      htmlBody: htmlBody,
-      // cc: mailApprove1,
-    });
+    GmailApp.sendEmail(mailSubmit, subjectReject, "", { htmlBody: _buildMoCEmailShell(subjectReject, bodyHtml) });
     return true;
   }
 }
@@ -1996,96 +1204,28 @@ function saveApprove2_IN(r) {
     let subjectLevel1 =
       "任务清单变更申请 -- 审批 2 通过/ Tasklist MoC Application -- Approval Level 2 Approved";
     let bodyInfo = "";
-    bodyInfo += "<h3 style='display:inline'>您的任务清变更申请已被</h3>";
-    bodyInfo +=
-      "<h3 style='display:inline;background-color:green;color:white'>批准</h3>";
-    bodyInfo += "<h3 style='display:inline'>，下面将会发送给";
-    bodyInfo += mailDisseninate;
-    bodyInfo += "进行发放</h3>";
-    bodyInfo +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    bodyInfo += "<tr>";
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    bodyInfo +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    bodyInfo += "</tr>";
-    bodyInfo += "<tr>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "点检/ Inspection" +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    bodyInfo +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    bodyInfo += "</tr>";
-    bodyInfo += "</table>";
-    bodyInfo +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
+    bodyInfo += "<p style='font-size:15px;margin:0 0 12px'>您的任务清变更申请已被 / Your tasklist change application has been <span style='background-color:#198754;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>批准 / Approved</span>，下面将会发送给 / It will be sent to " + mailDisseninate + " 进行发放 / for dissemination</p>";
+    bodyInfo += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "点检/ Inspection", reason, mailSubmit]]
+    );
+    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(mailSubmit, subjectLevel1, "", {
-      htmlBody: bodyInfo,
+      htmlBody: _buildMoCEmailShell(subjectLevel1, bodyInfo),
       cc: maiApproval1,
     });
     //  邮件发送给文档分发者
     let subjectApproval2 =
       "任务清单变更申请 -- 发放/ Tasklist MoC Application -- Approval Dissminater";
 
-    let htmlBody = "";
-    htmlBody += "<h3 style='display:inline'>有一份点检任务清变更申请已被</h3>";
-    htmlBody +=
-      "<h3 style='display:inline;background-color:green;color:white'>批准</h3>";
-    htmlBody += "<h3 style='display:inline'>，请进行发放";
-    htmlBody +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    htmlBody += "</tr>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "点检/ Inspection" +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    htmlBody += "</tr>";
-    htmlBody += "</table>";
-    htmlBody +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
-    GmailApp.sendEmail(mailDisseninate, subjectApproval2, "", {
-      htmlBody: htmlBody,
-    });
+    let bodyHtml = "";
+    bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>有一份点检任务清变更申请已被 / An Inspection tasklist change application has been <span style='background-color:#198754;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>批准 / Approved</span>，请进行发放 / Please disseminate</p>";
+    bodyHtml += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "点检/ Inspection", reason, mailSubmit]]
+    );
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    GmailApp.sendEmail(mailDisseninate, subjectApproval2, "", { htmlBody: _buildMoCEmailShell(subjectApproval2, bodyHtml) });
 
     return true;
   } else {
@@ -2099,48 +1239,16 @@ function saveApprove2_IN(r) {
 
     let subjectReject =
       "任务清单变更申请 -- 审批 2 拒绝/ Tasklist MoC Application -- Approval Level 2 Rejected";
-    let htmlBody = "";
-
-    htmlBody += "<h3 style='display:inline'>您的任务清变更申请已被</h3>";
-    htmlBody +=
-      "<h3 style='display:inline;background-color:red;color:white'>拒绝</h3>";
-    htmlBody +=
-      "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-    htmlBody +=
-      '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-    htmlBody += "</tr>";
-    htmlBody += "<tr>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      machineType +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      "点检/ Inspection" +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      reason +
-      "</td>";
-    htmlBody +=
-      "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-      mailSubmit +
-      "</td>";
-    htmlBody += "</tr>";
-    htmlBody += "</table>";
-    htmlBody +=
-      "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
+    let bodyHtml = "";
+    bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您的任务清变更申请已被 / Your tasklist change application has been <span style='background-color:#842029;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>拒绝 / Rejected</span></p>";
+    bodyHtml += _buildMoCInfoTable(
+      ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
+      [[machineType, "点检/ Inspection", reason, mailSubmit]]
+    );
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
     ws_Tasklisthistory.getRange(rowNumber, 13).setValue(status);
     GmailApp.sendEmail(mailSubmit, subjectReject, "", {
-      htmlBody: htmlBody,
+      htmlBody: _buildMoCEmailShell(subjectReject, bodyHtml),
       cc: mailApprove1,
     });
     return true;
@@ -2248,52 +1356,14 @@ function saveDissminater(r) {
   let subjectDissminater =
     "任务清单变更申请 -- 生效/ Tasklist MoC Application -- Effective";
   let bodyInfo = "";
-  bodyInfo += "<h3 style='display:inline'>您的任务清变更申请已被</h3>";
-  bodyInfo +=
-    "<h3 style='display:inline;background-color:green;color:white'>发放</h3>";
-  bodyInfo += "<h3 style='display:inline'>，将于下面的日期生效";
-  bodyInfo +=
-    "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-  bodyInfo += "<tr>";
-  bodyInfo +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-  bodyInfo +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-  bodyInfo +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-  bodyInfo +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-  bodyInfo +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">生效日期/ Effective Date</th>';
-  bodyInfo += "</tr>";
-  bodyInfo += "<tr>";
-  bodyInfo +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    machineType +
-    "</td>";
-  bodyInfo +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    "保养/ PM" +
-    "</td>";
-  bodyInfo +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    reason +
-    "</td>";
-  bodyInfo +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    mailSubmit +
-    "</td>";
-  bodyInfo +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    date +
-    "</td>";
-  bodyInfo += "</tr>";
-  bodyInfo += "</table>";
-  bodyInfo +=
-    "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
+  bodyInfo += "<p style='font-size:15px;margin:0 0 12px'>您的任务清变更申请已被 / Your tasklist change application has been <span style='background-color:#198754;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>发放 / Disseminated</span>，将于下面的日期生效 / Will take effect on the date below</p>";
+  bodyInfo += _buildMoCInfoTable(
+    ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "生效日期/ Effective Date"],
+    [[machineType, "保养/ PM", reason, mailSubmit, date]]
+  );
+  bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
   GmailApp.sendEmail(mailSubmit, subjectDissminater, "", {
-    htmlBody: bodyInfo,
+    htmlBody: _buildMoCEmailShell(subjectDissminater, bodyInfo),
     cc: ccList,
   });
 
@@ -2388,52 +1458,14 @@ function saveDissminater_IN(r) {
   let subjectDissminater =
     "任务清单变更申请 -- 生效/ Tasklist MoC Application -- Effective";
   let bodyInfo = "";
-  bodyInfo += "<h3 style='display:inline'>您的任务清变更申请已被</h3>";
-  bodyInfo +=
-    "<h3 style='display:inline;background-color:green;color:white'>发放</h3>";
-  bodyInfo += "<h3 style='display:inline'>，将于下面的日期生效";
-  bodyInfo +=
-    "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-  bodyInfo += "<tr>";
-  bodyInfo +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-  bodyInfo +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-  bodyInfo +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">变更原因/ Change Reason</th>';
-  bodyInfo +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-  bodyInfo +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">生效日期/ Effective Date</th>';
-  bodyInfo += "</tr>";
-  bodyInfo += "<tr>";
-  bodyInfo +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    machineType +
-    "</td>";
-  bodyInfo +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    "点检/ Inspection" +
-    "</td>";
-  bodyInfo +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    reason +
-    "</td>";
-  bodyInfo +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    mailSubmit +
-    "</td>";
-  bodyInfo +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    date +
-    "</td>";
-  bodyInfo += "</tr>";
-  bodyInfo += "</table>";
-  bodyInfo +=
-    "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-
+  bodyInfo += "<p style='font-size:15px;margin:0 0 12px'>您的任务清变更申请已被 / Your tasklist change application has been <span style='background-color:#198754;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>发放 / Disseminated</span>，将于下面的日期生效 / Will take effect on the date below</p>";
+  bodyInfo += _buildMoCInfoTable(
+    ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "生效日期/ Effective Date"],
+    [[machineType, "点检/ Inspection", reason, mailSubmit, date]]
+  );
+  bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
   GmailApp.sendEmail(mailSubmit, subjectDissminater, "", {
-    htmlBody: bodyInfo,
+    htmlBody: _buildMoCEmailShell(subjectDissminater, bodyInfo),
     cc: ccList,
   });
 
@@ -2498,46 +1530,15 @@ function submitRequest(r) {
 
   //  邮件发送给approvel1
   let subject =
-    "任务清单变更申请 - 保养/ Tasklist MoC Application - Inspection";
-  let htmlBody = "";
-  htmlBody +=
-    "<h3 style='display:inline'>您有新的保养任务清单创建，需要您的审批：</h3>";
-  htmlBody +=
-    "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">新建原因/ Create Reason</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-  htmlBody += "</tr>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    machineType +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    "保养/ PM" +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    reason +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    submitEmail +
-    "</td>";
-  htmlBody += "</tr>";
-  htmlBody += "</table>";
-  htmlBody +=
-    "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-  GmailApp.sendEmail(recipient, subject, "", {
-    htmlBody: htmlBody,
-  });
+    "任务清单变更申请 - 保养/ Tasklist MoC Application - PM";
+  let bodyHtml = "";
+  bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您有新的保养任务清单创建，需要您的审批： / A new PM tasklist has been created and needs your approval:</p>";
+  bodyHtml += _buildMoCInfoTable(
+    ["机型/ Machine Type", "任务类型/ Task Type", "新建原因/ Create Reason", "申请人/ Applier"],
+    [[machineType, "保养/ PM", reason, submitEmail]]
+  );
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  GmailApp.sendEmail(recipient, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
 
   return true;
 }
@@ -2601,45 +1602,14 @@ function submitRequest_IN(r) {
   //  邮件发送给approvel1
   let subject =
     "任务清单变更申请 - 点检/ Tasklist MoC Application - Inspection";
-  let htmlBody = "";
-  htmlBody +=
-    "<h3 style='display:inline'>您有新的点检任务清单创建，需要您的审批：</h3>";
-  htmlBody +=
-    "<table style='margin:0 auto;text-align:center;border-collapse: collapse; border: 1px solid black;'>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">机型/ Machine Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">任务类型/ Task Type</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">新建原因/ Create Reason</th>';
-  htmlBody +=
-    '<th style="width:300px; font-size:18px;border: 1px solid black;">申请人/ Applier</th>';
-  htmlBody += "</tr>";
-  htmlBody += "<tr>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    machineType +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    "点检/ Inspection" +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    reason +
-    "</td>";
-  htmlBody +=
-    "<td style='width:300px; font-size:18px;border: 1px solid black;'>" +
-    submitEmail +
-    "</td>";
-  htmlBody += "</tr>";
-  htmlBody += "</table>";
-  htmlBody +=
-    "<h3>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></h3>";
-  GmailApp.sendEmail(recipient, subject, "", {
-    htmlBody: htmlBody,
-  });
+  let bodyHtml = "";
+  bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您有新的点检任务清单创建，需要您的审批： / A new Inspection tasklist has been created and needs your approval:</p>";
+  bodyHtml += _buildMoCInfoTable(
+    ["机型/ Machine Type", "任务类型/ Task Type", "新建原因/ Create Reason", "申请人/ Applier"],
+    [[machineType, "点检/ Inspection", reason, submitEmail]]
+  );
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  GmailApp.sendEmail(recipient, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
 
   return true;
 }
@@ -2867,9 +1837,9 @@ function report() {
   let day = currentData.getDate();
   let date = year + "/" + month + "/" + day;
   let style_red =
-    "style = 'font-size:14px; background-color:red;color:white; border: 1px solid black;''";
+    "style = 'font-size:14px; background-color:#842029;color:white; border: 1px solid black;''";
   let style_green =
-    "style = 'font-size:14px; background-color:green; color:white; border: 1px solid black;'";
+    "style = 'font-size:14px; background-color:#198754; color:white; border: 1px solid black;'";
   let style = "";
   let htmlTable =
     '<h1 style="text-align:center;">Tasklist MoC Summary/ 任务管理系统变更总结 - ' +
@@ -3134,4 +2104,54 @@ function getINData() {
   let result = [arrays, userEmail];
 
   return result;
+}
+
+// ========== 邮件 HTML 构建辅助函数 ==========
+
+/**
+ * 构建邮件外壳（红标题栏 + 内容区 + 页脚）
+ * @param {string} title - 邮件标题
+ * @param {string} bodyHtml - 正文 HTML
+ * @returns {string} 完整邮件 HTML
+ */
+function _buildMoCEmailShell(title, bodyHtml) {
+  var now = new Date();
+  var todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+  var html = '<!DOCTYPE html><html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head><body>';
+  html += '<div style="font-family:Arial,\'Microsoft YaHei\',\'Helvetica Neue\',sans-serif;max-width:800px;margin:0 auto">';
+  html += '<div style="background:#E60012;color:white;padding:14px 28px">';
+  html += '<h2 style="margin:0;font-size:20px">' + title + '</h2>';
+  html += '<p style="margin:4px 0 0;opacity:0.85;font-size:12px">发送时间 / Sent: ' + todayStr + '</p>';
+  html += '</div>';
+  html += '<div style="padding:20px 28px">';
+  html += bodyHtml;
+  html += '<p style="color:#bdc3c7;font-size:11px;margin-top:28px">此邮件由 任务清单变更管理系统 自动发送 / This email is auto-sent by Tasklist MoC System</p>';
+  html += '</div>';
+  html += '</div></body></html>';
+  return html;
+}
+
+/**
+ * 构建信息表格（clean CSS 风格）
+ * @param {string[]} headers - 表头数组
+ * @param {string[][]} rows - 数据行数组
+ * @returns {string} 表格 HTML
+ */
+function _buildMoCInfoTable(headers, rows) {
+  var html = '<table border="0" cellpadding="0" cellspacing="0" style="width:100%;font-size:13px;border-collapse:collapse;margin-top:12px">';
+  html += '<tr style="background:#fde0e0;color:#333;font-weight:bold">';
+  headers.forEach(function(h) {
+    html += '<td style="padding:8px;text-align:center;border-bottom:1px solid #f0d0d0">' + h + '</td>';
+  });
+  html += '</tr>';
+  rows.forEach(function(row, idx) {
+    var bg = idx % 2 === 0 ? '#ffffff' : '#fff8f8';
+    html += '<tr style="background:' + bg + '">';
+    row.forEach(function(cell) {
+      html += '<td style="padding:8px;text-align:center;border-bottom:1px solid #f5f5f5">' + cell + '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</table>';
+  return html;
 }
