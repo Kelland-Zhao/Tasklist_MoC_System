@@ -33,27 +33,27 @@ function doGet(e) {
   if (templateFiles.hasOwnProperty(templateName)) {
     var tmp = HtmlService.createTemplateFromFile(templateFiles[templateName]);
     
-    // 设置页面标题
+    // 设置页面标题 — 格式参照 EDS: 中文 | English
     var pageTitles = {
-      modify: "保养编辑/ PM Edit",
-      void: "保养作废/ PM Void",
-      create: "保养新建/ PM Create",
-      viewer: "保养查阅/ PM View",
-      approve1: "保养审批1/ PM Approval1",
-      approve2: "保养审批2/ PM Approval2",
-      Production_Approval: "保养班组审批/ PM Production Approval",
-      dissminater: "保养分发/ PM Release",
-      progress: "保养审批进度/ PM Approval Progress",
-      Inspection_Edit: "点检编辑/ Inspection Edit",
-      Inspection_Create: "点检新建/ Inspection Create",
-      Inspection_Void: "点检作废/ Inspection Void",
-      Inspection_View: "点检查阅/ Inspection View",
-      Inspection_Approve1: "点检审批1/ Inspection Approval1",
-      Inspection_Approve2: "点检审批2/ Inspection Approval2",
-      Inspection_Production_Approval: "点检班组审批/ Inspection Production Approval",
-      Inspection_Dissminater: "点检分发/ Inspection Release",
-      Inspection_Progress: "点检审批进度/ Inspection Approval Progress",
-      home: "主页/ Home"
+      modify: "保养编辑 | PM Edit",
+      void: "保养作废 | PM Void",
+      create: "保养新建 | PM Create",
+      viewer: "保养查阅 | PM View",
+      approve1: "保养审批1 | PM Approval1",
+      approve2: "保养审批2 | PM Approval2",
+      Production_Approval: "保养班组审批 | PM Production Approval",
+      dissminater: "保养分发 | PM Release",
+      progress: "保养审批进度 | PM Approval Progress",
+      Inspection_Edit: "点检编辑 | Inspection Edit",
+      Inspection_Create: "点检新建 | Inspection Create",
+      Inspection_Void: "点检作废 | Inspection Void",
+      Inspection_View: "点检查阅 | Inspection View",
+      Inspection_Approve1: "点检审批1 | Inspection Approval1",
+      Inspection_Approve2: "点检审批2 | Inspection Approval2",
+      Inspection_Production_Approval: "点检班组审批 | Inspection Production Approval",
+      Inspection_Dissminater: "点检分发 | Inspection Release",
+      Inspection_Progress: "点检审批进度 | Inspection Approval Progress",
+      home: "任务清单变更管理主页 | Tasklist MoC Home"
     };
     
     // 设置页面标题
