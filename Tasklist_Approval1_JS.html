@@ -104,15 +104,31 @@
           }
         },
         {
-          targets: 14, // 最后2列的索引
+          targets: 14, // 保存意见按钮
           render: function (data, type, row, meta) {
-            return '<button class="btn btn-warning btn-sm">保存意见/ Save Comment</button>';
+            if (type === 'display') {
+              var status = row.Status;
+              var disabled = (status !== '待审批/ Pending' && status !== '作废待审批/ Void Pending');
+              if (disabled) {
+                return '<button class="btn btn-secondary btn-sm" disabled>保存意见/ Save Comment</button>';
+              }
+              return '<button class="btn btn-warning btn-sm">保存意见/ Save Comment</button>';
+            }
+            return '';
           }
         },
         {
-          targets: 15, // 最后一列的索引
+          targets: 15, // 批准/拒绝按钮
           render: function (data, type, row, meta) {
-            return '<button class="btn btn-success btn-sm">批准/ Approve</button> <button class="btn btn-danger btn-sm">拒绝/ Reject</button>';
+            if (type === 'display') {
+              var status = row.Status;
+              var disabled = (status !== '待审批/ Pending' && status !== '作废待审批/ Void Pending');
+              if (disabled) {
+                return '<button class="btn btn-secondary btn-sm" disabled>批准/ Approve</button> <button class="btn btn-secondary btn-sm" disabled>拒绝/ Reject</button>';
+              }
+              return '<button class="btn btn-success btn-sm">批准/ Approve</button> <button class="btn btn-danger btn-sm">拒绝/ Reject</button>';
+            }
+            return '';
           }
         }
       ],
