@@ -42,6 +42,16 @@
           });
           // console.log(correctData);
 
+          if (correctData.length === 0) {
+            Swal.fire({
+              icon: 'warning',
+              title: swalTitle('未找到您的授权信息','Authorization Not Found'),
+              html: swalHtml('请联系管理员在 Authorization settings 工作表中维护您的权限信息','Please contact the administrator to maintain your authorization in the "Authorization settings" sheet'),
+              confirmButtonText: '确定 / OK'
+            });
+            return;
+          }
+
           let production_Approval = correctData[0]['Production Approval'];
 
           let approval1 = correctData[0]["Approval 1"];
