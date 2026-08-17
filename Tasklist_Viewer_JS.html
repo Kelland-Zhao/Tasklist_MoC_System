@@ -85,21 +85,21 @@
         let tableHTML = '<table id="diffTable" class="display" style="width:100%">';
         tableHTML += "<thead>"
         tableHTML += "<tr>"
-        tableHTML += "<th>机型/ Machine Type</th>"
-        tableHTML += "<th>任务编号/ Task No.</th>"
-        tableHTML += "<th>单元/ Section</th>"
-        tableHTML += "<th>功能/ Function</th>"
-        tableHTML += "<th>失效模式/ Failure Mode</th>"
-        tableHTML += "<th>任务类型/ Task Type</th>"
-        tableHTML += "<th>任务描述/ Task Description</th>"
-        tableHTML += "<th>频率/ Frecuency</th>"
-        tableHTML += "<th>设备状态/ Line Status</th>"
-        tableHTML += "<th>保养策略/ Strategy</th>"
-        tableHTML += "<th>执行人/ Resource</th>"
-        tableHTML += "<th>人数/ No. Resources</th>"
-        tableHTML += "<th>技能等级/ Skill Level</th>"
-        tableHTML += "<th>技能/ Tools & Equip</th>"
-        tableHTML += "<th>预估时间/ Estimated Time</th>"
+        tableHTML += "<th>机型<br><small>Machine Type</small></th>"
+        tableHTML += "<th>任务编号<br><small>Task No.</small></th>"
+        tableHTML += "<th>单元<br><small>Section</small></th>"
+        tableHTML += "<th>功能<br><small>Function</small></th>"
+        tableHTML += "<th>失效模式<br><small>Failure Mode</small></th>"
+        tableHTML += "<th>任务类型<br><small>Task Type</small></th>"
+        tableHTML += "<th>任务描述<br><small>Task Description</small></th>"
+        tableHTML += "<th>频率<br><small>Frecuency</small></th>"
+        tableHTML += "<th>设备状态<br><small>Line Status</small></th>"
+        tableHTML += "<th>保养策略<br><small>Strategy</small></th>"
+        tableHTML += "<th>执行人<br><small>Resource</small></th>"
+        tableHTML += "<th>人数<br><small>No. Resources</small></th>"
+        tableHTML += "<th>技能等级<br><small>Skill Level</small></th>"
+        tableHTML += "<th>技能<br><small>Tools & Equip</small></th>"
+        tableHTML += "<th>预估时间<br><small>Estimated Time</small></th>"
         tableHTML += "</tr>"
         tableHTML += "</thead>"
         tableHTML += "</table>"
@@ -108,12 +108,7 @@
         let diffTableData = [];
 
         $("#table tbody").on('click', '.btn-info', function () {
-          Swal.fire({
-            title: '任务清单/ Tasklist',
-            html: tableHTML,
-            height: '90%',
-            width: '90%'
-          });
+          Swal.fire({ title: swalTitle('任务清单', 'Tasklist'), html: tableHTML, width: '90%', showConfirmButton: false, showCloseButton: true });
           // 获取当前行的数据
           let rowData = table.row($(this).closest('tr')).data();
 
@@ -124,7 +119,7 @@
           // console.log(tasklist);
 
           let diffTable = $('#diffTable').DataTable({
-
+            destroy: true,
             columns: [
               { data: 'MachineType' },
               { data: 'Task No' },

@@ -47,7 +47,7 @@
 
     google.script.run.withSuccessHandler((r) => {
       if (r.length == 2) {
-        swal.close();
+        Swal.close();
         Swal.fire({
           icon: 'success',
           title: swalTitle('加载成功','Loading Success'),
@@ -78,16 +78,16 @@
         let tableHTML = '<table id="diffTable" class="display" style="width:100%">';
         tableHTML += "<thead>"
         tableHTML += "<tr>"
-        tableHTML += "<th>单元/ Unit</th>"
-        tableHTML += "<th>部位及内容/ Parts</th>"
-        tableHTML += "<th>检查标准/ Inspection Std</th>"
-        tableHTML += "<th>使用工具/ Tool</th>"
-        tableHTML += "<th>方法/ Method</th>"
-        tableHTML += "<th>设备状态/ Status</th>"
-        tableHTML += "<th>检查频率/ Frequency</th>"
-        tableHTML += "<th>适用机型/ Machine Type</th>"
-        tableHTML += "<th>执行人/ Resource</th>"
-        tableHTML += "<th>工序/ Process</th>"
+        tableHTML += "<th>单元<br><small>Unit</small></th>"
+        tableHTML += "<th>部位及内容<br><small>Parts</small></th>"
+        tableHTML += "<th>检查标准<br><small>Inspection Std</small></th>"
+        tableHTML += "<th>使用工具<br><small>Tool</small></th>"
+        tableHTML += "<th>方法<br><small>Method</small></th>"
+        tableHTML += "<th>设备状态<br><small>Status</small></th>"
+        tableHTML += "<th>检查频率<br><small>Frequency</small></th>"
+        tableHTML += "<th>适用机型<br><small>Machine Type</small></th>"
+        tableHTML += "<th>执行人<br><small>Resource</small></th>"
+        tableHTML += "<th>工序<br><small>Process</small></th>"
         tableHTML += "</tr>"
         tableHTML += "</thead>"
         tableHTML += "</table>"
@@ -96,12 +96,7 @@
         let diffTableData = [];
 
         $("#table tbody").on('click', '.btn-info', function () {
-          swal.fire({
-            title: '任务清单/ Tasklist',
-            html: tableHTML,
-            height: '90%',
-            width: '90%'
-          });
+          Swal.fire({ title: swalTitle('任务清单', 'Tasklist'), html: tableHTML, width: '90%', showConfirmButton: false, showCloseButton: true });
           // 获取当前行的数据
           let rowData = table.row($(this).closest('tr')).data();
 
@@ -112,7 +107,7 @@
           // console.log(tasklist);
 
           let diffTable = $('#diffTable').DataTable({
-
+            destroy: true,
             columns: [
               { data: 'Unit' },
               { data: 'Parts' },
@@ -133,7 +128,7 @@
         })
 
       } else {
-        swal.close();
+        Swal.close();
         Swal.fire({
           icon: 'error',
           title: swalTitle('加载失败','Loading Failed'),
