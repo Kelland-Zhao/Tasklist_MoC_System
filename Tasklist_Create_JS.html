@@ -212,6 +212,7 @@
                   $("#table,#submitTasklist").css("display", "table");
                   //DataTables初始化
                   let table = $("#table").DataTable({
+                    autoWidth: false,
                     columns: [
                       { data: "MachineType" },
                       { data: "Task No" },
@@ -312,7 +313,7 @@
                             // 可编辑时显示下拉框
                             let options = [
                               "HighAlarm_Max",
-                              "HiighAlarm_Min",
+                              "HighAlarm_Min",
                               "HighAlarm_Average",
                               "HighAlarm_Slope",
                               "LowAlarm_Max",

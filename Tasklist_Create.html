@@ -57,6 +57,8 @@
     }
     #table thead th small { font-size: 0.8em; font-weight: 400; opacity: 0.85; }
     #table th, #table td { padding: 5px 6px; font-size: 12px; vertical-align: middle; text-align: center; }
+    /* 下拉框列最小宽度，保证选中值完整显示 */
+    #table select.form-select { min-width: 110px; }
     #table td:nth-child(7) { text-align: left; max-width: 220px; word-wrap: break-word; overflow-wrap: break-word; }
     #table tbody tr.odd > td { background: #f5f5f5; }
     #table tbody tr.even > td { background: #fff; }
@@ -228,7 +230,7 @@
       </button>
     </div>
 
-    <div style="background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:0;">
+    <div style="background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:0; overflow-x:auto;">
       <table id="table" class="display" contenteditable="false" style="display:none; width:100%;">
         <thead>
           <tr>
@@ -248,12 +250,12 @@
             <th>技能<br><small>Tools & Equip</small></th>
             <th>预估时间<br><small>Estimated Time</small></th>
             <th>预测性？<br><small>PdM?</small></th>
-            <th>Unit<br><small>Unit</small></th>
-            <th>Component<br><small>Component</small></th>
-            <th>Logic<br><small>Logic</small></th>
-            <th>TagName<br><small>TagName</small></th>
-            <th>LL Limited<br><small>LL Limited</small></th>
-            <th>HH Limited<br><small>HH Limited</small></th>
+            <th>单位<br><small>Unit</small></th>
+            <th>部件<br><small>Component</small></th>
+            <th>逻辑<br><small>Logic</small></th>
+            <th>标签<br><small>TagName</small></th>
+            <th>低限值<br><small>LL Limited</small></th>
+            <th>高限值<br><small>HH Limited</small></th>
           </tr>
         </thead>
       </table>

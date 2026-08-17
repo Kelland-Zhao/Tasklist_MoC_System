@@ -23,10 +23,14 @@
       background-color: #E60012 !important; color: white !important;
       position: sticky; top: 0; z-index: 10; text-align: center !important;
     }
+    #table thead th small { font-size: 0.8em; font-weight: 400; opacity: 0.85; }
     #table th, #table td { padding: 5px 6px; font-size: 12px; vertical-align: middle; text-align: center; }
     #table td:nth-child(5), #table td:nth-child(7) {
       text-align: left; max-width: 220px; word-wrap: break-word; overflow-wrap: break-word;
     }
+    /* 下拉框列最小宽度，保证选中值完整显示；功能列固定窄宽 */
+    #table select.form-select { min-width: 110px; }
+    #table th:last-child, #table td:last-child { width: 50px; }
     #table tbody tr.odd > td { background: #f5f5f5; }
     #table tbody tr.even > td { background: #fff; }
     table.dataTable thead .sorting,
@@ -88,35 +92,37 @@
       </ul>
     </div>
 
+    <div style="overflow-x:auto;">
     <table id="table" class="display" style="width:100%;">
       <thead>
         <tr>
-          <th>机型<br>Machine Type</th>
-          <th>任务编号<br>Task No.</th>
-          <th>单元<br>Section</th>
-          <th>功能<br>Function</th>
-          <th>失效模式<br>Failure Mode</th>
-          <th>任务类型<br>Task Type</th>
-          <th>任务描述<br>Task Description</th>
-          <th>频率<br>Frequency</th>
-          <th>设备状态<br>Line Status</th>
-          <th>保养策略<br>Strategy</th>
-          <th>执行人<br>Resource</th>
-          <th>人数<br>No. Resources</th>
-          <th>技能等级<br>Skill Level</th>
-          <th>技能<br>Tools & Equip</th>
-          <th>预估时间<br>Estimated Time</th>
-          <th>预测性？<br>PdM?</th>
-          <th>Unit</th>
-          <th>Component</th>
-          <th>Logic</th>
-          <th>TagName</th>
-          <th>LL Limited</th>
-          <th>HH Limited</th>
-          <th>功能<br>Option</th>
+          <th>机型<br><small>Machine Type</small></th>
+          <th>任务编号<br><small>Task No.</small></th>
+          <th>单元<br><small>Section</small></th>
+          <th>功能<br><small>Function</small></th>
+          <th>失效模式<br><small>Failure Mode</small></th>
+          <th>任务类型<br><small>Task Type</small></th>
+          <th>任务描述<br><small>Task Description</small></th>
+          <th>频率<br><small>Frequency</small></th>
+          <th>设备状态<br><small>Line Status</small></th>
+          <th>保养策略<br><small>Strategy</small></th>
+          <th>执行人<br><small>Resource</small></th>
+          <th>人数<br><small>No. Resources</small></th>
+          <th>技能等级<br><small>Skill Level</small></th>
+          <th>技能<br><small>Tools & Equip</small></th>
+          <th>预估时间<br><small>Estimated Time</small></th>
+          <th>预测性？<br><small>PdM?</small></th>
+          <th>单位<br><small>Unit</small></th>
+          <th>部件<br><small>Component</small></th>
+          <th>逻辑<br><small>Logic</small></th>
+          <th>标签<br><small>TagName</small></th>
+          <th>低限值<br><small>LL Limited</small></th>
+          <th>高限值<br><small>HH Limited</small></th>
+          <th>功能<br><small>Option</small></th>
         </tr>
       </thead>
     </table>
+    </div>
 
     <div style="height:30px;"></div>
   </div>

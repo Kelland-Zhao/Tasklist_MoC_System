@@ -19,6 +19,7 @@
       });
       //DataTables初始化
       var table = $("#table").DataTable({
+        autoWidth: false,
         columns: [
           { data: "MachineType" },
           { data: "Task No" },
@@ -153,7 +154,7 @@
                 // 可编辑时显示下拉框
                 let options = [
                   "HighAlarm_Max",
-                  "HiighAlarm_Min",
+                  "HighAlarm_Min",
                   "HighAlarm_Average",
                   "HighAlarm_Slope",
                   "LowAlarm_Max",
@@ -209,7 +210,7 @@
           {
             targets: 22, // 表示最后一列（功能/ Option）
             render: function (data, type, row, meta) {
-              return '<button class="btn btn-danger btn-sm">删除/ Delete</button>';
+              return '<button class="btn btn-danger btn-sm" title="删除 / Delete"><i class="bi bi-x-lg"></i></button>';
             },
           },
         ],
