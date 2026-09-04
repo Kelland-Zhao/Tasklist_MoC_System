@@ -1522,7 +1522,7 @@ function submitRequest(r) {
 
   let recipient;
 
-  if (objBasicInfo.Mail_production_Approval == "Y") {
+  if (objBasicInfo.judge_Production_Approval == "Y") {
     recipient = objBasicInfo.Mail_production_Approval;
   } else {
     recipient = objBasicInfo.Mail_Approve1;
@@ -1593,7 +1593,7 @@ function submitRequest_IN(r) {
 
   let recipient;
 
-  if (objBasicInfo.Mail_production_Approval == "Y") {
+  if (objBasicInfo.judge_Production_Approval == "Y") {
     recipient = objBasicInfo.Mail_production_Approval;
   } else {
     recipient = objBasicInfo.Mail_Approve1;
