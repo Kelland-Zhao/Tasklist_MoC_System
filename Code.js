@@ -283,7 +283,7 @@ function dataSave(
 
     if (row.length === 0) {
       console.error("Database for Web 中未找到机型: " + machineType);
-      return false;
+      return "machine_not_configured";
     }
 
     let production_Approval_words = "";
@@ -298,6 +298,11 @@ function dataSave(
       production_Approval_words = "N";
 
       recipient = row[0][2]; //Mail_Approve1
+    }
+
+    if (!recipient) {
+      console.error("审批邮件收件人为空: " + machineType);
+      return "machine_not_configured";
     }
 
     ws.appendRow([
@@ -367,7 +372,7 @@ function dataSave_IN(
 
     if (row.length === 0) {
       console.error("Database for Web 中未找到机型: " + machineType);
-      return false;
+      return "machine_not_configured";
     }
 
     let recipient;
@@ -380,6 +385,11 @@ function dataSave_IN(
       production_Approval_words = "N";
 
       recipient = row[0][2]; //Mail_Approve1
+    }
+
+    if (!recipient) {
+      console.error("审批邮件收件人为空: " + machineType);
+      return "machine_not_configured";
     }
 
     ws.appendRow([

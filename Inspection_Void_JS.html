@@ -210,6 +210,16 @@
                       showConfirmButton: false
                     });
 
+                  } else if (r == 'machine_not_configured') {
+
+                    Swal.close();
+
+                    Swal.fire({
+                      icon: 'error',
+                      title: swalTitle('操作失败','Failed'),
+                      html: swalHtml('该机型未配置审批邮件链，请联系系统管理员。','Approval mail chain is not configured for this machine type. Please contact the system administrator.'),
+                      confirmButtonText: '确定 / OK'
+                    });
                   } else {
 
                     Swal.close();
