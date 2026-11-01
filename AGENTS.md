@@ -29,7 +29,7 @@ clasp clone <ScriptId> --rootDir <dir>
 
 ### 权限体系
 
-- 用户通过 5 位工号 + 密码登录，数据存在 Google Sheet 的 `Database for Web` 表中
+- 用户通过 5 位工号 + 密码登录，账号数据存在独立的 `UserID` spreadsheet（`1F7G3WOY5xM4fEYZ1s5RKulY4kJhqCZ9HefthmiVkraM`）的 `userID` 表中，由 `Code.js` 的 `getPasswordData()` 读取
 - 每个用户的 `Authorization` 字段包含逗号分隔的权限：`编辑, 查阅, 发放, 审批1, 审批2, 班组审批, 作废`
 - 前端根据权限启用/禁用对应按钮（Tasklist 和 Inspection 两套按钮同时生效）
 
@@ -43,7 +43,7 @@ clasp clone <ScriptId> --rootDir <dir>
 
 #### 主数据库：`Database_MasterData` (`1bYKTK5a63yJWRHzM_UPP6b4hwF67eZKEM5dCKLWR59U`)
 
-共 17 个子表，是 PM Tasklist 系统的核心后端数据源：
+共 16 个子表，是 PM Tasklist 系统的核心后端数据源：
 
 | # | Sheet 名称 | 行数 | 核心用途 |
 |---|-----------|------|---------|
@@ -52,18 +52,17 @@ clasp clone <ScriptId> --rootDir <dir>
 | 3 | errorCode | 483 | 故障代码主表 v1 |
 | 4 | errorCode 2.0 | 1000 | 故障代码主表 v2（当前版本） |
 | 5 | Workcenter_V202602 | — | 机台号主数据（Workcenter / Workshop / Process） |
-| 6 | Log | — | 运行日志 |
-| 7 | 定时设置 | 4 | GAS 触发器定时配置（每月/每周/每日/时间点/程序名/函数名） |
-| 8 | 菜单设置 | 6 | GAS 自定义菜单配置（描述/脚本名称/是否显示） |
-| 9 | Workcenter & Mold Matrix | 1175 | 机器/模具编号 → 设备类型/Workshop/Process/Type/保养类型 映射 |
-| 10 | **PM Tasklist** | 1326 | **PM 任务定义主表（绿色标签）**，每行一条保养任务 |
-| 11 | **Tasklist_history** | 166 | **审批流程历史记录**，Tasklist 列存完整任务 JSON |
-| 12 | Tasklist Details Bencmark | 9639 | 任务清单详细基准对照表（绿色标签） |
-| 13 | Tasklist MoC Report InfomNameList | 996 | MoC 报告通知名单 |
-| 14 | **Database for Web** | 67 | **每个 MachineType 对应的 Process + 审批邮件链配置** |
-| 15 | Authorization settings | — | 按用户维度的授权审批人（Process/ID/Name → Approval1/2/Dissminater/ccMail/Production） |
-| 16 | Production Approval List | — | 生产审批人名单（ID/Name/Mail） |
-| 17 | InformNameList | 29 | 通知名单（Process/Workshop/Function/Name/E-mail） |
+| 6 | Workcenter_手动维护 | — | 机台号手动维护数据（Workcenter / Workshop / Process） |
+| 7 | Log | — | 运行日志 |
+| 8 | Workcenter & Mold Matrix | 1175 | 机器/模具编号 → 设备类型/Workshop/Process/Type/保养类型 映射 |
+| 9 | **PM Tasklist** | 1326 | **PM 任务定义主表（绿色标签）**，每行一条保养任务 |
+| 10 | **Tasklist_history** | 166 | **审批流程历史记录**，Tasklist 列存完整任务 JSON |
+| 11 | Tasklist Details Bencmark | 9639 | 任务清单详细基准对照表（绿色标签） |
+| 12 | Tasklist MoC Report InfomNameList | 996 | MoC 报告通知名单 |
+| 13 | **Database for Web** | 67 | **每个 MachineType 对应的 Process + 审批邮件链配置** |
+| 14 | Authorization settings | — | 按用户维度的授权审批人（Process/ID/Name → Approval1/2/Dissminater/ccMail/Production） |
+| 15 | Production Approval List | — | 生产审批人名单（ID/Name/Mail） |
+| 16 | InformNameList | 29 | 通知名单（Process/Workshop/Function/Name/E-mail） |
 
 ##### 核心表详解
 
@@ -96,7 +95,7 @@ clasp clone <ScriptId> --rootDir <dir>
 
 #### Inspection（点检）数据库：`Database_PointCheck-点检后台数据` (`1RQql-PrcBWiAQNeg7hQKcocpllSUMRhT5XPrDTVWoBY`)
 
-共 25 个子表，时区 `Asia/Shanghai`，是 Inspection 点检系统的完整后端：
+共 26 个子表，时区 `Asia/Shanghai`，是 Inspection 点检系统的完整后端：
 
 | # | Sheet 名称 | 行数 | 核心用途 |
 |---|-----------|------|---------|
@@ -125,6 +124,7 @@ clasp clone <ScriptId> --rootDir <dir>
 | 23 | StartRow | 7 | 各车间 Sheet 的有效数据行范围配置 |
 | 24 | TempNew | 13 | 点检执行记录模板（18 列，与车间 Sheet 同构） |
 | 25 | TempOld | 1 | 旧模板 |
+| 26 | InspectionRecords | — | 点检执行记录汇总表（26 列，本项目代码未使用） |
 
 ##### 核心表详解
 
@@ -201,6 +201,10 @@ clasp clone <ScriptId> --rootDir <dir>
 | 异常处理 | 无独立追踪 | 异常已解决/未解决/备注 三类明细 |
 | 编辑窗口 | 无限制 | `Days to Edit` = 7 天 |
 | JSON 任务字段 | `Task Type` / `Task Description` / `Failure Mode` 等 | `单元` / `部位及内容` / `检查标准` / `方法` 等 |
+
+#### 登录数据库：`UserID` (`1F7G3WOY5xM4fEYZ1s5RKulY4kJhqCZ9HefthmiVkraM`)
+
+两套系统共用的身份/权限数据源。本项目只读取其中的 `userID` 表（65 列，第 0/1/2/50 列为工号 / 姓名 / 密码 / Authorization），由 `Code.js` 的 `getPasswordData()` 调用；该库其他表（Tasklist_MoC、EditLog、QA 等）不属于本项目。
 
 ### 依赖加载方式
 
