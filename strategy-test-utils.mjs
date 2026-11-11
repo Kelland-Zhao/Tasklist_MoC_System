@@ -271,10 +271,15 @@ export function installGas(options) {
       if (!sheets) throw new Error('installGas: 未配置的 spreadsheet id: ' + id);
       return {
         getSheetByName: function (name) {
-          const sheet = sheets[name];
-          if (!sheet) {
-            throw new Error('installGas: 未配置的 sheet: ' + id + ' / ' + name);
+          // 与真实 GAS 一致：不存在时返回 null，便于被测代码自行建表。
+          return sheets[name] || null;
+        },
+        insertSheet: function (name) {
+          if (sheets[name]) {
+            throw new Error('installGas: sheet 已存在: ' + id + ' / ' + name);
           }
+          const sheet = makeSheet();
+          sheets[name] = sheet;
           return sheet;
         },
       };

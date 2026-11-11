@@ -163,6 +163,73 @@ test('作废单初始状态为作废待审批', () => {
   assert.equal(history.values.at(-1)[9], '作废待审批/ Void Pending');
 });
 
+test('修改申请以主表数据生成 old 快照，客户端伪造的非关键字段被忽略', () => {
+  resetSheets();
+  seedMaster({ '策略ID':'PM-MD-0001', '版本号':'00', ...fields });
+  const res = g.submitStrategyEdit({
+    jobNumber:'10001', name:'申请人', strategyId:'PM-MD-0001',
+    old:{ ...fields, version:'00', 'PM Description':'FAKE','PM Frequency':'FAKE-FREQ' },
+    fields, reason:'修改'
+  });
+  assert.equal(res.ok, true);
+  const content = JSON.parse(history.values.at(-1)[1]);
+  assert.equal(content.old['PM Description'], '季度保养');
+  assert.equal(content.old['PM Frequency'], '季');
+  assert.equal(content.old.version, '00');
+});
+
+test('作废申请以主表数据生成 old 快照，客户端伪造的非关键字段被忽略', () => {
+  resetSheets();
+  seedMaster({ '策略ID':'PM-MD-0001', '版本号':'00', ...fields });
+  const res = g.submitStrategyVoid({
+    jobNumber:'10003', name:'文控丙', strategyId:'PM-MD-0001',
+    old:{ ...fields, version:'00', 'PM Description':'FAKE' },
+    reason:'停止保养'
+  });
+  assert.equal(res.ok, true);
+  const content = JSON.parse(history.values.at(-1)[1]);
+  assert.equal(content.old['PM Description'], '季度保养');
+  assert.equal(content.old.version, '00');
+});
+
+test('导入的必填字段为空的策略可提交作废，发放后删除主表行并置作废', () => {
+  resetSheets({ extraUsers: [
+    { jobNumber:'10005', name:'工序戊', pwd:'*', gmail:'pm.wh@colpal.com', process:'WH', auth:'策略工序经理' },
+  ] });
+  seedMaster({
+    '策略ID':'PM-MD-0001',
+    '版本号':'00',
+    '工序':'WH',
+    'Machine Type':'缠绕机',
+    'PM Frequency':'',
+    'PM Description':'',
+    '策略 / Strategy':'',
+  });
+
+  const submit = g.submitStrategyVoid({
+    jobNumber:'10003', name:'文控丙', strategyId:'PM-MD-0001',
+    old:{ '工序':'WH', 'Machine Type':'缠绕机', version:'00', 'PM Frequency':'', 'PM Description':'', '策略 / Strategy':'' },
+    reason:'设备淘汰'
+  });
+  assert.equal(submit.ok, true);
+  assert.equal(history.values.at(-1)[9], g.STRATEGY_STATUS.voidPending);
+
+  const processApprove = g.saveStrategyApproval({
+    jobNumber:'10005', name:'工序戊', operator: submit.operator, level:1, decision:'approve', comment:''
+  });
+  assert.equal(processApprove.ok, true);
+  const deptApprove = g.saveStrategyApproval({
+    jobNumber:'10002', name:'部门乙', operator: submit.operator, level:2, decision:'approve', comment:''
+  });
+  assert.equal(deptApprove.ok, true);
+  assert.equal(history.values.at(-1)[9], g.STRATEGY_STATUS.waitRelease);
+
+  const release = g.releaseStrategy({ jobNumber:'10003', name:'文控丙', operator: submit.operator });
+  assert.equal(release.ok, true);
+  assert.equal(master.values.length, 1);
+  assert.equal(history.values.at(-1)[9], g.STRATEGY_STATUS.void);
+});
+
 test('作废时工序或机型与主表不一致被拦下且不写 History、不发邮件', () => {
   resetSheets({ extraUsers: [
     { jobNumber:'10004', name:'工序丁', pwd:'*', gmail:'pm.tf@colpal.com', process:'TF', auth:'编辑,策略工序经理' },

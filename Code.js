@@ -2607,9 +2607,15 @@ function createStrategyRequest_(payload, action) {
   }
 
   var fields = action === "void" ? data.old : data.fields;
-  var missing = strategyMissingRequiredField_(fields);
-  if (missing !== "") {
-    return { ok: false, message: "必填字段缺失 / Missing required field: " + missing };
+  // 作废只要求变更原因：导入的历史策略可能存在 PM Frequency / PM Description / 策略 为空的记录
+  if (action !== "void") {
+    var missing = strategyMissingRequiredField_(fields);
+    if (missing !== "") {
+      return { ok: false, message: "必填字段缺失 / Missing required field: " + missing };
+    }
+  }
+  if (action === "void" && !data.old) {
+    return { ok: false, message: "缺少基线版本 / Baseline version is required" };
   }
   var reason = data.reason === null || data.reason === undefined ? "" : String(data.reason).trim();
   if (reason === "") {
@@ -2666,8 +2672,9 @@ function createStrategyRequest_(payload, action) {
     if (editedProcess !== masterProcess || editedMachineType !== masterMachineType) {
       return { ok: false, message: "工序/机型不可修改 / Process and Machine Type cannot be changed" };
     }
-    var oldSnapshot = strategyBusinessSnapshot_(data.old);
-    oldSnapshot.version = baseVersion;
+    // old 基线只信主表，避免申请人伪造审批/发放差异中的「变更前」值
+    var oldSnapshot = strategyBusinessSnapshot_(masterRow);
+    oldSnapshot.version = normalizeStrategyVersion_(masterRow["版本号"]);
     if (action === "edit") {
       var baseNumber = parseInt(baseVersion, 10);
       if (isNaN(baseNumber)) baseNumber = 0;
@@ -3455,11 +3462,42 @@ function strategyFieldsAllBlank_(fields) {
 }
 
 /**
+ * 获取策略 MasterData 工作表：不存在时创建，空表时写入表头
+ * @returns {{ok:boolean,sheet?:object,message?:string}}
+ */
+function getStrategyMasterSheet_() {
+  var ss = SpreadsheetApp.openById(STRATEGY_SS_ID);
+  var ws = ss.getSheetByName(STRATEGY_MASTER_SHEET_NAME);
+  if (!ws) {
+    ws = ss.insertSheet(STRATEGY_MASTER_SHEET_NAME);
+  }
+  var lastRow = ws.getLastRow();
+  if (lastRow === 0) {
+    ws.getRange(1, 1, 1, STRATEGY_MASTER_HEADERS.length).setValues([STRATEGY_MASTER_HEADERS.slice()]);
+    return { ok: true, sheet: ws };
+  }
+  if (lastRow === 1) {
+    var header = ws.getRange(1, 1, 1, STRATEGY_MASTER_HEADERS.length).getValues()[0] || [];
+    var normalized = header.map(function (value) {
+      return value === null || value === undefined ? "" : String(value).trim();
+    });
+    if (normalized.indexOf("工序") === -1 || normalized.indexOf("Machine Type") === -1) {
+      return { ok: false, message: "MasterData 表头不正确，请清空后重试" };
+    }
+  }
+  return { ok: true, sheet: ws };
+}
+
+/**
  * 从 EQU 保养主数据表初始导入策略（仅当 MasterData 为空时允许）
  * @returns {{ok:boolean,count?:number,message?:string}}
  */
 function importPMStrategyMasterData() {
-  var masterWs = SpreadsheetApp.openById(STRATEGY_SS_ID).getSheetByName(STRATEGY_MASTER_SHEET_NAME);
+  var masterResult = getStrategyMasterSheet_();
+  if (!masterResult.ok) {
+    return { ok: false, message: masterResult.message };
+  }
+  var masterWs = masterResult.sheet;
   if (masterWs.getLastRow() > 1) {
     return { ok: false, message: "主数据表已有数据，禁止重复导入 / MasterData is not empty" };
   }

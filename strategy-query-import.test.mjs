@@ -169,3 +169,109 @@ test('主表非空时禁止重复导入', () => {
   const res = g.importPMStrategyMasterData();
   assert.equal(res.ok, false);
 });
+
+/**
+ * 安装指定的策略数据表形态（可省略 MasterData），供导入边界用例使用。
+ * @param {{masterSheet?:object,historySheet?:object,equRows?:Array<Array<*>>}} options
+ * @returns {{history:object,equ:object,strategySheets:Object}}
+ */
+function setupImportScenario(options) {
+  const opts = options || {};
+  const historySheet = opts.historySheet || makeSheet([g.STRATEGY_HISTORY_HEADERS.slice()]);
+  const userSheet = makeSheet([
+    [],
+    [],
+    makeUserRow({ jobNumber:'10001', name:'工序甲', pwd:'*', gmail:'pm.im@colpal.com', process:'IM', auth:'编辑,策略工序经理' }),
+    makeUserRow({ jobNumber:'10002', name:'部门乙', pwd:'*', gmail:'dept@colpal.com', process:'ALL', auth:'策略部门经理' }),
+    makeUserRow({ jobNumber:'10003', name:'文控丙', pwd:'*', gmail:'doc@colpal.com', process:'ALL', auth:'作废,发放' }),
+  ]);
+  const equSheet = makeSheet([EQU_HEADERS.slice()].concat((opts.equRows || []).map(function (row) {
+    return row.slice();
+  })));
+  const strategySheets = { [g.STRATEGY_HISTORY_SHEET_NAME]: historySheet };
+  if (opts.masterSheet) {
+    strategySheets[g.STRATEGY_MASTER_SHEET_NAME] = opts.masterSheet;
+  }
+  sheetsById = {
+    [g.STRATEGY_SS_ID]: strategySheets,
+    [g.STRATEGY_USERID_SS_ID]: { userID: userSheet },
+    [g.STRATEGY_EQU_MASTER_SS_ID]: { [g.STRATEGY_EQU_MASTER_SHEET_NAME]: equSheet },
+  };
+  const env = installGas({ sheetsById: sheetsById, sent: [] });
+  history = historySheet;
+  sent = env.sent;
+  return { history: historySheet, equ: equSheet, strategySheets: strategySheets };
+}
+
+const IMPORT_ROWS = [
+  ['IM','FCS','季','8','季度保养','','','3','RBM','[FCS]','Y','PM10','Y','','未确认','PM-MD-0001','','','张三','2026-10-01 10:00:00'],
+  ['TF','UV','年','4','年度保养','','','12','TBM','[UV]','Y','PM02','NA','','未确认','PM-MD-0002','','','李四','2026-10-02 10:00:00'],
+];
+
+test('MasterData 表不存在时导入自动建表：表头在第 1 行，数据从第 2 行开始', () => {
+  setupImportScenario({ equRows: IMPORT_ROWS });
+  assert.equal(sheetsById[g.STRATEGY_SS_ID][g.STRATEGY_MASTER_SHEET_NAME], undefined);
+
+  const res = g.importPMStrategyMasterData();
+  assert.equal(res.ok, true);
+  assert.equal(res.count, 2);
+
+  const created = sheetsById[g.STRATEGY_SS_ID][g.STRATEGY_MASTER_SHEET_NAME];
+  assert.ok(created);
+  assert.deepEqual(created.values[0], g.STRATEGY_MASTER_HEADERS);
+  assert.equal(created.values.length, 3);
+  assert.equal(created.values[1][14], 'PM-MD-0001');
+  assert.equal(created.values[2][14], 'PM-MD-0002');
+  assert.equal(history.values.length, 3);
+});
+
+test('MasterData 为空表时导入写入表头，数据从第 2 行开始', () => {
+  const emptyMaster = makeSheet([]);
+  setupImportScenario({ masterSheet: emptyMaster, equRows: IMPORT_ROWS.slice(0, 1) });
+
+  const res = g.importPMStrategyMasterData();
+  assert.equal(res.ok, true);
+  assert.equal(res.count, 1);
+  assert.deepEqual(emptyMaster.values[0], g.STRATEGY_MASTER_HEADERS);
+  assert.equal(emptyMaster.values.length, 2);
+  assert.equal(emptyMaster.values[1][14], 'PM-MD-0001');
+});
+
+test('MasterData 表头不正确时导入失败且不写入数据', () => {
+  const badMaster = makeSheet([['工序', 'Wrong Header']]);
+  setupImportScenario({ masterSheet: badMaster, equRows: IMPORT_ROWS.slice(0, 1) });
+
+  const res = g.importPMStrategyMasterData();
+  assert.equal(res.ok, false);
+  assert.match(res.message, /表头不正确/);
+  assert.equal(badMaster.values.length, 1);
+});
+
+test('MasterData 已存在数据行时禁止导入', () => {
+  const seededMaster = makeSheet([
+    g.STRATEGY_MASTER_HEADERS.slice(),
+    g.STRATEGY_MASTER_HEADERS.map(function (header) {
+      return header === '策略ID' ? 'PM-MD-0001' : '';
+    }),
+  ]);
+  setupImportScenario({ masterSheet: seededMaster, equRows: IMPORT_ROWS.slice(0, 1) });
+
+  const res = g.importPMStrategyMasterData();
+  assert.equal(res.ok, false);
+  assert.match(res.message, /禁止重复导入/);
+  assert.equal(history.values.length, 1);
+});
+
+test('History 已有系统导入基线时禁止再次导入', () => {
+  const historySheet = makeSheet([g.STRATEGY_HISTORY_HEADERS.slice()]);
+  historySheet.appendRow([
+    'FCS', '{}', '系统导入', '初始导入', '', '', '', '', '',
+    g.STRATEGY_STATUS.effective, '', 'IM',
+  ]);
+  const emptyMaster = makeSheet([]);
+  setupImportScenario({ masterSheet: emptyMaster, historySheet: historySheet, equRows: IMPORT_ROWS.slice(0, 1) });
+
+  const res = g.importPMStrategyMasterData();
+  assert.equal(res.ok, false);
+  assert.match(res.message, /初始导入/);
+});
