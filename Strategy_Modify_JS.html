@@ -1,0 +1,448 @@
+<script>
+  /* EDS §8.1 双语 helper（字符串拼接，避免模板字符串与测试注入冲突） */
+  const swalTitle = (cn, en) => cn + '<span style="display:block;font-size:0.65em;color:#888;font-weight:400;line-height:1.3;margin-top:4px;">' + en + '</span>';
+  const swalHtml  = (cn, en) => '<div>' + cn + '<div style="font-size:0.85em;color:#888;margin-top:6px;line-height:1.4;">' + en + '</div></div>';
+
+  /* 修改申请的必填业务字段（与后端 strategyMissingRequiredField_ 一致） */
+  var STRATEGY_EDIT_REQUIRED_KEYS = ['工序', 'Machine Type', 'PM Frequency', 'PM Description', '策略 / Strategy'];
+
+  /* 主表行中不属于 14 个业务字段的元数据列 */
+  var STRATEGY_EDIT_ROW_META_KEYS = ['策略ID', '版本号', '生效时间', '最后修改人', '最后修改时间'];
+
+  /* 修改页不允许改动的字段：工序 / Machine Type（策略ID 单独只读展示） */
+  var STRATEGY_EDIT_LOCKED_KEYS = ['工序', 'Machine Type'];
+
+  /* 页面状态：主数据缓存、当前筛选结果、当前选中行 */
+  var strategyModifyRows = [];
+  var strategyModifyVisibleRows = [];
+  var strategyModifySelectedRow = null;
+
+  /* null/undefined → ''，其余转字符串并 trim */
+  function strategyModifyText_(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).trim();
+  }
+
+  /* 字段选择器：用 data 属性定位，避免中文字段名进入 id/选择器转义 */
+  function strategyModifyFieldSelector_(key) {
+    return '[data-strategy-field="' + String(key) + '"]';
+  }
+
+  /* 共享转义 helper 缺失时退化为本地实现 */
+  function strategyModifyEscape_(value) {
+    if (typeof strategyEscapeHtml === 'function') return strategyEscapeHtml(value);
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /**
+   * 14 个业务字段键：优先取共享 STRATEGY_FIELDS；测试注入等无共享常量时，
+   * 退化为主表行键减去 5 个元数据列。
+   * @param {Object} old 主表行
+   * @returns {Array<string>}
+   */
+  function strategyModifyFieldKeys_(old) {
+    if (typeof STRATEGY_FIELDS !== 'undefined' && STRATEGY_FIELDS && STRATEGY_FIELDS.length) {
+      return STRATEGY_FIELDS.map(function (field) { return field.key; });
+    }
+    var keys = [];
+    var source = old || {};
+    for (var key in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+      if (STRATEGY_EDIT_ROW_META_KEYS.indexOf(key) !== -1) continue;
+      keys.push(key);
+    }
+    return keys;
+  }
+
+  /**
+   * 按指定键复制对象值；键列表缺省时复制全部自有键。null/undefined → ''。
+   * @param {Object} source
+   * @param {Array<string>} [keys]
+   * @returns {Object<string,string>}
+   */
+  function strategyModifySnapshot_(source, keys) {
+    var data = source || {};
+    var result = {};
+    var list = keys || Object.keys(data);
+    for (var i = 0; i < list.length; i++) {
+      var value = data[list[i]];
+      result[list[i]] = value === null || value === undefined ? '' : String(value);
+    }
+    return result;
+  }
+
+  /**
+   * 基线版本：14 个业务字段 + version（来自主表行「版本号」）
+   * @param {Object} old 主表行
+   * @returns {Object<string,string>}
+   */
+  function strategyModifyOldSnapshot_(old) {
+    var snapshot = strategyModifySnapshot_(old, strategyModifyFieldKeys_(old));
+    snapshot.version = strategyModifyText_(old ? old['版本号'] : '');
+    return snapshot;
+  }
+
+  /**
+   * 首个缺失的必填字段键；全部齐全返回 ''
+   * 调用方只传部分字段（单元测试/增量调用）时跳过未提供的键；
+   * 页面表单收集始终包含 14 个键，空白值会被判为缺失。
+   * @param {Object<string,string>} values
+   * @param {Object} old
+   * @returns {string}
+   */
+  function strategyModifyMissingRequiredField_(values, old) {
+    var fields = values || {};
+    var baseline = old || {};
+    for (var i = 0; i < STRATEGY_EDIT_REQUIRED_KEYS.length; i++) {
+      var key = STRATEGY_EDIT_REQUIRED_KEYS[i];
+      var inFields = Object.prototype.hasOwnProperty.call(fields, key);
+      var inOld = Object.prototype.hasOwnProperty.call(baseline, key);
+      if (!inFields && !inOld) continue;
+      var value = inFields ? fields[key] : baseline[key];
+      if (strategyModifyText_(value) === '') return key;
+    }
+    return '';
+  }
+
+  /**
+   * 构造 submitStrategyEdit payload；策略ID、用户、变更原因或必填字段缺失/空白时返回 null
+   * @param {string} strategyId 主表「策略ID」
+   * @param {Object} old 主表行（14 业务字段 + 元数据）
+   * @param {Object<string,string>} values 编辑后的 14 个业务字段
+   * @param {{jobNumber:string,name:string}} user
+   * @param {string} reason 变更原因
+   * @returns {{jobNumber:string,name:string,strategyId:string,old:Object,fields:Object,reason:string}|null}
+   */
+  function buildStrategyEditPayload(strategyId, old, values, user, reason) {
+    var id = strategyModifyText_(strategyId);
+    if (id === '' || !old) return null;
+    var account = user || {};
+    var jobNumber = strategyModifyText_(account.jobNumber);
+    var name = strategyModifyText_(account.name);
+    var reasonText = strategyModifyText_(reason);
+    if (jobNumber === '' || reasonText === '') return null;
+    if (strategyModifyMissingRequiredField_(values, old) !== '') return null;
+    var fieldKeys = strategyModifyFieldKeys_(old);
+    var fields = strategyModifySnapshot_(values || {}, fieldKeys);
+    /* 工序/机型锁定：无论表单值如何，一律以主表基线为准 */
+    var lockedValues = strategyModifySnapshot_(old, STRATEGY_EDIT_LOCKED_KEYS);
+    fields['工序'] = lockedValues['工序'];
+    fields['Machine Type'] = lockedValues['Machine Type'];
+    return {
+      jobNumber: jobNumber,
+      name: name,
+      strategyId: id,
+      old: strategyModifyOldSnapshot_(old),
+      fields: fields,
+      reason: reasonText
+    };
+  }
+
+  /* 字段 DOM id（按 STRATEGY_FIELDS 顺序，避免中文字段名进 id） */
+  function strategyModifyFieldId_(index) {
+    return 'strategyField' + index;
+  }
+
+  function strategyModifyIsRequired_(key) {
+    return STRATEGY_EDIT_REQUIRED_KEYS.indexOf(key) !== -1;
+  }
+
+  function strategyModifyIsLocked_(key) {
+    return STRATEGY_EDIT_LOCKED_KEYS.indexOf(key) !== -1;
+  }
+
+  /* 单个字段的 label + 控件 HTML；工序 / 机型只读 */
+  function strategyModifyFieldHtml_(field, index) {
+    var id = strategyModifyFieldId_(index);
+    var requiredMark = strategyModifyIsRequired_(field.key) ? '<span class="req">*</span>' : '';
+    var locked = strategyModifyIsLocked_(field.key);
+    var html = '<div class="col-md-6 col-xl-4 mb-3">';
+    html += '<label class="field-label" for="' + id + '">' + field.label + requiredMark;
+    html += '<span class="en">' + field.labelEn + '</span></label>';
+    if (field.type === 'select') {
+      html += '<select class="form-select" id="' + id + '" data-strategy-field="' + field.key + '"' + (locked ? ' disabled' : '') + '>';
+      html += '<option value="">请选择 / Please select</option>';
+      var options = field.options || [];
+      for (var i = 0; i < options.length; i++) {
+        html += '<option value="' + options[i] + '">' + options[i] + '</option>';
+      }
+      html += '</select>';
+    } else {
+      html += '<input type="text" class="form-control" id="' + id + '" data-strategy-field="' + field.key + '"' + (locked ? ' readonly' : '') + ' placeholder="请输入 / Enter">';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  /* 按 STRATEGY_FIELDS 渲染 14 个字段（中文在上、英文在下） */
+  function renderStrategyEditForm($) {
+    var html = '';
+    var fields = typeof STRATEGY_FIELDS !== 'undefined' && STRATEGY_FIELDS ? STRATEGY_FIELDS : [];
+    for (var i = 0; i < fields.length; i++) {
+      html += strategyModifyFieldHtml_(fields[i], i);
+    }
+    $('#strategyForm').html(html);
+  }
+
+  /* 收集 14 个业务字段值 */
+  function collectStrategyEditFormValues($) {
+    var values = {};
+    var fields = typeof STRATEGY_FIELDS !== 'undefined' && STRATEGY_FIELDS ? STRATEGY_FIELDS : [];
+    for (var i = 0; i < fields.length; i++) {
+      var key = fields[i].key;
+      var $input = $(strategyModifyFieldSelector_(key));
+      var value = '';
+      if ($input && $input.length) value = $input.val();
+      values[key] = value === null || value === undefined ? '' : String(value);
+    }
+    return values;
+  }
+
+  /* 给字段赋值；工序下拉若缺少该值则临时补一个选项，保证历史值可见 */
+  function strategyModifySetFieldValue_($, key, value) {
+    var $input = $(strategyModifyFieldSelector_(key));
+    if (!$input || !$input.length) return;
+    var text = value === null || value === undefined ? '' : String(value);
+    if ($input.is('select') && text !== '') {
+      var exists = false;
+      $input.find('option').each(function () {
+        if (String(this.value) === text) exists = true;
+      });
+      if (!exists) {
+        $input.append($('<option></option>').val(text).text(text));
+      }
+    }
+    $input.val(text);
+  }
+
+  /* 用选中行填充编辑表单；工序 / 机型 / 策略ID 只读展示 */
+  function fillStrategyEditForm($, row) {
+    var fields = typeof STRATEGY_FIELDS !== 'undefined' && STRATEGY_FIELDS ? STRATEGY_FIELDS : [];
+    for (var i = 0; i < fields.length; i++) {
+      strategyModifySetFieldValue_($, fields[i].key, row ? row[fields[i].key] : '');
+    }
+    $('#strategyIdDisplay').val(row ? strategyModifyText_(row['策略ID']) : '');
+    $(strategyModifyFieldSelector_('强制保养频率/ Month')).removeClass('bg-warning');
+  }
+
+  /* PM Frequency 变化：可识别则回填强制保养频率，无法识别则清空并加黄色提醒 */
+  function updateStrategyEditMandatoryFrequency($) {
+    var text = $(strategyModifyFieldSelector_('PM Frequency')).val();
+    var months = typeof convertFrequencyToMonths === 'function' ? convertFrequencyToMonths(text) : null;
+    var $target = $(strategyModifyFieldSelector_('强制保养频率/ Month'));
+    if (months === null) {
+      $target.val('');
+      $target.addClass('bg-warning');
+    } else {
+      $target.val(String(months));
+      $target.removeClass('bg-warning');
+    }
+  }
+
+  /* 清空编辑表单、选中状态与频率高亮 */
+  function resetStrategyEditForm($) {
+    strategyModifySelectedRow = null;
+    var fields = typeof STRATEGY_FIELDS !== 'undefined' && STRATEGY_FIELDS ? STRATEGY_FIELDS : [];
+    for (var i = 0; i < fields.length; i++) {
+      $(strategyModifyFieldSelector_(fields[i].key)).val('');
+    }
+    $('#strategyIdDisplay').val('');
+    $(strategyModifyFieldSelector_('强制保养频率/ Month')).removeClass('bg-warning');
+    $('#changeReason').val('');
+    $('#strategyEditSection').hide();
+    $('#strategyTableBody tr').removeClass('table-active');
+  }
+
+  /* 按当前工序 / 机型筛选主数据缓存 */
+  function strategyModifyFilterRows_($) {
+    var rows = Array.isArray(strategyModifyRows) ? strategyModifyRows : [];
+    if (typeof filterStrategyMasterRows === 'function') {
+      return filterStrategyMasterRows(rows, $('#processSelect').val(), $('#machineTypeInput').val());
+    }
+    return rows;
+  }
+
+  /* 渲染匹配策略表格：PM Description / PM Frequency / 版本号 / 策略ID / 策略 / 操作 */
+  function renderStrategyEditTable($) {
+    var rows = strategyModifyFilterRows_($);
+    strategyModifyVisibleRows = rows;
+    var html = '';
+    if (!rows.length) {
+      html = '<tr><td colspan="6" class="text-muted">未找到匹配的策略 / No matching strategy</td></tr>';
+    } else {
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i] || {};
+        html += '<tr>';
+        html += '<td>' + strategyModifyEscape_(row['PM Description']) + '</td>';
+        html += '<td>' + strategyModifyEscape_(row['PM Frequency']) + '</td>';
+        html += '<td>' + strategyModifyEscape_(row['版本号']) + '</td>';
+        html += '<td>' + strategyModifyEscape_(row['策略ID']) + '</td>';
+        html += '<td>' + strategyModifyEscape_(row['策略 / Strategy']) + '</td>';
+        html += '<td><button type="button" class="btn btn-sm btn-brand strategy-select-btn" data-strategy-index="' + i + '">';
+        html += '<i class="bi bi-pencil-square"></i> 选择 / Edit</button></td>';
+        html += '</tr>';
+      }
+    }
+    $('#strategyTableBody').html(html);
+  }
+
+  /* 读取并缓存主数据；筛选变化只重渲染缓存，提交成功后再重新读取 */
+  function loadStrategyMasterData($) {
+    $('#strategyTableBody').html('<tr><td colspan="6" class="text-muted">加载中 / Loading...</td></tr>');
+    google.script.run
+      .withSuccessHandler(function (r) {
+        strategyModifyRows = r && r.rows ? r.rows : [];
+        renderStrategyEditTable($);
+      })
+      .withFailureHandler(function () {
+        strategyModifyRows = [];
+        renderStrategyEditTable($);
+        showStrategyEditError_('主数据加载失败，请刷新重试。/ Failed to load master data, please refresh.');
+      })
+      .getStrategyMasterData();
+  }
+
+  /* 选中表格行 → 填充表单并展开编辑区 */
+  function selectStrategyEditRow_($, index) {
+    var row = strategyModifyVisibleRows[index];
+    if (!row) return;
+    strategyModifySelectedRow = row;
+    fillStrategyEditForm($, row);
+    $('#strategyEditSection').show();
+  }
+
+  /* 失败提示：把后端「中文 / English」消息拆成双语 swalHtml */
+  function showStrategyEditError_(message) {
+    var text = strategyModifyText_(message);
+    var cn = '后端返回异常，请重试。';
+    var en = 'Backend error, please retry.';
+    if (text !== '') {
+      cn = text;
+      en = text;
+      var parts = text.split(' / ');
+      if (parts.length >= 2) {
+        cn = parts[0];
+        en = parts.slice(1).join(' / ');
+      }
+    }
+    Swal.close();
+    Swal.fire({
+      icon: 'error',
+      title: swalTitle('操作失败', 'Failed'),
+      html: swalHtml(cn, en),
+      confirmButtonText: '确定 / OK'
+    });
+  }
+
+  /* 提交入口：校验选中行 + 必填 → 调用 submitStrategyEdit */
+  function handleStrategyEditSubmit($) {
+    if (!strategyModifySelectedRow) {
+      Swal.fire({
+        icon: 'error',
+        title: swalTitle('未选择策略', 'No Strategy Selected'),
+        html: swalHtml('请先在列表中选择要修改的策略。', 'Please select a strategy to edit from the list.'),
+        confirmButtonText: '确定 / OK'
+      });
+      return;
+    }
+
+    var payload = buildStrategyEditPayload(
+      strategyModifySelectedRow['策略ID'],
+      strategyModifySelectedRow,
+      collectStrategyEditFormValues($),
+      {
+        jobNumber: typeof STRATEGY_JOB_NUMBER !== 'undefined' ? STRATEGY_JOB_NUMBER : '',
+        name: typeof STRATEGY_USER_NAME !== 'undefined' ? STRATEGY_USER_NAME : ''
+      },
+      $('#changeReason').val()
+    );
+
+    if (payload === null) {
+      Swal.fire({
+        icon: 'error',
+        title: swalTitle('填写不完整', 'Incomplete Form'),
+        html: swalHtml('请填写所有必填字段及变更原因。', 'Please fill in all required fields and the change reason.'),
+        confirmButtonText: '确定 / OK'
+      });
+      return;
+    }
+
+    Swal.fire({
+      title: swalTitle('请等待', 'Please Wait'),
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (r && r.ok) {
+          Swal.close();
+          Swal.fire({
+            icon: 'success',
+            title: swalTitle('提交成功', 'Submitted'),
+            timer: 1500,
+            showConfirmButton: false
+          });
+          resetStrategyEditForm($);
+          loadStrategyMasterData($);
+        } else {
+          // 后端在此返回「该策略正在审批中」「策略已更新，请刷新后重试」等消息
+          showStrategyEditError_(r && r.message ? r.message : '');
+        }
+      })
+      .withFailureHandler(function () {
+        showStrategyEditError_('后端返回异常，请重试。/ Backend error, please retry.');
+      })
+      .submitStrategyEdit(payload);
+  }
+
+  /* 页面初始化 */
+  function initStrategyModifyPage($) {
+    renderStrategyEditForm($);
+
+    var userName = typeof STRATEGY_USER_NAME !== 'undefined' && STRATEGY_USER_NAME ? String(STRATEGY_USER_NAME) : '';
+    var jobNumber = typeof STRATEGY_JOB_NUMBER !== 'undefined' && STRATEGY_JOB_NUMBER ? String(STRATEGY_JOB_NUMBER) : '';
+    $('#Name').text(userName === '' ? '-' : userName);
+    $('#JobNumber').text(jobNumber);
+
+    $('#strategyEditSection').hide();
+
+    $('#processSelect').on('change', function () {
+      renderStrategyEditTable($);
+    });
+    $('#machineTypeInput').on('input change', function () {
+      renderStrategyEditTable($);
+    });
+    $('#strategyForm').on('input change', strategyModifyFieldSelector_('PM Frequency'), function () {
+      updateStrategyEditMandatoryFrequency($);
+    });
+    $('#strategyTableBody').on('click', '.strategy-select-btn', function () {
+      var index = parseInt($(this).attr('data-strategy-index'), 10);
+      if (isNaN(index)) return;
+      $('#strategyTableBody tr').removeClass('table-active');
+      $(this).closest('tr').addClass('table-active');
+      selectStrategyEditRow_($, index);
+    });
+    $('#submitStrategy').on('click', function () {
+      handleStrategyEditSubmit($);
+    });
+    $('#resetStrategyForm').on('click', function () {
+      resetStrategyEditForm($);
+    });
+
+    loadStrategyMasterData($);
+  }
+
+  if (typeof $ !== 'undefined') {
+    $(document).ready(function () {
+      initStrategyModifyPage($);
+    });
+  }
+</script>

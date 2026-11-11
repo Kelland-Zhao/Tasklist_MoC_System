@@ -11,7 +11,10 @@
     modify_IN: 'Inspection_Edit', create_IN: 'Inspection_Create', void_IN: 'Inspection_Void',
     approval_Production_IN: 'Inspection_Production_Approval', approval1_IN: 'Inspection_Approve1',
     approval2_IN: 'Inspection_Approve2', dissminater_IN: 'Inspection_Dissminater',
-    view_IN: 'Inspection_View', progress_IN: 'Inspection_Progress'
+    view_IN: 'Inspection_View', progress_IN: 'Inspection_Progress',
+    strategy_create: 'strategy_create', strategy_modify: 'strategy_modify', strategy_void: 'strategy_void',
+    strategy_approval1: 'strategy_approval1', strategy_approval2: 'strategy_approval2',
+    strategy_release: 'strategy_release', strategy_progress: 'strategy_progress', strategy_viewer: 'strategy_viewer'
   };
 
   const SS_KEY = 'tlmoc_session'; // sessionStorage key（只存工号/姓名，不存密码）
@@ -131,20 +134,32 @@
     currentUser = user;
     const perms = String(user.authorization || '').split(',').map((s) => s.trim()).filter(Boolean);
 
-    let pmCount = 0, inCount = 0;
+    let pmCount = 0, inCount = 0, strategyCount = 0;
     $('.fn-col').each(function () {
       const need = $(this).data('perm');
       const ok = need === '*' || perms.includes(String(need));
       $(this).toggle(ok);
-      if (ok) { ($(this).closest('#pmGrid').length ? pmCount++ : inCount++); }
+      if (ok) {
+        if ($(this).closest('#pmGrid').length) pmCount++;
+        else if ($(this).closest('#inGrid').length) inCount++;
+        else if ($(this).closest('#strategyGrid').length) strategyCount++;
+      }
     });
     // 仅剩“审批进度”一张卡 → 提示无操作权限
     $('#pmEmpty').toggle(pmCount <= 1);
     $('#inEmpty').toggle(inCount <= 1);
+    $('#strategyEmpty').toggle(strategyCount <= 1);
 
     $('#uName').text(user.name);
     $('#uPerm').text('已登录 / ' + perms.length + ' 项权限');
     $('#loginCard').hide();
     $('#workspace').show();
+
+    // 策略待办数量（工序经理/部门经理/文控发放）→ 卡片与页签徽章；始终重置，切换用户/待办归零时清零隐藏
+    google.script.run.withSuccessHandler(r => {
+      const n = (r && r.total) || 0;
+      $('#badge_strategy').text(n).toggle(n > 0);
+      $('#tabBadgeStrategy').text(n).toggle(n > 0);
+    }).getStrategyPendingCounts(currentUser.jobNumber);
   }
 </script>

@@ -1,0 +1,362 @@
+<script>
+  /* EDS §8.1 双语 helper（字符串拼接，避免模板字符串与测试注入冲突） */
+  const swalTitle = (cn, en) => cn + '<span style="display:block;font-size:0.65em;color:#888;font-weight:400;line-height:1.3;margin-top:4px;">' + en + '</span>';
+  const swalHtml  = (cn, en) => '<div>' + cn + '<div style="font-size:0.85em;color:#888;margin-top:6px;line-height:1.4;">' + en + '</div></div>';
+
+  /* 主表行中不属于 14 个业务字段的元数据列 */
+  var STRATEGY_VOID_ROW_META_KEYS = ['策略ID', '版本号', '生效时间', '最后修改人', '最后修改时间'];
+
+  /* 页面状态：主数据缓存、当前筛选结果、当前选中行 */
+  var strategyVoidRows = [];
+  var strategyVoidVisibleRows = [];
+  var strategyVoidSelectedRow = null;
+
+  /* null/undefined → ''，其余转字符串并 trim */
+  function strategyVoidText_(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).trim();
+  }
+
+  /* 字段选择器：用 data 属性定位，避免中文字段名进入 id/选择器转义 */
+  function strategyVoidFieldSelector_(key) {
+    return '[data-strategy-void-field="' + String(key) + '"]';
+  }
+
+  /* 共享转义 helper 缺失时退化为本地实现 */
+  function strategyVoidEscape_(value) {
+    if (typeof strategyEscapeHtml === 'function') return strategyEscapeHtml(value);
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /**
+   * 14 个业务字段键：优先取共享 STRATEGY_FIELDS；测试注入等无共享常量时，
+   * 退化为主表行键减去 5 个元数据列。
+   * @param {Object} old 主表行
+   * @returns {Array<string>}
+   */
+  function strategyVoidFieldKeys_(old) {
+    if (typeof STRATEGY_FIELDS !== 'undefined' && STRATEGY_FIELDS && STRATEGY_FIELDS.length) {
+      return STRATEGY_FIELDS.map(function (field) { return field.key; });
+    }
+    var keys = [];
+    var source = old || {};
+    for (var key in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, key)) continue;
+      if (STRATEGY_VOID_ROW_META_KEYS.indexOf(key) !== -1) continue;
+      keys.push(key);
+    }
+    return keys;
+  }
+
+  /**
+   * 按指定键复制对象值；键列表缺省时复制全部自有键。null/undefined → ''。
+   * @param {Object} source
+   * @param {Array<string>} [keys]
+   * @returns {Object<string,string>}
+   */
+  function strategyVoidSnapshot_(source, keys) {
+    var data = source || {};
+    var result = {};
+    var list = keys || Object.keys(data);
+    for (var i = 0; i < list.length; i++) {
+      var value = data[list[i]];
+      result[list[i]] = value === null || value === undefined ? '' : String(value);
+    }
+    return result;
+  }
+
+  /**
+   * 基线版本：14 个业务字段 + version（来自主表行「版本号」）
+   * @param {Object} old 主表行
+   * @returns {Object<string,string>}
+   */
+  function strategyVoidOldSnapshot_(old) {
+    var snapshot = strategyVoidSnapshot_(old, strategyVoidFieldKeys_(old));
+    snapshot.version = strategyVoidText_(old ? old['版本号'] : '');
+    return snapshot;
+  }
+
+  /**
+   * 构造 submitStrategyVoid payload；策略ID、用户、作废原因缺失/空白时返回 null。
+   * old 原样取自主表行（14 业务字段 + version），不含 fields/new，工序/机型不可修改。
+   * @param {string} strategyId 主表「策略ID」
+   * @param {Object} old 主表行
+   * @param {{jobNumber:string,name:string}} user
+   * @param {string} reason 作废原因
+   * @returns {{jobNumber:string,name:string,strategyId:string,old:Object,reason:string}|null}
+   */
+  function buildStrategyVoidPayload(strategyId, old, user, reason) {
+    var id = strategyVoidText_(strategyId);
+    if (id === '' || !old) return null;
+    var account = user || {};
+    var jobNumber = strategyVoidText_(account.jobNumber);
+    var name = strategyVoidText_(account.name);
+    var reasonText = strategyVoidText_(reason);
+    if (jobNumber === '' || reasonText === '') return null;
+    return {
+      jobNumber: jobNumber,
+      name: name,
+      strategyId: id,
+      old: strategyVoidOldSnapshot_(old),
+      reason: reasonText
+    };
+  }
+
+  /* 字段 DOM id（按 STRATEGY_FIELDS 顺序，避免中文字段名进 id） */
+  function strategyVoidFieldId_(index) {
+    return 'strategyVoidField' + index;
+  }
+
+  /* 单个只读字段 HTML：详情仅展示，不可编辑 */
+  function strategyVoidFieldHtml_(field, index) {
+    var id = strategyVoidFieldId_(index);
+    var html = '<div class="col-md-6 col-xl-4 mb-3">';
+    html += '<label class="field-label" for="' + id + '">' + field.label;
+    html += '<span class="en">' + field.labelEn + '</span></label>';
+    html += '<input type="text" class="form-control" id="' + id + '" data-strategy-void-field="' + field.key + '" readonly>';
+    html += '</div>';
+    return html;
+  }
+
+  /* 按 STRATEGY_FIELDS 渲染 14 个只读字段（中文在上、英文在下） */
+  function renderStrategyVoidForm($) {
+    var html = '';
+    var fields = typeof STRATEGY_FIELDS !== 'undefined' && STRATEGY_FIELDS ? STRATEGY_FIELDS : [];
+    for (var i = 0; i < fields.length; i++) {
+      html += strategyVoidFieldHtml_(fields[i], i);
+    }
+    $('#strategyVoidForm').html(html);
+  }
+
+  /* 用选中行填充只读详情（14 个业务字段 + 策略ID） */
+  function fillStrategyVoidDetail($, row) {
+    var fields = typeof STRATEGY_FIELDS !== 'undefined' && STRATEGY_FIELDS ? STRATEGY_FIELDS : [];
+    for (var i = 0; i < fields.length; i++) {
+      var value = row ? row[fields[i].key] : '';
+      $(strategyVoidFieldSelector_(fields[i].key)).val(value === null || value === undefined ? '' : String(value));
+    }
+    $('#strategyIdDisplay').val(row ? strategyVoidText_(row['策略ID']) : '');
+  }
+
+  /* 清空详情、作废原因与选中状态 */
+  function resetStrategyVoidForm($) {
+    strategyVoidSelectedRow = null;
+    var fields = typeof STRATEGY_FIELDS !== 'undefined' && STRATEGY_FIELDS ? STRATEGY_FIELDS : [];
+    for (var i = 0; i < fields.length; i++) {
+      $(strategyVoidFieldSelector_(fields[i].key)).val('');
+    }
+    $('#strategyIdDisplay').val('');
+    $('#voidReason').val('');
+    $('#strategyVoidSection').hide();
+    $('#strategyVoidTableBody tr').removeClass('table-active');
+  }
+
+  /* 按当前工序 / 机型筛选主数据缓存 */
+  function strategyVoidFilterRows_($) {
+    var rows = Array.isArray(strategyVoidRows) ? strategyVoidRows : [];
+    if (typeof filterStrategyMasterRows === 'function') {
+      return filterStrategyMasterRows(rows, $('#processSelect').val(), $('#machineTypeInput').val());
+    }
+    return rows;
+  }
+
+  /* 渲染匹配策略表格：PM Description / PM Frequency / 版本号 / 策略ID / 策略 / 操作 */
+  function renderStrategyVoidTable($) {
+    var rows = strategyVoidFilterRows_($);
+    strategyVoidVisibleRows = rows;
+    var html = '';
+    if (!rows.length) {
+      html = '<tr><td colspan="6" class="text-muted">未找到匹配的策略 / No matching strategy</td></tr>';
+    } else {
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i] || {};
+        html += '<tr>';
+        html += '<td>' + strategyVoidEscape_(row['PM Description']) + '</td>';
+        html += '<td>' + strategyVoidEscape_(row['PM Frequency']) + '</td>';
+        html += '<td>' + strategyVoidEscape_(row['版本号']) + '</td>';
+        html += '<td>' + strategyVoidEscape_(row['策略ID']) + '</td>';
+        html += '<td>' + strategyVoidEscape_(row['策略 / Strategy']) + '</td>';
+        html += '<td><button type="button" class="btn btn-sm btn-brand strategy-void-select-btn" data-strategy-index="' + i + '">';
+        html += '<i class="bi bi-x-octagon"></i> 选择 / Select</button></td>';
+        html += '</tr>';
+      }
+    }
+    $('#strategyVoidTableBody').html(html);
+  }
+
+  /* 读取并缓存主数据；筛选变化只重渲染缓存，提交成功后再重新读取 */
+  function loadStrategyVoidMasterData($) {
+    $('#strategyVoidTableBody').html('<tr><td colspan="6" class="text-muted">加载中 / Loading...</td></tr>');
+    google.script.run
+      .withSuccessHandler(function (r) {
+        strategyVoidRows = r && r.rows ? r.rows : [];
+        renderStrategyVoidTable($);
+      })
+      .withFailureHandler(function () {
+        strategyVoidRows = [];
+        renderStrategyVoidTable($);
+        showStrategyVoidError_('主数据加载失败，请刷新重试。/ Failed to load master data, please refresh.');
+      })
+      .getStrategyMasterData();
+  }
+
+  /* 选中表格行 → 填充只读详情并展开作废区 */
+  function selectStrategyVoidRow_($, index) {
+    var row = strategyVoidVisibleRows[index];
+    if (!row) return;
+    strategyVoidSelectedRow = row;
+    fillStrategyVoidDetail($, row);
+    $('#strategyVoidSection').show();
+  }
+
+  /* 失败提示：把后端「中文 / English」消息拆成双语 swalHtml */
+  function showStrategyVoidError_(message) {
+    var text = strategyVoidText_(message);
+    var cn = '后端返回异常，请重试。';
+    var en = 'Backend error, please retry.';
+    if (text !== '') {
+      cn = text;
+      en = text;
+      var parts = text.split(' / ');
+      if (parts.length >= 2) {
+        cn = parts[0];
+        en = parts.slice(1).join(' / ');
+      }
+    }
+    Swal.close();
+    Swal.fire({
+      icon: 'error',
+      title: swalTitle('操作失败', 'Failed'),
+      html: swalHtml(cn, en),
+      confirmButtonText: '确定 / OK'
+    });
+  }
+
+  /* 作废为不可逆操作：提交前二次确认（UI 规范 §8.2） */
+  function confirmStrategyVoidSubmit_(payload, $) {
+    Swal.fire({
+      icon: 'warning',
+      title: swalTitle('确认作废？', 'Confirm Void?'),
+      html: swalHtml('作废后不可恢复。', 'This cannot be undone.'),
+      showCancelButton: true,
+      confirmButtonText: '确认作废 / Void',
+      cancelButtonText: '取消 / Cancel',
+      confirmButtonColor: '#E60012'
+    }).then(function (result) {
+      if (result && result.isConfirmed) submitStrategyVoidRequest_(payload, $);
+    });
+  }
+
+  /* 实际提交：调用 submitStrategyVoid */
+  function submitStrategyVoidRequest_(payload, $) {
+    Swal.fire({
+      title: swalTitle('请等待', 'Please Wait'),
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (r && r.ok) {
+          Swal.close();
+          Swal.fire({
+            icon: 'success',
+            title: swalTitle('提交成功', 'Submitted'),
+            timer: 1500,
+            showConfirmButton: false
+          });
+          resetStrategyVoidForm($);
+          loadStrategyVoidMasterData($);
+        } else {
+          // 后端在此返回「该策略正在审批中」「策略已更新，请刷新后重试」「工序/机型不可修改」等消息
+          showStrategyVoidError_(r && r.message ? r.message : '');
+        }
+      })
+      .withFailureHandler(function () {
+        showStrategyVoidError_('后端返回异常，请重试。/ Backend error, please retry.');
+      })
+      .submitStrategyVoid(payload);
+  }
+
+  /* 提交入口：校验选中行 + 作废原因 → 二次确认 → 提交 */
+  function handleStrategyVoidSubmit($) {
+    if (!strategyVoidSelectedRow) {
+      Swal.fire({
+        icon: 'error',
+        title: swalTitle('未选择策略', 'No Strategy Selected'),
+        html: swalHtml('请先在列表中选择要作废的策略。', 'Please select a strategy to void from the list.'),
+        confirmButtonText: '确定 / OK'
+      });
+      return;
+    }
+
+    var payload = buildStrategyVoidPayload(
+      strategyVoidSelectedRow['策略ID'],
+      strategyVoidSelectedRow,
+      {
+        jobNumber: typeof STRATEGY_JOB_NUMBER !== 'undefined' ? STRATEGY_JOB_NUMBER : '',
+        name: typeof STRATEGY_USER_NAME !== 'undefined' ? STRATEGY_USER_NAME : ''
+      },
+      $('#voidReason').val()
+    );
+
+    if (payload === null) {
+      Swal.fire({
+        icon: 'error',
+        title: swalTitle('填写不完整', 'Incomplete Form'),
+        html: swalHtml('请填写作废原因。', 'Please fill in the void reason.'),
+        confirmButtonText: '确定 / OK'
+      });
+      return;
+    }
+
+    confirmStrategyVoidSubmit_(payload, $);
+  }
+
+  /* 页面初始化 */
+  function initStrategyVoidPage($) {
+    renderStrategyVoidForm($);
+
+    var userName = typeof STRATEGY_USER_NAME !== 'undefined' && STRATEGY_USER_NAME ? String(STRATEGY_USER_NAME) : '';
+    var jobNumber = typeof STRATEGY_JOB_NUMBER !== 'undefined' && STRATEGY_JOB_NUMBER ? String(STRATEGY_JOB_NUMBER) : '';
+    $('#Name').text(userName === '' ? '-' : userName);
+    $('#JobNumber').text(jobNumber);
+
+    $('#strategyVoidSection').hide();
+
+    $('#processSelect').on('change', function () {
+      renderStrategyVoidTable($);
+    });
+    $('#machineTypeInput').on('input change', function () {
+      renderStrategyVoidTable($);
+    });
+    $('#strategyVoidTableBody').on('click', '.strategy-void-select-btn', function () {
+      var index = parseInt($(this).attr('data-strategy-index'), 10);
+      if (isNaN(index)) return;
+      $('#strategyVoidTableBody tr').removeClass('table-active');
+      $(this).closest('tr').addClass('table-active');
+      selectStrategyVoidRow_($, index);
+    });
+    $('#submitStrategyVoid').on('click', function () {
+      handleStrategyVoidSubmit($);
+    });
+    $('#resetStrategyVoidForm').on('click', function () {
+      resetStrategyVoidForm($);
+    });
+
+    loadStrategyVoidMasterData($);
+  }
+
+  if (typeof $ !== 'undefined') {
+    $(document).ready(function () {
+      initStrategyVoidPage($);
+    });
+  }
+</script>

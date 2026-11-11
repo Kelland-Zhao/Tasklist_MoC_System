@@ -1,0 +1,405 @@
+<script>
+  /* EDS §8.1 双语 helper（字符串拼接，避免模板字符串与测试注入冲突） */
+  const swalTitle = (cn, en) => cn + '<span style="display:block;font-size:0.65em;color:#888;font-weight:400;line-height:1.3;margin-top:4px;">' + en + '</span>';
+  const swalHtml  = (cn, en) => '<div>' + cn + '<div style="font-size:0.85em;color:#888;margin-top:6px;line-height:1.4;">' + en + '</div></div>';
+
+  /* 页面标题 / 分组标题 */
+  var STRATEGY_PROGRESS_TITLE = '任务清单变更管理 - 保养策略进度 / Tasklist MoC - PM Strategy Progress';
+  var STRATEGY_PROGRESS_SECTION_TITLE = '申请进度 / REQUEST PROGRESS';
+
+  /* 全部 History 行 / 当前筛选结果（与表格 data-index 对应） / 当前用户上下文 */
+  var strategyProgressRows = [];
+  var strategyProgressVisibleRows = [];
+  var strategyProgressUser = null;
+
+  /* null/undefined → ''，其余转字符串并 trim */
+  function strategyProgressText_(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).trim();
+  }
+
+  /* 共享转义 helper 缺失时退化为本地实现 */
+  function strategyProgressEscape_(value) {
+    if (typeof strategyEscapeHtml === 'function') return strategyEscapeHtml(value);
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /* 共享状态徽章缺失时退化为普通徽章 */
+  function strategyProgressStatusBadge_(status) {
+    if (typeof strategyStatusBadge === 'function') return strategyStatusBadge(status);
+    return '<span class="badge bg-secondary">' + strategyProgressEscape_(status) + '</span>';
+  }
+
+  /* 展示编号：优先用共享 formatStrategyId（策略ID 为空时返回空串，不渲染 -00） */
+  function strategyProgressDisplayId_(content) {
+    var strategyId = content && content.strategyId !== null && content.strategyId !== undefined
+      ? String(content.strategyId) : '';
+    var version = content ? content.version : '';
+    if (typeof formatStrategyId === 'function') return formatStrategyId(strategyId, version);
+    var id = strategyProgressText_(strategyId);
+    if (id === '') return '';
+    var text = strategyProgressText_(version);
+    if (text === '') text = '00';
+    if (text.length < 2) text = '0' + text;
+    return id + '-' + text;
+  }
+
+  /**
+   * 解析 History「Operator」列：
+   * `工号/ JobNumber:  {jobNo}_姓名/ Name:  {name} {yyyy-MM-dd HH:mm:ss}`
+   * 返回姓名与提交时间（解析失败时退回原文 / 空串）。
+   * @param {string} operator
+   * @returns {{jobNumber:string,name:string,timestamp:string}}
+   */
+  function parseStrategyProgressOperator_(operator) {
+    var text = strategyProgressText_(operator);
+    var result = { jobNumber: '', name: '', timestamp: '' };
+    if (text === '') return result;
+
+    var jobMatch = text.match(/JobNumber:\s*([^_]+)/);
+    if (jobMatch) result.jobNumber = jobMatch[1].trim();
+
+    var timeMatch = text.match(/(\d{4}[-\/]\d{1,2}[-\/]\d{1,2}\s+\d{1,2}:\d{2}:\d{2})\s*$/);
+    if (timeMatch) result.timestamp = timeMatch[1];
+
+    var nameMatch = text.match(/Name:\s*(.+)$/);
+    if (nameMatch) {
+      result.name = nameMatch[1];
+      if (result.timestamp !== '') {
+        result.name = result.name.replace(/\s*\d{4}[-\/]\d{1,2}[-\/]\d{1,2}\s+\d{1,2}:\d{2}:\d{2}\s*$/, '');
+      }
+      result.name = result.name.trim();
+    }
+    if (result.name === '') result.name = result.jobNumber;
+    return result;
+  }
+
+  /* 解析 `Strategy Content` JSON；空值/非法 JSON 返回 null */
+  function strategyProgressContent_(row) {
+    if (!row) return null;
+    var raw = row['Strategy Content'];
+    if (raw === null || raw === undefined || raw === '') return null;
+    if (typeof raw === 'object') return raw;
+    try {
+      return JSON.parse(String(raw));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /* 展示字段：新增/修改取 new，作废取 old */
+  function strategyProgressFields_(content) {
+    if (content && content.new) return content.new;
+    if (content && content.old) return content.old;
+    return {};
+  }
+
+  /* 申请类型标签：共享 helper 缺失时本地实现 */
+  function strategyProgressActionLabel_(content) {
+    if (typeof strategyActionLabel === 'function') return strategyActionLabel(content);
+    var hasOld = !!(content && content.old);
+    var hasNew = !!(content && content.new);
+    if (hasOld && hasNew) return '修改 / Edit';
+    if (hasOld) return '作废 / Void';
+    return '新增 / Create';
+  }
+
+  /**
+   * 过滤 History 行：工序 / 机型 / 状态（trim 后精确匹配，空值表示不过滤），
+   * 「只看我的申请」按 submitMail 与当前用户邮箱比对。返回新数组，不修改入参。
+   * @param {Array<Object>} rows
+   * @param {{process?:string,machineType?:string,status?:string}} filters
+   * @param {boolean} onlyMine
+   * @param {string} userEmail
+   * @returns {Array<Object>}
+   */
+  function filterStrategyHistoryRows(rows, filters, onlyMine, userEmail) {
+    var list = Array.isArray(rows) ? rows : [];
+    var criteria = filters || {};
+    var processFilter = strategyProgressText_(criteria.process);
+    var machineFilter = strategyProgressText_(criteria.machineType);
+    var statusFilter = strategyProgressText_(criteria.status);
+    var emailFilter = strategyProgressText_(userEmail);
+    return list.filter(function (row) {
+      if (!row) return false;
+      if (processFilter !== '' && strategyProgressText_(row.Process) !== processFilter) return false;
+      if (machineFilter !== '' && strategyProgressText_(row.MachineType) !== machineFilter) return false;
+      if (statusFilter !== '' && strategyProgressText_(row.Status) !== statusFilter) return false;
+      if (onlyMine && strategyProgressText_(row.submitMail) !== emailFilter) return false;
+      return true;
+    });
+  }
+
+  /* 当前用户邮箱（来自 getStrategyUserContext） */
+  function strategyProgressUserEmail_() {
+    if (!strategyProgressUser) return '';
+    return strategyProgressText_(strategyProgressUser.email);
+  }
+
+  /* 读取筛选控件当前值 */
+  function readStrategyProgressFilters_($) {
+    return {
+      process: $('#processFilter').val(),
+      machineType: $('#machineTypeFilter').val(),
+      status: $('#statusFilter').val()
+    };
+  }
+
+  /* 读取「只看我的申请」开关 */
+  function strategyProgressOnlyMine_($) {
+    var $toggle = $('#onlyMine');
+    if (!$toggle || !$toggle.length) return false;
+    return $toggle.prop('checked') === true;
+  }
+
+  /* 行内操作按钮（图标 + 文字，符合 UI 规范 §4.7 按钮图标化） */
+  function strategyProgressActionButtonsHtml_(index) {
+    return '<button type="button" class="btn btn-sm btn-info strategy-progress-detail-btn strategy-progress-action-btn" data-strategy-progress-index="' + index + '" title="详情 / Detail"><i class="bi bi-list-ul"></i> 详情 / Detail</button>';
+  }
+
+  /* 渲染进度表格：工序 / 机型 / 策略描述 / 申请类型 / 申请人 / 提交时间 / 状态 / 操作 */
+  function renderStrategyProgressTable($) {
+    var rows = filterStrategyHistoryRows(
+      strategyProgressRows,
+      readStrategyProgressFilters_($),
+      strategyProgressOnlyMine_($),
+      strategyProgressUserEmail_()
+    );
+    strategyProgressVisibleRows = rows;
+    var escape = strategyProgressEscape_;
+    var html = '';
+    if (rows.length === 0) {
+      html = '<tr><td colspan="8" class="text-muted">暂无申请记录 / No application records</td></tr>';
+    } else {
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i] || {};
+        var content = strategyProgressContent_(row);
+        var fields = strategyProgressFields_(content);
+        var applicant = parseStrategyProgressOperator_(row.Operator);
+        html += '<tr>';
+        html += '<td>' + escape(row.Process) + '</td>';
+        html += '<td>' + escape(row.MachineType) + '</td>';
+        html += '<td class="text-start">' + escape(fields['PM Description']) + '</td>';
+        html += '<td>' + escape(strategyProgressActionLabel_(content)) + '</td>';
+        html += '<td>' + escape(applicant.name) + '</td>';
+        html += '<td>' + escape(applicant.timestamp) + '</td>';
+        html += '<td>' + strategyProgressStatusBadge_(row.Status) + '</td>';
+        html += '<td>' + strategyProgressActionButtonsHtml_(i) + '</td>';
+        html += '</tr>';
+      }
+    }
+    $('#strategyProgressTableBody').html(html);
+  }
+
+  /* 审批链表格：工序经理 / 部门经理 / 文控发放 + 审批意见 */
+  function strategyProgressApprovalChainHtml_(row) {
+    var escape = strategyProgressEscape_;
+    var nodes = [
+      { label: '工序经理审批', labelEn: 'Process Manager', approver: row.Approver1, comment: row.Comment1 },
+      { label: '部门经理审批', labelEn: 'Department Manager', approver: row.Approver2, comment: row.Comment2 },
+      { label: '文控发放', labelEn: 'Document Control Release', approver: row.Dissminater, comment: '' }
+    ];
+    var html = '<div class="table-responsive"><table class="table table-sm table-bordered align-middle mb-0 strategy-progress-detail-table">';
+    html += '<thead><tr>';
+    html += '<th>审批节点<br><small>Approval Node</small></th>';
+    html += '<th>审批人 / 时间<br><small>Approver / Time</small></th>';
+    html += '<th>审批意见<br><small>Comment</small></th>';
+    html += '</tr></thead><tbody>';
+    for (var i = 0; i < nodes.length; i++) {
+      var approver = strategyProgressText_(nodes[i].approver);
+      var comment = strategyProgressText_(nodes[i].comment);
+      html += '<tr>';
+      html += '<td class="text-start">' + nodes[i].label + '<br><small>' + nodes[i].labelEn + '</small></td>';
+      html += '<td class="text-start">' + (approver === ''
+        ? '<span class="text-muted">待处理 / Pending</span>'
+        : escape(approver)) + '</td>';
+      html += '<td class="text-start">' + (comment === ''
+        ? '<span class="text-muted">—</span>'
+        : escape(comment)) + '</td>';
+      html += '</tr>';
+    }
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  /* 差异表 HTML：新增/修改显示旧值+新值并标注变更行；作废仅显示旧值 */
+  function strategyProgressDiffHtml_(content) {
+    var hasNew = !!(content && content.new);
+    var oldFields = content ? content.old : null;
+    var newFields = content ? content.new : null;
+    var rows = typeof strategyDiffRows === 'function' ? strategyDiffRows(oldFields, newFields) : [];
+    var html = '<div class="table-responsive"><table class="table table-sm table-bordered align-middle mb-0 strategy-progress-detail-table">';
+    html += '<thead><tr>';
+    html += '<th>字段<br><small>Field</small></th>';
+    html += '<th>原值<br><small>Old Value</small></th>';
+    if (hasNew) {
+      html += '<th>新值<br><small>New Value</small></th>';
+      html += '<th>状态<br><small>Status</small></th>';
+    }
+    html += '</tr></thead><tbody>';
+    for (var i = 0; i < rows.length; i++) {
+      var diff = rows[i] || {};
+      var changed = hasNew && diff.changed;
+      html += '<tr' + (changed ? ' class="table-warning"' : '') + '>';
+      html += '<td class="text-start">' + strategyProgressEscape_(diff.label) + '</td>';
+      html += '<td class="text-start">' + strategyProgressEscape_(diff.oldValue) + '</td>';
+      if (hasNew) {
+        html += '<td class="text-start">' + strategyProgressEscape_(diff.newValue) + '</td>';
+        html += '<td>' + (changed
+          ? '<span class="badge bg-warning text-dark">已变更 / Changed</span>'
+          : '<span class="text-muted">—</span>') + '</td>';
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  /* 详情弹窗：基础信息 + 当前状态 + 审批链 + 差异表 */
+  function showStrategyProgressDetail_(index) {
+    var row = strategyProgressVisibleRows[index];
+    if (!row) return;
+    var content = strategyProgressContent_(row);
+    var fields = strategyProgressFields_(content);
+    var applicant = parseStrategyProgressOperator_(row.Operator);
+    var escape = strategyProgressEscape_;
+    var displayId = strategyProgressDisplayId_(content);
+
+    var info = '<div class="strategy-progress-info">';
+    info += '<div><strong>工序 / Process:</strong> ' + escape(row.Process) + '</div>';
+    info += '<div><strong>机型 / Machine Type:</strong> ' + escape(row.MachineType) + '</div>';
+    info += '<div><strong>策略描述 / PM Description:</strong> ' + escape(fields['PM Description']) + '</div>';
+    info += '<div><strong>申请类型 / Request Type:</strong> ' + escape(strategyProgressActionLabel_(content)) + '</div>';
+    if (displayId !== '') {
+      info += '<div><strong>策略编号 / Strategy ID:</strong> ' + escape(displayId) + '</div>';
+    }
+    info += '<div><strong>申请人 / Applicant:</strong> ' + escape(applicant.name) + '</div>';
+    info += '<div><strong>提交时间 / Submitted At:</strong> ' + escape(applicant.timestamp) + '</div>';
+    info += '<div><strong>变更原因 / Reason:</strong> ' + escape(row.Reason) + '</div>';
+    info += '<div><strong>状态 / Status:</strong> ' + strategyProgressStatusBadge_(row.Status) + '</div>';
+    info += '</div>';
+
+    var chain = '<div class="strategy-progress-detail-title">审批链 / APPROVAL CHAIN</div>' + strategyProgressApprovalChainHtml_(row);
+    var diff = '<div class="strategy-progress-detail-title">字段差异 / FIELD DIFF</div>' + strategyProgressDiffHtml_(content);
+
+    Swal.fire({
+      title: swalTitle('策略申请详情', 'Strategy Request Detail'),
+      html: info + chain + diff,
+      width: '90%',
+      showCloseButton: true,
+      confirmButtonText: '确定 / OK'
+    });
+  }
+
+  /* 失败提示：把后端「中文 / English」消息拆成双语 swalHtml */
+  function showStrategyProgressError_(message) {
+    var text = strategyProgressText_(message);
+    var cn = '后端返回异常，请重试。';
+    var en = 'Backend error, please retry.';
+    if (text !== '') {
+      cn = text;
+      en = text;
+      var parts = text.split(' / ');
+      if (parts.length >= 2) {
+        cn = parts[0];
+        en = parts.slice(1).join(' / ');
+      }
+    }
+    Swal.close();
+    Swal.fire({
+      icon: 'error',
+      title: swalTitle('加载失败', 'Load Failed'),
+      html: swalHtml(cn, en),
+      confirmButtonText: '确定 / OK'
+    });
+  }
+
+  /* 用户栏：优先取 URL 注入值，其次取后端返回的 user */
+  function renderStrategyProgressUser_($, user) {
+    var userName = typeof STRATEGY_USER_NAME !== 'undefined' && STRATEGY_USER_NAME ? String(STRATEGY_USER_NAME) : '';
+    var jobNumber = typeof STRATEGY_JOB_NUMBER !== 'undefined' && STRATEGY_JOB_NUMBER ? String(STRATEGY_JOB_NUMBER) : '';
+    if (userName === '' && user && user.name) userName = String(user.name);
+    if (jobNumber === '' && user && user.jobNumber) jobNumber = String(user.jobNumber);
+    $('#Name').text(userName === '' ? '-' : userName);
+    $('#JobNumber').text(jobNumber);
+  }
+
+  /* 并行读取 History 与当前用户上下文，两者返回后统一渲染 */
+  function loadStrategyProgressData($) {
+    $('#strategyProgressTableBody').html('<tr><td colspan="8" class="text-muted">加载中 / Loading...</td></tr>');
+    var pendingCalls = 2;
+    var hadError = false;
+
+    function callFinished() {
+      pendingCalls--;
+      if (pendingCalls !== 0) return;
+      if (!hadError) Swal.close();
+      renderStrategyProgressTable($);
+    }
+
+    google.script.run
+      .withSuccessHandler(function (r) {
+        strategyProgressRows = r && r.rows ? r.rows : [];
+        callFinished();
+      })
+      .withFailureHandler(function () {
+        strategyProgressRows = [];
+        hadError = true;
+        showStrategyProgressError_('申请记录加载失败，请刷新重试。/ Failed to load applications, please refresh.');
+        callFinished();
+      })
+      .getStrategyHistoryData();
+
+    google.script.run
+      .withSuccessHandler(function (user) {
+        strategyProgressUser = user || null;
+        renderStrategyProgressUser_($, user);
+        callFinished();
+      })
+      .withFailureHandler(function () {
+        strategyProgressUser = null;
+        renderStrategyProgressUser_($, null);
+        callFinished();
+      })
+      .getStrategyUserContext(typeof STRATEGY_JOB_NUMBER !== 'undefined' ? STRATEGY_JOB_NUMBER : '');
+  }
+
+  /* 进度页初始化 */
+  function initStrategyProgressPage($) {
+    if (!$) return;
+    $('#title').text(STRATEGY_PROGRESS_TITLE);
+    $('#strategyProgressSectionTitle').text(STRATEGY_PROGRESS_SECTION_TITLE);
+    renderStrategyProgressUser_($, null);
+
+    Swal.fire({
+      title: swalTitle('加载中...', 'Loading...'),
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    $('#processFilter').on('change', function () { renderStrategyProgressTable($); });
+    $('#machineTypeFilter').on('input change', function () { renderStrategyProgressTable($); });
+    $('#statusFilter').on('change', function () { renderStrategyProgressTable($); });
+    $('#onlyMine').on('change', function () { renderStrategyProgressTable($); });
+    $('#strategyProgressTableBody').on('click', '.strategy-progress-detail-btn', function () {
+      var index = parseInt($(this).attr('data-strategy-progress-index'), 10);
+      if (isNaN(index)) return;
+      showStrategyProgressDetail_(index);
+    });
+
+    loadStrategyProgressData($);
+  }
+
+  if (typeof $ !== 'undefined') {
+    $(document).ready(function () {
+      initStrategyProgressPage($);
+    });
+  }
+</script>

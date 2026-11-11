@@ -159,6 +159,12 @@
             <span class="tab-en">INSPECTION TASKLIST</span>
           </button>
         </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-strategy" data-bs-toggle="tab" data-bs-target="#pane-strategy" type="button" role="tab">
+            <span class="tab-cn">保养策略<span class="tab-badge" id="tabBadgeStrategy" style="display:none;"></span></span>
+            <span class="tab-en">PM STRATEGY</span>
+          </button>
+        </li>
       </ul>
 
       <div class="tab-content">
@@ -234,6 +240,41 @@
             </div>
             <div class="empty-hint" id="inEmpty" style="display:none;">
               <i class="bi bi-shield-lock"></i>暂无点检操作权限，仅可查看审批进度<br>No Inspection permission
+            </div>
+          </div>
+        </div>
+
+        <!-- Strategy pane -->
+        <div class="tab-pane fade" id="pane-strategy" role="tabpanel">
+          <div class="table-wrapper">
+            <div class="row g-3" id="strategyGrid">
+              <div class="col-6 col-md-4 col-lg-3 col-xl-2 fn-col grp-edit" data-perm="编辑">
+                <button type="button" class="nav-card" id="strategy_create"><i class="bi bi-file-earmark-plus icon"></i><div class="title-cn">新建</div><div class="title-en">Create</div></button>
+              </div>
+              <div class="col-6 col-md-4 col-lg-3 col-xl-2 fn-col grp-edit" data-perm="编辑">
+                <button type="button" class="nav-card" id="strategy_modify"><i class="bi bi-pencil-square icon"></i><div class="title-cn">修改</div><div class="title-en">Modify</div></button>
+              </div>
+              <div class="col-6 col-md-4 col-lg-3 col-xl-2 fn-col grp-edit" data-perm="作废">
+                <button type="button" class="nav-card" id="strategy_void"><i class="bi bi-x-octagon icon"></i><div class="title-cn">作废</div><div class="title-en">Void</div></button>
+              </div>
+              <div class="col-6 col-md-4 col-lg-3 col-xl-2 fn-col grp-approve" data-perm="策略工序经理">
+                <button type="button" class="nav-card" id="strategy_approval1"><i class="bi bi-1-circle icon"></i><div class="title-cn">工序经理审批</div><div class="title-en">Process Manager Approval</div></button>
+              </div>
+              <div class="col-6 col-md-4 col-lg-3 col-xl-2 fn-col grp-approve" data-perm="策略部门经理">
+                <button type="button" class="nav-card" id="strategy_approval2"><i class="bi bi-2-circle icon"></i><div class="title-cn">部门经理审批</div><div class="title-en">Department Manager Approval</div></button>
+              </div>
+              <div class="col-6 col-md-4 col-lg-3 col-xl-2 fn-col grp-approve" data-perm="发放">
+                <button type="button" class="nav-card" id="strategy_release"><i class="bi bi-send icon"></i><div class="title-cn">文控发放</div><div class="title-en">Document Control Release</div></button>
+              </div>
+              <div class="col-6 col-md-4 col-lg-3 col-xl-2 fn-col grp-view" data-perm="*">
+                <button type="button" class="nav-card" id="strategy_progress"><span id="badge_strategy" class="badge-count" style="display:none;"></span><i class="bi bi-bar-chart-line icon"></i><div class="title-cn">进度</div><div class="title-en">Progress</div></button>
+              </div>
+              <div class="col-6 col-md-4 col-lg-3 col-xl-2 fn-col grp-view" data-perm="查阅">
+                <button type="button" class="nav-card" id="strategy_viewer"><i class="bi bi-eye icon"></i><div class="title-cn">查阅</div><div class="title-en">View</div></button>
+              </div>
+            </div>
+            <div class="empty-hint" id="strategyEmpty" style="display:none;">
+              <i class="bi bi-shield-lock"></i>暂无策略操作权限，仅可查看审批进度<br>No strategy permission
             </div>
           </div>
         </div>
