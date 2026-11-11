@@ -26,6 +26,14 @@ function doGet(e) {
     Inspection_View: "Inspection_Viewer",
     Inspection_Void: "Inspection_Void",
     Inspection_Progress: "Inspection_Progress",
+    strategy_create: "Strategy_Create",
+    strategy_modify: "Strategy_Modify",
+    strategy_void: "Strategy_Void",
+    strategy_approval1: "Strategy_Approval1",
+    strategy_approval2: "Strategy_Approval2",
+    strategy_release: "Strategy_Release",
+    strategy_progress: "Strategy_Progress",
+    strategy_viewer: "Strategy_Viewer",
   };
 
   var templateName = e.parameter.page || "home";
@@ -53,6 +61,14 @@ function doGet(e) {
       Inspection_Production_Approval: "点检班组审批 | Inspection Production Approval",
       Inspection_Dissminater: "点检分发 | Inspection Release",
       Inspection_Progress: "点检审批进度 | Inspection Approval Progress",
+      strategy_create: "保养策略新建 / PM Strategy Create",
+      strategy_modify: "保养策略修改 / PM Strategy Modify",
+      strategy_void: "保养策略作废 / PM Strategy Void",
+      strategy_approval1: "保养策略工序经理审批 / PM Strategy Process Manager Approval",
+      strategy_approval2: "保养策略部门经理审批 / PM Strategy Department Manager Approval",
+      strategy_release: "保养策略文控发放 / PM Strategy Document Control Release",
+      strategy_progress: "保养策略进度 / PM Strategy Progress",
+      strategy_viewer: "保养策略查阅 / PM Strategy View",
       home: "任务清单变更管理主页 | Tasklist MoC Home"
     };
     
