@@ -24,3 +24,35 @@ test('卡片权限属性正确', () => {
   assert.match(html, /data-perm="策略工序经理"[\s\S]{0,200}id="strategy_approval1"/);
   assert.match(html, /data-perm="策略部门经理"[\s\S]{0,200}id="strategy_approval2"/);
 });
+
+test('策略待办徽章在 total=0 / 请求失败时清零并隐藏', () => {
+  assert.match(js, /getStrategyPendingCounts\(/);
+
+  // 提取 getStrategyPendingCounts 的 success handler，用假 jQuery 执行以验证重置行为
+  const m = js.match(/withSuccessHandler\(r => \{([\s\S]*?)\}\)\s*\.getStrategyPendingCounts\(/);
+  assert.ok(m, '未找到 getStrategyPendingCounts 的 success handler');
+  const run = new Function('$', 'r', m[1]);
+  const badges = {
+    '#badge_strategy': { text: '', shown: null },
+    '#tabBadgeStrategy': { text: '', shown: null }
+  };
+  const $ = (sel) => {
+    const badge = badges[sel];
+    return {
+      text(v) { badge.text = String(v); return this; },
+      toggle(v) { badge.shown = !!v; return this; }
+    };
+  };
+
+  run($, { total: 3 });
+  assert.deepEqual(badges['#badge_strategy'], { text: '3', shown: true });
+  assert.deepEqual(badges['#tabBadgeStrategy'], { text: '3', shown: true });
+
+  run($, { total: 0 });
+  assert.deepEqual(badges['#badge_strategy'], { text: '0', shown: false });
+  assert.deepEqual(badges['#tabBadgeStrategy'], { text: '0', shown: false });
+
+  run($, null); // 请求失败也要清零隐藏
+  assert.deepEqual(badges['#badge_strategy'], { text: '0', shown: false });
+  assert.deepEqual(badges['#tabBadgeStrategy'], { text: '0', shown: false });
+});

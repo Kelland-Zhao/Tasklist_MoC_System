@@ -155,9 +155,11 @@
     $('#loginCard').hide();
     $('#workspace').show();
 
-    // 策略待办数量（工序经理/部门经理/文控发放）→ 卡片与页签徽章
+    // 策略待办数量（工序经理/部门经理/文控发放）→ 卡片与页签徽章；始终重置，切换用户/待办归零时清零隐藏
     google.script.run.withSuccessHandler(r => {
-      if (r && r.total > 0) { $('#badge_strategy').text(r.total).show(); $('#tabBadgeStrategy').text(r.total).show(); }
+      const n = (r && r.total) || 0;
+      $('#badge_strategy').text(n).toggle(n > 0);
+      $('#tabBadgeStrategy').text(n).toggle(n > 0);
     }).getStrategyPendingCounts(currentUser.jobNumber);
   }
 </script>
