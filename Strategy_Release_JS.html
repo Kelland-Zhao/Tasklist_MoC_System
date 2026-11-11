@@ -1,0 +1,435 @@
+<script>
+  /* EDS §8.1 双语 helper（字符串拼接，避免模板字符串与测试注入冲突） */
+  const swalTitle = (cn, en) => cn + '<span style="display:block;font-size:0.65em;color:#888;font-weight:400;line-height:1.3;margin-top:4px;">' + en + '</span>';
+  const swalHtml  = (cn, en) => '<div>' + cn + '<div style="font-size:0.85em;color:#888;margin-top:6px;line-height:1.4;">' + en + '</div></div>';
+
+  /* 页面标题 / 分组标题 */
+  var STRATEGY_RELEASE_TITLE = '任务清单变更管理 - 保养策略文控发放 / Tasklist MoC - PM Strategy Document Control Release';
+  var STRATEGY_RELEASE_SECTION_TITLE = '待发放策略 / PENDING RELEASES';
+
+  /* 页面状态：当前待发放队列（与表格 data-index 对应） */
+  var strategyReleaseRows = [];
+
+  /* null/undefined → ''，其余转字符串并 trim */
+  function strategyReleaseText_(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).trim();
+  }
+
+  /* 共享转义 helper 缺失时退化为本地实现 */
+  function strategyReleaseEscape_(value) {
+    if (typeof strategyEscapeHtml === 'function') return strategyEscapeHtml(value);
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /**
+   * 解析 History「Operator」列：
+   * `工号/ JobNumber:  {jobNo}_姓名/ Name:  {name} {yyyy-MM-dd HH:mm:ss}`
+   * 返回姓名与提交时间（解析失败时退回原文 / 空串）。
+   * @param {string} operator
+   * @returns {{jobNumber:string,name:string,timestamp:string}}
+   */
+  function parseStrategyReleaseOperator_(operator) {
+    var text = strategyReleaseText_(operator);
+    var result = { jobNumber: '', name: '', timestamp: '' };
+    if (text === '') return result;
+
+    var jobMatch = text.match(/JobNumber:\s*([^_]+)/);
+    if (jobMatch) result.jobNumber = jobMatch[1].trim();
+
+    var timeMatch = text.match(/(\d{4}[-\/]\d{1,2}[-\/]\d{1,2}\s+\d{1,2}:\d{2}:\d{2})\s*$/);
+    if (timeMatch) result.timestamp = timeMatch[1];
+
+    var nameMatch = text.match(/Name:\s*(.+)$/);
+    if (nameMatch) {
+      result.name = nameMatch[1];
+      if (result.timestamp !== '') {
+        result.name = result.name.replace(/\s*\d{4}[-\/]\d{1,2}[-\/]\d{1,2}\s+\d{1,2}:\d{2}:\d{2}\s*$/, '');
+      }
+      result.name = result.name.trim();
+    }
+    if (result.name === '') result.name = result.jobNumber;
+    return result;
+  }
+
+  /* 解析 `Strategy Content` JSON；空值/非法 JSON 返回 null */
+  function strategyReleaseContent_(row) {
+    if (!row) return null;
+    var raw = row['Strategy Content'];
+    if (raw === null || raw === undefined || raw === '') return null;
+    if (typeof raw === 'object') return raw;
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /* 展示字段：新增/修改取 new，作废取 old */
+  function strategyReleaseFields_(content) {
+    if (content && content.new) return content.new;
+    if (content && content.old) return content.old;
+    return {};
+  }
+
+  /* 申请类型标签：共享 helper 缺失时本地实现 */
+  function strategyReleaseActionLabel_(content) {
+    if (typeof strategyActionLabel === 'function') return strategyActionLabel(content);
+    var hasOld = !!(content && content.old);
+    var hasNew = !!(content && content.new);
+    if (hasOld && hasNew) return '修改 / Edit';
+    if (hasOld) return '作废 / Void';
+    return '新增 / Create';
+  }
+
+  /* 是否作废申请：仅 old、无 new */
+  function strategyReleaseIsVoid_(content) {
+    return !!(content && content.old && !content.new);
+  }
+
+  /**
+   * 构造 releaseStrategy payload。
+   * `operator` 必须原样传递（后端按 Operator 精确匹配 History 行）；
+   * row 或 row.Operator 缺失时返回 null。
+   * @param {Object} row History 行
+   * @param {{jobNumber:string,name:string}} user
+   * @returns {{jobNumber:string,name:string,operator:string}|null}
+   */
+  function buildStrategyReleasePayload(row, user) {
+    if (!row) return null;
+    var operator = row.Operator;
+    if (operator === null || operator === undefined || String(operator) === '') return null;
+    var account = user || {};
+    return {
+      jobNumber: strategyReleaseText_(account.jobNumber),
+      name: strategyReleaseText_(account.name),
+      operator: String(operator)
+    };
+  }
+
+  /**
+   * 构造 returnStrategy payload；退回原因空白时返回 null。
+   * `operator` 同样原样传递。
+   * @param {Object} row History 行
+   * @param {string} reason 退回原因（必填）
+   * @param {{jobNumber:string,name:string}} user
+   * @returns {{jobNumber:string,name:string,operator:string,reason:string}|null}
+   */
+  function buildStrategyReturnPayload(row, reason, user) {
+    if (!row) return null;
+    var operator = row.Operator;
+    if (operator === null || operator === undefined || String(operator) === '') return null;
+    var reasonText = strategyReleaseText_(reason);
+    if (reasonText === '') return null;
+    var account = user || {};
+    return {
+      jobNumber: strategyReleaseText_(account.jobNumber),
+      name: strategyReleaseText_(account.name),
+      operator: String(operator),
+      reason: reasonText
+    };
+  }
+
+  /* 行内操作按钮（图标 + 文字，符合 UI 规范 §4.7 按钮图标化） */
+  function strategyReleaseActionButtonsHtml_(index) {
+    var html = '<div class="d-flex justify-content-center gap-1 flex-wrap">';
+    html += '<button type="button" class="btn btn-sm btn-info strategy-release-detail-btn strategy-release-action-btn" data-strategy-release-index="' + index + '" title="详情 / Detail"><i class="bi bi-list-ul"></i> 详情 / Detail</button>';
+    html += '<button type="button" class="btn btn-sm btn-success strategy-release-release-btn strategy-release-action-btn" data-strategy-release-index="' + index + '" title="发放 / Release"><i class="bi bi-send"></i> 发放 / Release</button>';
+    html += '<button type="button" class="btn btn-sm btn-danger strategy-release-return-btn strategy-release-action-btn" data-strategy-release-index="' + index + '" title="退回 / Return"><i class="bi bi-arrow-return-left"></i> 退回 / Return</button>';
+    html += '</div>';
+    return html;
+  }
+
+  /* 渲染待发放表格：工序 / 机型 / 策略描述 / 频率 / 申请类型 / 申请人 / 提交时间 / 变更原因 / 操作 */
+  function renderStrategyReleaseTable($, rows) {
+    strategyReleaseRows = Array.isArray(rows) ? rows : [];
+    var escape = strategyReleaseEscape_;
+    var html = '';
+    if (strategyReleaseRows.length === 0) {
+      html = '<tr><td colspan="9" class="text-muted">暂无待发放策略 / No pending release</td></tr>';
+    } else {
+      for (var i = 0; i < strategyReleaseRows.length; i++) {
+        var row = strategyReleaseRows[i] || {};
+        var content = strategyReleaseContent_(row);
+        var fields = strategyReleaseFields_(content);
+        var applicant = parseStrategyReleaseOperator_(row.Operator);
+        html += '<tr>';
+        html += '<td>' + escape(row.Process) + '</td>';
+        html += '<td>' + escape(row.MachineType) + '</td>';
+        html += '<td class="text-start">' + escape(fields['PM Description']) + '</td>';
+        html += '<td>' + escape(fields['PM Frequency']) + '</td>';
+        html += '<td>' + escape(strategyReleaseActionLabel_(content)) + '</td>';
+        html += '<td>' + escape(applicant.name) + '</td>';
+        html += '<td>' + escape(applicant.timestamp) + '</td>';
+        html += '<td class="text-start">' + escape(row.Reason) + '</td>';
+        html += '<td>' + strategyReleaseActionButtonsHtml_(i) + '</td>';
+        html += '</tr>';
+      }
+    }
+    $('#strategyReleaseTableBody').html(html);
+  }
+
+  /* 差异表 HTML：修改/新增显示旧值+新值并标注变更行；作废仅显示旧值 */
+  function strategyReleaseDiffHtml_(content) {
+    var hasNew = !!(content && content.new);
+    var oldFields = content ? content.old : null;
+    var newFields = content ? content.new : null;
+    var rows = typeof strategyDiffRows === 'function' ? strategyDiffRows(oldFields, newFields) : [];
+    var html = '<div class="table-responsive"><table class="table table-sm table-bordered align-middle mb-0" id="strategyReleaseDiffTable">';
+    html += '<thead><tr>';
+    html += '<th>字段<br><small>Field</small></th>';
+    html += '<th>原值<br><small>Old Value</small></th>';
+    if (hasNew) {
+      html += '<th>新值<br><small>New Value</small></th>';
+      html += '<th>状态<br><small>Status</small></th>';
+    }
+    html += '</tr></thead><tbody>';
+    for (var i = 0; i < rows.length; i++) {
+      var diff = rows[i] || {};
+      var changed = hasNew && diff.changed;
+      html += '<tr' + (changed ? ' class="table-warning"' : '') + '>';
+      html += '<td class="text-start">' + strategyReleaseEscape_(diff.label) + '</td>';
+      html += '<td class="text-start">' + strategyReleaseEscape_(diff.oldValue) + '</td>';
+      if (hasNew) {
+        html += '<td class="text-start">' + strategyReleaseEscape_(diff.newValue) + '</td>';
+        html += '<td>' + (changed
+          ? '<span class="badge bg-warning text-dark">已变更 / Changed</span>'
+          : '<span class="text-muted">—</span>') + '</td>';
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  /* 详情弹窗：基础信息 + 差异表 */
+  function showStrategyReleaseDetail_(index) {
+    var row = strategyReleaseRows[index];
+    if (!row) return;
+    var content = strategyReleaseContent_(row);
+    var fields = strategyReleaseFields_(content);
+    var applicant = parseStrategyReleaseOperator_(row.Operator);
+    var escape = strategyReleaseEscape_;
+    var info = '<div style="text-align:left;font-size:13px;line-height:1.7;margin-bottom:10px;">';
+    info += '<div><strong>工序 / Process:</strong> ' + escape(row.Process) + '</div>';
+    info += '<div><strong>机型 / Machine Type:</strong> ' + escape(row.MachineType) + '</div>';
+    info += '<div><strong>策略描述 / PM Description:</strong> ' + escape(fields['PM Description']) + '</div>';
+    info += '<div><strong>频率 / PM Frequency:</strong> ' + escape(fields['PM Frequency']) + '</div>';
+    info += '<div><strong>申请类型 / Request Type:</strong> ' + escape(strategyReleaseActionLabel_(content)) + '</div>';
+    info += '<div><strong>申请人 / Applicant:</strong> ' + escape(applicant.name) + '</div>';
+    info += '<div><strong>提交时间 / Submitted At:</strong> ' + escape(applicant.timestamp) + '</div>';
+    info += '<div><strong>变更原因 / Reason:</strong> ' + escape(row.Reason) + '</div>';
+    info += '</div>';
+    Swal.fire({
+      title: swalTitle('策略详情', 'Strategy Detail'),
+      html: info + strategyReleaseDiffHtml_(content),
+      width: '90%',
+      showCloseButton: true,
+      confirmButtonText: '确定 / OK'
+    });
+  }
+
+  /* 失败提示：把后端「中文 / English」消息拆成双语 swalHtml */
+  function showStrategyReleaseError_(message) {
+    var text = strategyReleaseText_(message);
+    var cn = '后端返回异常，请重试。';
+    var en = 'Backend error, please retry.';
+    if (text !== '') {
+      cn = text;
+      en = text;
+      var parts = text.split(' / ');
+      if (parts.length >= 2) {
+        cn = parts[0];
+        en = parts.slice(1).join(' / ');
+      }
+    }
+    Swal.close();
+    Swal.fire({
+      icon: 'error',
+      title: swalTitle('操作失败', 'Failed'),
+      html: swalHtml(cn, en),
+      confirmButtonText: '确定 / OK'
+    });
+  }
+
+  /* 后端结果统一处理：成功提示后刷新队列，失败展示后端 message */
+  function handleStrategyReleaseResult_(r, $, isReturn) {
+    if (r && r.ok) {
+      Swal.fire({
+        icon: 'success',
+        title: swalTitle(isReturn ? '退回成功' : '发放成功', isReturn ? 'Returned' : 'Released'),
+        timer: 1500,
+        showConfirmButton: false
+      });
+      loadStrategyReleaseQueue($);
+      return;
+    }
+    // 后端返回「策略已更新，请刷新后重试」「该申请不在待发放状态」等具体原因
+    showStrategyReleaseError_(r && r.message ? r.message : '');
+  }
+
+  /* 实际发放：调用 releaseStrategy */
+  function submitStrategyReleaseRequest_($, payload) {
+    Swal.fire({
+      title: swalTitle('请等待', 'Please Wait'),
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    google.script.run
+      .withSuccessHandler(function (r) {
+        handleStrategyReleaseResult_(r, $, false);
+      })
+      .withFailureHandler(function () {
+        showStrategyReleaseError_('后端返回异常，请重试。/ Backend error, please retry.');
+      })
+      .releaseStrategy(payload);
+  }
+
+  /* 实际退回：调用 returnStrategy */
+  function submitStrategyReturnRequest_($, payload) {
+    Swal.fire({
+      title: swalTitle('请等待', 'Please Wait'),
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    google.script.run
+      .withSuccessHandler(function (r) {
+        handleStrategyReleaseResult_(r, $, true);
+      })
+      .withFailureHandler(function () {
+        showStrategyReleaseError_('后端返回异常，请重试。/ Backend error, please retry.');
+      })
+      .returnStrategy(payload);
+  }
+
+  /* 发放弹窗：危险确认（发放后立即生效/作废且不可撤销）；确认后构造 payload 并提交 */
+  function promptStrategyReleaseConfirm_($, index) {
+    var row = strategyReleaseRows[index];
+    if (!row) return;
+    var isVoid = strategyReleaseIsVoid_(strategyReleaseContent_(row));
+    Swal.fire({
+      icon: 'warning',
+      title: swalTitle('确认发放？', 'Confirm Release?'),
+      html: isVoid
+        ? swalHtml('发放后策略将立即作废，且无法撤销。', 'Releasing will void the strategy immediately and cannot be undone.')
+        : swalHtml('发放后策略将立即生效，且无法撤销。', 'Releasing takes effect immediately and cannot be undone.'),
+      showCancelButton: true,
+      confirmButtonText: '发放 / Release',
+      cancelButtonText: '取消 / Cancel',
+      confirmButtonColor: '#E60012'
+    }).then(function (result) {
+      if (!result || !result.isConfirmed) return;
+      var payload = buildStrategyReleasePayload(row, {
+        jobNumber: typeof STRATEGY_JOB_NUMBER !== 'undefined' ? STRATEGY_JOB_NUMBER : '',
+        name: typeof STRATEGY_USER_NAME !== 'undefined' ? STRATEGY_USER_NAME : ''
+      });
+      if (payload === null) {
+        showStrategyReleaseError_('发放记录缺少操作人信息，请刷新后重试。/ Release record is missing operator information.');
+        return;
+      }
+      submitStrategyReleaseRequest_($, payload);
+    });
+  }
+
+  /* 退回弹窗：退回原因必填；确认后构造 payload 并提交 */
+  function promptStrategyReturnReason_($, index) {
+    var row = strategyReleaseRows[index];
+    if (!row) return;
+    Swal.fire({
+      icon: 'warning',
+      title: swalTitle('退回申请', 'Return Request'),
+      html: swalHtml('请填写退回原因（必填）。', 'Please enter the return reason (required).'),
+      input: 'textarea',
+      inputPlaceholder: '退回原因（必填）/ Return Reason (required)',
+      inputValidator: function (value) {
+        if (value === null || value === undefined || String(value).trim() === '') {
+          return '退回原因必填 / Reason is required';
+        }
+        return null;
+      },
+      showCancelButton: true,
+      confirmButtonText: '退回 / Return',
+      cancelButtonText: '取消 / Cancel',
+      confirmButtonColor: '#E60012'
+    }).then(function (result) {
+      if (!result || !result.isConfirmed) return;
+      var payload = buildStrategyReturnPayload(row, result.value, {
+        jobNumber: typeof STRATEGY_JOB_NUMBER !== 'undefined' ? STRATEGY_JOB_NUMBER : '',
+        name: typeof STRATEGY_USER_NAME !== 'undefined' ? STRATEGY_USER_NAME : ''
+      });
+      if (payload === null) {
+        showStrategyReleaseError_('退回原因必填 / Reason is required');
+        return;
+      }
+      submitStrategyReturnRequest_($, payload);
+    });
+  }
+
+  /* 用户栏：优先取 URL 注入值，其次取后端返回的 user */
+  function renderStrategyReleaseUser_($, user) {
+    var userName = typeof STRATEGY_USER_NAME !== 'undefined' && STRATEGY_USER_NAME ? String(STRATEGY_USER_NAME) : '';
+    var jobNumber = typeof STRATEGY_JOB_NUMBER !== 'undefined' && STRATEGY_JOB_NUMBER ? String(STRATEGY_JOB_NUMBER) : '';
+    if (userName === '' && user && user.name) userName = String(user.name);
+    if (jobNumber === '' && user && user.jobNumber) jobNumber = String(user.jobNumber);
+    $('#Name').text(userName === '' ? '-' : userName);
+    $('#JobNumber').text(jobNumber);
+  }
+
+  /* 读取待发放队列 */
+  function loadStrategyReleaseQueue($) {
+    $('#strategyReleaseTableBody').html('<tr><td colspan="9" class="text-muted">加载中 / Loading...</td></tr>');
+    google.script.run
+      .withSuccessHandler(function (r) {
+        renderStrategyReleaseUser_($, r && r.user ? r.user : null);
+        renderStrategyReleaseTable($, r && r.rows ? r.rows : []);
+      })
+      .withFailureHandler(function () {
+        strategyReleaseRows = [];
+        renderStrategyReleaseTable($, []);
+        showStrategyReleaseError_('待办加载失败，请刷新重试。/ Failed to load work queue, please refresh.');
+      })
+      .getStrategyWorkQueue('release', typeof STRATEGY_JOB_NUMBER !== 'undefined' ? STRATEGY_JOB_NUMBER : '');
+  }
+
+  /* 文控发放页初始化 */
+  function initStrategyReleasePage($) {
+    if (!$) return;
+    $('#title').text(STRATEGY_RELEASE_TITLE);
+    $('#strategyReleaseSectionTitle').text(STRATEGY_RELEASE_SECTION_TITLE);
+    renderStrategyReleaseUser_($, null);
+
+    $('#strategyReleaseTableBody').on('click', '.strategy-release-detail-btn', function () {
+      var index = parseInt($(this).attr('data-strategy-release-index'), 10);
+      if (isNaN(index)) return;
+      showStrategyReleaseDetail_(index);
+    });
+    $('#strategyReleaseTableBody').on('click', '.strategy-release-release-btn', function () {
+      var index = parseInt($(this).attr('data-strategy-release-index'), 10);
+      if (isNaN(index)) return;
+      promptStrategyReleaseConfirm_($, index);
+    });
+    $('#strategyReleaseTableBody').on('click', '.strategy-release-return-btn', function () {
+      var index = parseInt($(this).attr('data-strategy-release-index'), 10);
+      if (isNaN(index)) return;
+      promptStrategyReturnReason_($, index);
+    });
+
+    loadStrategyReleaseQueue($);
+  }
+
+  if (typeof $ !== 'undefined') {
+    $(document).ready(function () {
+      initStrategyReleasePage($);
+    });
+  }
+</script>
