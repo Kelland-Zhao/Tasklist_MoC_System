@@ -1,0 +1,452 @@
+<script>
+  /* EDS §8.1 双语 helper（字符串拼接，避免模板字符串与测试注入冲突） */
+  const swalTitle = (cn, en) => cn + '<span style="display:block;font-size:0.65em;color:#888;font-weight:400;line-height:1.3;margin-top:4px;">' + en + '</span>';
+  const swalHtml  = (cn, en) => '<div>' + cn + '<div style="font-size:0.85em;color:#888;margin-top:6px;line-height:1.4;">' + en + '</div></div>';
+
+  /* 页面标题 / 分组标题 */
+  var STRATEGY_VIEWER_TITLE = '任务清单变更管理 - 保养策略查阅 / Tasklist MoC - PM Strategy Viewer';
+  var STRATEGY_VIEWER_SECTION_TITLE = '当前生效策略 / EFFECTIVE STRATEGIES';
+
+  /* 关键字匹配的业务字段 */
+  var STRATEGY_VIEWER_KEYWORD_KEYS = ['PM Description', 'Machine Type', 'TasklistName'];
+
+  /* 页面状态：主数据缓存 / 当前筛选结果 / 历史审批缓存 */
+  var strategyViewerRows = [];
+  var strategyViewerVisibleRows = [];
+  var strategyViewerHistoryRows = [];
+
+  /* null/undefined → ''，其余转字符串并 trim */
+  function strategyViewerText_(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).trim();
+  }
+
+  /* 展示用文本：null/undefined → ''，其余转字符串（不 trim，保留原样） */
+  function strategyViewerValueText_(value) {
+    if (value === null || value === undefined) return '';
+    return String(value);
+  }
+
+  /* 共享转义 helper 缺失时退化为本地实现 */
+  function strategyViewerEscape_(value) {
+    if (typeof strategyEscapeHtml === 'function') return strategyEscapeHtml(value);
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /* 共享状态徽章缺失时退化为普通徽章 */
+  function strategyViewerStatusBadge_(status) {
+    if (typeof strategyStatusBadge === 'function') return strategyStatusBadge(status);
+    var text = strategyViewerValueText_(status);
+    return '<span class="badge bg-secondary">' + strategyViewerEscape_(text) + '</span>';
+  }
+
+  /* 展示编号：优先用共享 formatStrategyId（策略ID 为空时返回空串） */
+  function strategyViewerDisplayId_(row) {
+    var strategyId = strategyViewerText_(row ? row['策略ID'] : '');
+    var version = strategyViewerText_(row ? row['版本号'] : '');
+    if (typeof formatStrategyId === 'function') return formatStrategyId(strategyId, version);
+    if (strategyId === '') return '';
+    var text = version === '' ? '00' : version;
+    if (text.length < 2) text = '0' + text;
+    return strategyId + '-' + text;
+  }
+
+  /* 申请动作标签：共享 helper 缺失时本地实现 */
+  function strategyViewerActionLabel_(content) {
+    if (typeof strategyActionLabel === 'function') return strategyActionLabel(content);
+    var hasOld = !!(content && content.old);
+    var hasNew = !!(content && content.new);
+    if (hasOld && hasNew) return '修改 / Edit';
+    if (hasOld) return '作废 / Void';
+    return '新增 / Create';
+  }
+
+  /* 关键字：trim 后不区分大小写，匹配 PM Description / Machine Type / TasklistName */
+  function strategyViewerKeywordMatch_(row, keyword) {
+    var text = strategyViewerText_(keyword).toLowerCase();
+    if (text === '') return true;
+    if (!row) return false;
+    for (var i = 0; i < STRATEGY_VIEWER_KEYWORD_KEYS.length; i++) {
+      if (strategyViewerText_(row[STRATEGY_VIEWER_KEYWORD_KEYS[i]]).toLowerCase().indexOf(text) !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * 过滤主表行：工序 / 机型复用共享 filterStrategyMasterRows（trim 后精确匹配），
+   * 关键字做 trim + 不区分大小写的包含匹配。返回新数组，不修改入参。
+   * @param {Array<Object>} rows
+   * @param {string} process
+   * @param {string} machineType
+   * @param {string} keyword
+   * @returns {Array<Object>}
+   */
+  function filterStrategyViewerRows(rows, process, machineType, keyword) {
+    var list = Array.isArray(rows) ? rows : [];
+    var base;
+    if (typeof filterStrategyMasterRows === 'function') {
+      base = filterStrategyMasterRows(list, process, machineType);
+    } else {
+      var processFilter = strategyViewerText_(process);
+      var machineFilter = strategyViewerText_(machineType);
+      base = list.filter(function (row) {
+        if (!row) return false;
+        if (processFilter !== '' && strategyViewerText_(row['工序']) !== processFilter) return false;
+        if (machineFilter !== '' && strategyViewerText_(row['Machine Type']) !== machineFilter) return false;
+        return true;
+      });
+    }
+    return base.filter(function (row) {
+      return strategyViewerKeywordMatch_(row, keyword);
+    });
+  }
+
+  /**
+   * 解析 History「Operator」列：
+   * `工号/ JobNumber:  {jobNo}_姓名/ Name:  {name} {yyyy-MM-dd HH:mm:ss}`
+   * @param {string} operator
+   * @returns {{operator:string,date:string}}
+   */
+  function parseStrategyViewerOperator_(operator) {
+    var text = strategyViewerText_(operator);
+    var result = { operator: '', date: '' };
+    if (text === '') return result;
+
+    var jobMatch = text.match(/JobNumber:\s*([^_]+)/);
+    var jobNumber = jobMatch ? jobMatch[1].trim() : '';
+
+    var timeMatch = text.match(/(\d{4}[-\/]\d{1,2}[-\/]\d{1,2}\s+\d{1,2}:\d{2}:\d{2})\s*$/);
+    if (timeMatch) result.date = timeMatch[1];
+
+    var nameMatch = text.match(/Name:\s*(.+)$/);
+    if (nameMatch) {
+      var name = nameMatch[1];
+      if (result.date !== '') {
+        name = name.replace(/\s*\d{4}[-\/]\d{1,2}[-\/]\d{1,2}\s+\d{1,2}:\d{2}:\d{2}\s*$/, '');
+      }
+      result.operator = name.trim();
+    }
+    if (result.operator === '') result.operator = jobNumber !== '' ? jobNumber : text;
+    return result;
+  }
+
+  /* 解析 `Strategy Content` JSON；空值/非法 JSON 返回 null */
+  function strategyViewerContent_(row) {
+    if (!row) return null;
+    var raw = row['Strategy Content'];
+    if (raw === null || raw === undefined || raw === '') return null;
+    if (typeof raw === 'object') return raw;
+    try {
+      return JSON.parse(String(raw));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /* 版本号倒序比较：数字版本按数值比较，其余按字符串比较 */
+  function strategyViewerCompareVersionDesc_(leftVersion, rightVersion) {
+    var left = strategyViewerText_(leftVersion);
+    var right = strategyViewerText_(rightVersion);
+    var isNumeric = /^\d+$/;
+    if (isNumeric.test(left) && isNumeric.test(right)) {
+      return parseInt(right, 10) - parseInt(left, 10);
+    }
+    if (left === right) return 0;
+    return left < right ? 1 : -1;
+  }
+
+  /**
+   * 构造某策略的版本历史：只保留 `Strategy Content` 中 strategyId 匹配的行，
+   * 版本号取 content.version，按版本号倒序。
+   * @param {Array<Object>} historyRows History 表行
+   * @param {string} strategyId 策略ID
+   * @returns {Array<{version:string,action:string,status:string,operator:string,date:string,content:Object|null}>}
+   */
+  function buildStrategyVersionHistory(historyRows, strategyId) {
+    var list = Array.isArray(historyRows) ? historyRows : [];
+    var target = strategyViewerText_(strategyId);
+    if (target === '') return [];
+    var history = [];
+    for (var i = 0; i < list.length; i++) {
+      var row = list[i] || {};
+      var content = strategyViewerContent_(row);
+      if (!content) continue;
+      if (strategyViewerText_(content.strategyId) !== target) continue;
+      var actor = parseStrategyViewerOperator_(row.Operator);
+      history.push({
+        version: strategyViewerText_(content.version),
+        action: strategyViewerActionLabel_(content),
+        status: strategyViewerValueText_(row.Status),
+        operator: actor.operator,
+        date: actor.date,
+        content: content.new || content.old || null
+      });
+    }
+    history.sort(function (a, b) {
+      return strategyViewerCompareVersionDesc_(a.version, b.version);
+    });
+    return history;
+  }
+
+  /* 14 个业务字段定义：优先共享 STRATEGY_FIELDS */
+  function strategyViewerFieldList_() {
+    if (typeof STRATEGY_FIELDS !== 'undefined' && STRATEGY_FIELDS && STRATEGY_FIELDS.length) {
+      return STRATEGY_FIELDS;
+    }
+    return null;
+  }
+
+  /* 字段值表格（只读）：14 个业务字段按 STRATEGY_FIELDS 顺序输出 */
+  function strategyViewerFieldsTableHtml_(fields) {
+    var data = fields || {};
+    var list = strategyViewerFieldList_();
+    var escape = strategyViewerEscape_;
+    var rows = [];
+    if (list) {
+      for (var i = 0; i < list.length; i++) {
+        rows.push({ key: list[i].key, label: list[i].label, labelEn: list[i].labelEn });
+      }
+    } else {
+      var keys = Object.keys(data);
+      for (var j = 0; j < keys.length; j++) {
+        rows.push({ key: keys[j], label: keys[j], labelEn: keys[j] });
+      }
+    }
+
+    var html = '<div class="table-responsive"><table class="table table-sm table-bordered align-middle mb-0 strategy-viewer-detail-table">';
+    html += '<thead><tr><th>字段<br><small>Field</small></th><th>值<br><small>Value</small></th></tr></thead><tbody>';
+    if (rows.length === 0) {
+      html += '<tr><td colspan="2" class="text-muted">—</td></tr>';
+    } else {
+      for (var k = 0; k < rows.length; k++) {
+        var value = strategyViewerValueText_(data[rows[k].key]);
+        html += '<tr>';
+        html += '<td class="text-start">' + escape(rows[k].label) + '<br><small>' + escape(rows[k].labelEn) + '</small></td>';
+        html += '<td class="text-start">' + (strategyViewerText_(value) === ''
+          ? '<span class="text-muted">—</span>'
+          : escape(value)) + '</td>';
+        html += '</tr>';
+      }
+    }
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  /* 渲染当前生效策略表格：工序 / 机型 / 保养描述 / 保养频率 / 策略 / 版本号 / 策略编号 / 操作 */
+  function renderStrategyViewerTable($) {
+    var rows = filterStrategyViewerRows(
+      strategyViewerRows,
+      $('#processFilter').val(),
+      $('#machineTypeFilter').val(),
+      $('#keywordFilter').val()
+    );
+    strategyViewerVisibleRows = rows;
+    var escape = strategyViewerEscape_;
+    var html = '';
+    if (rows.length === 0) {
+      html = '<tr><td colspan="8" class="text-muted">未找到匹配的策略 / No matching strategy</td></tr>';
+    } else {
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i] || {};
+        html += '<tr>';
+        html += '<td>' + escape(row['工序']) + '</td>';
+        html += '<td>' + escape(row['Machine Type']) + '</td>';
+        html += '<td class="text-start">' + escape(row['PM Description']) + '</td>';
+        html += '<td>' + escape(row['PM Frequency']) + '</td>';
+        html += '<td>' + escape(row['策略 / Strategy']) + '</td>';
+        html += '<td>' + escape(row['版本号']) + '</td>';
+        html += '<td>' + escape(strategyViewerDisplayId_(row)) + '</td>';
+        html += '<td class="strategy-viewer-action-cell">';
+        html += '<button type="button" class="btn btn-sm btn-info strategy-viewer-detail-btn strategy-viewer-action-btn" data-strategy-viewer-index="' + i + '" title="详情 / Detail"><i class="bi bi-list-ul"></i> 详情 / Detail</button>';
+        html += '<button type="button" class="btn btn-sm btn-outline-secondary strategy-viewer-history-btn strategy-viewer-action-btn" data-strategy-viewer-index="' + i + '" title="版本历史 / Version History"><i class="bi bi-clock-history"></i> 版本历史 / Versions</button>';
+        html += '</td>';
+        html += '</tr>';
+      }
+    }
+    $('#strategyViewerTableBody').html(html);
+  }
+
+  /* 详情弹窗：当前版本 14 个业务字段 + 策略ID / 版本号 / 生效时间 / 最后修改人 / 最后修改时间 */
+  function showStrategyViewerDetail_(index) {
+    var row = strategyViewerVisibleRows[index];
+    if (!row) return;
+    var escape = strategyViewerEscape_;
+    var meta = '<div class="strategy-viewer-info">';
+    meta += '<div><strong>策略ID / Strategy ID:</strong> ' + escape(strategyViewerValueText_(row['策略ID'])) + '</div>';
+    meta += '<div><strong>版本号 / Version:</strong> ' + escape(strategyViewerValueText_(row['版本号'])) + '</div>';
+    meta += '<div><strong>生效时间 / Effective Date:</strong> ' + escape(strategyViewerValueText_(row['生效时间'])) + '</div>';
+    meta += '<div><strong>最后修改人 / Last Modified By:</strong> ' + escape(strategyViewerValueText_(row['最后修改人'])) + '</div>';
+    meta += '<div><strong>最后修改时间 / Last Modified At:</strong> ' + escape(strategyViewerValueText_(row['最后修改时间'])) + '</div>';
+    meta += '</div>';
+
+    var html = meta;
+    html += '<div class="strategy-viewer-detail-title">策略字段 / STRATEGY FIELDS</div>';
+    html += strategyViewerFieldsTableHtml_(row);
+
+    Swal.fire({
+      title: swalTitle('策略详情', 'Strategy Detail'),
+      html: html,
+      width: '90%',
+      showCloseButton: true,
+      confirmButtonText: '确定 / OK'
+    });
+  }
+
+  /* 版本历史弹窗：buildStrategyVersionHistory 结果按版本倒序展示，每个版本附内容快照 */
+  function showStrategyViewerVersionHistory_(index) {
+    var row = strategyViewerVisibleRows[index];
+    if (!row) return;
+    var escape = strategyViewerEscape_;
+    var displayId = strategyViewerDisplayId_(row);
+    var history = buildStrategyVersionHistory(strategyViewerHistoryRows, row['策略ID']);
+
+    var html = '<div class="strategy-viewer-info">';
+    if (displayId !== '') {
+      html += '<div><strong>策略编号 / Strategy ID:</strong> ' + escape(displayId) + '</div>';
+    }
+    html += '<div><strong>机型 / Machine Type:</strong> ' + escape(strategyViewerValueText_(row['Machine Type'])) + '</div>';
+    html += '</div>';
+
+    if (history.length === 0) {
+      html += '<div class="text-muted">暂无历史版本 / No version history</div>';
+    } else {
+      for (var i = 0; i < history.length; i++) {
+        var item = history[i];
+        var versionLabel = item.version === '' ? '—' : 'v' + item.version;
+        html += '<div class="strategy-viewer-version">';
+        html += '<div class="strategy-viewer-version-head">';
+        html += '<span class="badge bg-dark">' + escape(versionLabel) + '</span>';
+        html += '<span class="fw-semibold">' + escape(item.action) + '</span>';
+        html += strategyViewerStatusBadge_(item.status);
+        html += '<span class="text-muted">' + escape(item.operator) + (item.date === '' ? '' : ' · ' + escape(item.date)) + '</span>';
+        html += '</div>';
+        html += strategyViewerFieldsTableHtml_(item.content);
+        html += '</div>';
+      }
+    }
+
+    Swal.fire({
+      title: swalTitle('版本历史', 'Version History'),
+      html: html,
+      width: '90%',
+      showCloseButton: true,
+      confirmButtonText: '确定 / OK'
+    });
+  }
+
+  /* 失败提示：把后端「中文 / English」消息拆成双语 swalHtml */
+  function showStrategyViewerError_(message) {
+    var text = strategyViewerText_(message);
+    var cn = '后端返回异常，请重试。';
+    var en = 'Backend error, please retry.';
+    if (text !== '') {
+      cn = text;
+      en = text;
+      var parts = text.split(' / ');
+      if (parts.length >= 2) {
+        cn = parts[0];
+        en = parts.slice(1).join(' / ');
+      }
+    }
+    Swal.close();
+    Swal.fire({
+      icon: 'error',
+      title: swalTitle('加载失败', 'Load Failed'),
+      html: swalHtml(cn, en),
+      confirmButtonText: '确定 / OK'
+    });
+  }
+
+  /* 用户栏：取 URL 注入值 */
+  function renderStrategyViewerUser_($) {
+    var userName = typeof STRATEGY_USER_NAME !== 'undefined' && STRATEGY_USER_NAME ? String(STRATEGY_USER_NAME) : '';
+    var jobNumber = typeof STRATEGY_JOB_NUMBER !== 'undefined' && STRATEGY_JOB_NUMBER ? String(STRATEGY_JOB_NUMBER) : '';
+    $('#Name').text(userName === '' ? '-' : userName);
+    $('#JobNumber').text(jobNumber);
+  }
+
+  /* 并行读取主数据与审批历史，两者返回后统一渲染 */
+  function loadStrategyViewerData($) {
+    $('#strategyViewerTableBody').html('<tr><td colspan="8" class="text-muted">加载中 / Loading...</td></tr>');
+    var pendingCalls = 2;
+    var hadError = false;
+
+    function callFinished() {
+      pendingCalls--;
+      if (pendingCalls !== 0) return;
+      if (!hadError) Swal.close();
+      renderStrategyViewerTable($);
+    }
+
+    google.script.run
+      .withSuccessHandler(function (r) {
+        strategyViewerRows = r && r.rows ? r.rows : [];
+        callFinished();
+      })
+      .withFailureHandler(function () {
+        strategyViewerRows = [];
+        hadError = true;
+        showStrategyViewerError_('主数据加载失败，请刷新重试。/ Failed to load master data, please refresh.');
+        callFinished();
+      })
+      .getStrategyMasterData();
+
+    google.script.run
+      .withSuccessHandler(function (r) {
+        strategyViewerHistoryRows = r && r.rows ? r.rows : [];
+        callFinished();
+      })
+      .withFailureHandler(function () {
+        strategyViewerHistoryRows = [];
+        hadError = true;
+        showStrategyViewerError_('审批历史加载失败，请刷新重试。/ Failed to load history, please refresh.');
+        callFinished();
+      })
+      .getStrategyHistoryData();
+  }
+
+  /* 查阅页初始化（只读，无提交/修改入口） */
+  function initStrategyViewerPage($) {
+    if (!$) return;
+    $('#title').text(STRATEGY_VIEWER_TITLE);
+    $('#strategyViewerSectionTitle').text(STRATEGY_VIEWER_SECTION_TITLE);
+    renderStrategyViewerUser_($);
+
+    Swal.fire({
+      title: swalTitle('加载中...', 'Loading...'),
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    $('#processFilter').on('change', function () { renderStrategyViewerTable($); });
+    $('#machineTypeFilter').on('input change', function () { renderStrategyViewerTable($); });
+    $('#keywordFilter').on('input change', function () { renderStrategyViewerTable($); });
+    $('#strategyViewerTableBody').on('click', '.strategy-viewer-detail-btn', function () {
+      var index = parseInt($(this).attr('data-strategy-viewer-index'), 10);
+      if (isNaN(index)) return;
+      showStrategyViewerDetail_(index);
+    });
+    $('#strategyViewerTableBody').on('click', '.strategy-viewer-history-btn', function () {
+      var index = parseInt($(this).attr('data-strategy-viewer-index'), 10);
+      if (isNaN(index)) return;
+      showStrategyViewerVersionHistory_(index);
+    });
+
+    loadStrategyViewerData($);
+  }
+
+  if (typeof $ !== 'undefined') {
+    $(document).ready(function () {
+      initStrategyViewerPage($);
+    });
+  }
+</script>
