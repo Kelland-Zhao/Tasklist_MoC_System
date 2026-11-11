@@ -2699,3 +2699,215 @@ function submitStrategyEdit(payload) {
 function submitStrategyVoid(payload) {
   return createStrategyRequest_(payload, "void");
 }
+
+/**
+ * 按 Operator 精确查找 History 行（含 1-based 行号）
+ * @param {string} operator
+ * @returns {{rowNumber:number,row:Object}|null}
+ */
+function findStrategyHistoryRow_(operator) {
+  var target = operator === null || operator === undefined ? "" : String(operator).trim();
+  if (target === "") return null;
+  var ws = SpreadsheetApp.openById(STRATEGY_SS_ID).getSheetByName(STRATEGY_HISTORY_SHEET_NAME);
+  var lastRow = ws.getLastRow();
+  if (lastRow < 2) return null;
+  var data = ws.getSheetValues(2, 1, lastRow - 1, STRATEGY_HISTORY_HEADERS.length);
+  for (var i = 0; i < data.length; i++) {
+    var current = data[i][2];
+    var text = current === null || current === undefined ? "" : String(current).trim();
+    if (text === target) {
+      return { rowNumber: i + 2, row: strategyRowToObject_(STRATEGY_HISTORY_HEADERS, data[i]) };
+    }
+  }
+  return null;
+}
+
+/**
+ * 生成审批人列文字：`批准/ Approve {email} {timestamp}` 等
+ * @param {string} decision `approve` | `reject`
+ * @param {string} email 审批人邮箱
+ * @param {boolean} isVoid 是否为作废单
+ * @returns {string}
+ */
+function strategyApprovalWord_(decision, email, isVoid) {
+  var person = email === null || email === undefined ? "" : String(email).trim();
+  var timestamp = Utilities.formatDate(new Date(), "Asia/Shanghai", "yyyy-MM-dd HH:mm:ss");
+  if (decision === "reject") {
+    return "拒绝/ Reject " + person + " " + timestamp;
+  }
+  if (isVoid) {
+    return "批准作废/ Approve to void " + person + " " + timestamp;
+  }
+  return "批准/ Approve " + person + " " + timestamp;
+}
+
+/**
+ * 发送审批结果邮件
+ * @param {{subject:string,introHtml:string,to:Array<string>,cc:string,row:Object,fields:Object,action:string}} mail
+ */
+function sendStrategyApprovalMail_(mail) {
+  var row = mail.row || {};
+  var fields = mail.fields || {};
+  var actionLabel = mail.action === "new" ? "新建/ New" : mail.action === "edit" ? "修改/ Modify" : mail.action === "void" ? "作废/ Void" : "";
+  var bodyHtml = mail.introHtml || "";
+  bodyHtml += _buildMoCInfoTable(
+    ["工序/ Process", "机型/ Machine Type", "策略描述/ PM Description", "申请类型/ Request Type", "变更原因/ Reason", "申请人/ Applicant"],
+    [[
+      row.Process || "",
+      row.MachineType || "",
+      fields["PM Description"] || "",
+      actionLabel,
+      row.Reason || "",
+      row.submitMail || ""
+    ]]
+  );
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  var htmlBody = _buildMoCEmailShell(mail.subject, bodyHtml);
+  var cc = mail.cc === null || mail.cc === undefined ? "" : String(mail.cc).trim();
+  (mail.to || []).forEach(function (recipient) {
+    var email = recipient === null || recipient === undefined ? "" : String(recipient).trim();
+    if (email === "") return;
+    var options = { htmlBody: htmlBody };
+    if (cc !== "") options.cc = cc;
+    GmailApp.sendEmail(email, mail.subject, "", options);
+  });
+}
+
+/**
+ * 审批保养策略申请（工序经理 / 部门经理）
+ * @param {{jobNumber:string,name:string,operator:string,level:number,decision:string,comment:string}} payload
+ * @returns {{ok:boolean,message?:string}}
+ */
+function saveStrategyApproval(payload) {
+  var data = payload || {};
+  var user = getStrategyUserByJobNumber_(data.jobNumber);
+  if (!user) {
+    return { ok: false, message: "用户不存在或未登录 / User not found" };
+  }
+
+  var level = parseInt(data.level, 10);
+  if (level !== 1 && level !== 2) {
+    return { ok: false, message: "审批级别无效 / Invalid approval level" };
+  }
+  var decision = data.decision === null || data.decision === undefined ? "" : String(data.decision).trim();
+  if (decision !== "approve" && decision !== "reject") {
+    return { ok: false, message: "审批决定无效 / Invalid decision" };
+  }
+
+  var found = findStrategyHistoryRow_(data.operator);
+  if (!found) {
+    return { ok: false, message: "审批记录不存在 / Approval record not found" };
+  }
+  var row = found.row;
+  var status = row.Status === null || row.Status === undefined ? "" : String(row.Status).trim();
+  if (status !== STRATEGY_STATUS.pending && status !== STRATEGY_STATUS.voidPending) {
+    return { ok: false, message: "该申请不在审批中 / Request is not pending approval" };
+  }
+
+  var approver1 = row.Approver1 === null || row.Approver1 === undefined ? "" : String(row.Approver1).trim();
+  var approver2 = row.Approver2 === null || row.Approver2 === undefined ? "" : String(row.Approver2).trim();
+  if (level === 1) {
+    if (!strategyHasPermission_(user, "策略工序经理") || !strategyProcessMatches_(user, row.Process)) {
+      return { ok: false, message: "没有工序经理审批权限 / No process manager permission" };
+    }
+    if (approver1 !== "") {
+      return { ok: false, message: "工序经理已审批 / Process manager already approved" };
+    }
+  } else {
+    if (!strategyHasPermission_(user, "策略部门经理")) {
+      return { ok: false, message: "没有部门经理审批权限 / No department manager permission" };
+    }
+    if (approver1 === "" || approver2 !== "") {
+      return { ok: false, message: "部门经理节点未开放 / Department manager node is not open" };
+    }
+  }
+
+  var content = null;
+  try {
+    content = JSON.parse(row["Strategy Content"]);
+  } catch (e) {
+    content = null;
+  }
+  var fields = content && (content.new || content.old) ? (content.new || content.old) : {};
+  var isVoid = status === STRATEGY_STATUS.voidPending;
+  var approverEmail = user.email === null || user.email === undefined ? "" : String(user.email).trim();
+  if (approverEmail === "") {
+    approverEmail = Session.getActiveUser().getEmail();
+  }
+
+  var word = strategyApprovalWord_(decision, approverEmail, isVoid);
+  var comment = data.comment === null || data.comment === undefined ? "" : String(data.comment).trim();
+  var ws = SpreadsheetApp.openById(STRATEGY_SS_ID).getSheetByName(STRATEGY_HISTORY_SHEET_NAME);
+  if (level === 1) {
+    ws.getRange(found.rowNumber, 5).setValue(word);
+    ws.getRange(found.rowNumber, 6).setValue(comment);
+  } else {
+    ws.getRange(found.rowNumber, 7).setValue(word);
+    ws.getRange(found.rowNumber, 8).setValue(comment);
+  }
+
+  if (decision === "reject") {
+    ws.getRange(found.rowNumber, 10).setValue(STRATEGY_STATUS.rejected);
+  } else if (level === 2) {
+    ws.getRange(found.rowNumber, 10).setValue(STRATEGY_STATUS.waitRelease);
+  }
+
+  var approvers = getStrategyApprovers_(row.Process);
+  var applicantEmail = row.submitMail === null || row.submitMail === undefined ? "" : String(row.submitMail).trim();
+  var processManagerEmail = approvers.processManager ? approvers.processManager.email : "";
+  var deptManagerEmail = approvers.deptManager ? approvers.deptManager.email : "";
+  var docControlEmail = approvers.docControl ? approvers.docControl.email : "";
+  var action = strategyAction_(content);
+
+  if (level === 1 && decision === "approve") {
+    var subjectLevel1Approve = "保养策略审批 -- 工序经理批准/ PM Strategy Approval -- Process Manager Approved";
+    var introLevel1Approve = "<p style='font-size:15px;margin:0 0 12px'>您的保养策略申请已被 / Your PM strategy application has been <span style='background-color:#198754;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>批准 / Approved</span>，已转交部门经理审批 / It has been forwarded to the department manager.</p>";
+    sendStrategyApprovalMail_({
+      subject: subjectLevel1Approve,
+      introHtml: introLevel1Approve,
+      to: [applicantEmail, deptManagerEmail],
+      cc: "",
+      row: row,
+      fields: fields,
+      action: action
+    });
+  } else if (level === 1 && decision === "reject") {
+    var subjectLevel1Reject = "保养策略审批 -- 工序经理拒绝/ PM Strategy Approval -- Process Manager Rejected";
+    var introLevel1Reject = "<p style='font-size:15px;margin:0 0 12px'>您的保养策略申请已被 / Your PM strategy application has been <span style='background-color:#842029;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>拒绝 / Rejected</span></p>";
+    sendStrategyApprovalMail_({
+      subject: subjectLevel1Reject,
+      introHtml: introLevel1Reject,
+      to: [applicantEmail],
+      cc: "",
+      row: row,
+      fields: fields,
+      action: action
+    });
+  } else if (level === 2 && decision === "approve") {
+    var subjectLevel2Approve = "保养策略审批 -- 部门经理批准/ PM Strategy Approval -- Department Manager Approved";
+    var introLevel2Approve = "<p style='font-size:15px;margin:0 0 12px'>您的保养策略申请已被 / Your PM strategy application has been <span style='background-color:#198754;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>批准 / Approved</span>，等待文控发放 / It is waiting for document control release.</p>";
+    sendStrategyApprovalMail_({
+      subject: subjectLevel2Approve,
+      introHtml: introLevel2Approve,
+      to: [applicantEmail, docControlEmail],
+      cc: processManagerEmail,
+      row: row,
+      fields: fields,
+      action: action
+    });
+  } else if (level === 2 && decision === "reject") {
+    var subjectLevel2Reject = "保养策略审批 -- 部门经理拒绝/ PM Strategy Approval -- Department Manager Rejected";
+    var introLevel2Reject = "<p style='font-size:15px;margin:0 0 12px'>您的保养策略申请已被 / Your PM strategy application has been <span style='background-color:#842029;color:white;padding:2px 8px;border-radius:3px;font-weight:bold'>拒绝 / Rejected</span></p>";
+    sendStrategyApprovalMail_({
+      subject: subjectLevel2Reject,
+      introHtml: introLevel2Reject,
+      to: [applicantEmail],
+      cc: processManagerEmail,
+      row: row,
+      fields: fields,
+      action: action
+    });
+  }
+
+  return { ok: true };
+}
