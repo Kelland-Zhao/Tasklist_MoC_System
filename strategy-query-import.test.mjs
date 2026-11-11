@@ -134,6 +134,23 @@ test('只有部门经理权限：工序与发放计数为 0', () => {
   assert.equal(c.release, 0);
 });
 
+test('只有部门经理权限：工序队列为空', () => {
+  const r = g.getStrategyWorkQueue('process', '10002');
+  assert.equal(r.rows.length, 0);
+  assert.equal(r.user.jobNumber, '10002');
+  // 有部门经理权限时部门队列不受影响
+  assert.equal(g.getStrategyWorkQueue('dept', '10002').rows.length, 1);
+});
+
+test('没有发放权限：发放队列为空', () => {
+  const r = g.getStrategyWorkQueue('release', '10002');
+  assert.equal(r.rows.length, 0);
+  assert.equal(r.user.jobNumber, '10002');
+  assert.equal(Array.isArray(r.master), true);
+  // 有发放权限的文控仍能看到待发放队列
+  assert.equal(g.getStrategyWorkQueue('release', '10003').rows.length, 1);
+});
+
 test('导入 2 条 EQU 数据并生成基线 History', () => {
   setupEquMaster([
     ['IM','FCS','季','8','季度保养','','','3','RBM','[FCS]','Y','PM10','Y','','未确认','PM-MD-0001','','','张三','2026-10-01 10:00:00'],

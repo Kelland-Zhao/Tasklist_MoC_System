@@ -3354,7 +3354,25 @@ function strategyQueueRows_(level, user, historyRows) {
 }
 
 /**
- * 读取指定角色的待办队列
+ * 判断用户是否具备指定队列的角色权限
+ * process：策略工序经理且 AX 工序范围非空；dept：策略部门经理；release：发放
+ * @param {string} level `process` | `dept` | `release`
+ * @param {Object|null} user getStrategyUserContext 的返回值
+ * @returns {boolean}
+ */
+function strategyQueueLevelAllowed_(level, user) {
+  if (!user) return false;
+  if (level === "process") {
+    var scope = user.process === null || user.process === undefined ? "" : String(user.process).trim();
+    return scope !== "" && strategyHasPermission_(user, "策略工序经理");
+  }
+  if (level === "dept") return strategyHasPermission_(user, "策略部门经理");
+  if (level === "release") return strategyHasPermission_(user, "发放");
+  return false;
+}
+
+/**
+ * 读取指定角色的待办队列；用户不具备对应角色权限（或 level 无效）时 rows 为空
  * @param {string} level `process` | `dept` | `release`
  * @param {string|number} jobNumber
  * @returns {{rows:Array<Object>,user:Object|null,master:Array<Object>}}
@@ -3363,7 +3381,7 @@ function getStrategyWorkQueue(level, jobNumber) {
   var user = getStrategyUserContext(jobNumber);
   if (!user) return { rows: [], user: null, master: [] };
   var queueLevel = level === null || level === undefined ? "" : String(level).trim();
-  if (["process", "dept", "release"].indexOf(queueLevel) === -1) {
+  if (!strategyQueueLevelAllowed_(queueLevel, user)) {
     return { rows: [], user: user, master: [] };
   }
   return {
@@ -3385,14 +3403,13 @@ function getStrategyPendingCounts(jobNumber) {
   var user = getStrategyUserContext(jobNumber);
   if (!user) return counts;
   var historyRows = readStrategyHistoryRows_();
-  var processScope = user.process === null || user.process === undefined ? "" : String(user.process).trim();
-  if (strategyHasPermission_(user, "策略工序经理") && processScope !== "") {
+  if (strategyQueueLevelAllowed_("process", user)) {
     counts.process = strategyQueueRows_("process", user, historyRows).length;
   }
-  if (strategyHasPermission_(user, "策略部门经理")) {
+  if (strategyQueueLevelAllowed_("dept", user)) {
     counts.dept = strategyQueueRows_("dept", user, historyRows).length;
   }
-  if (strategyHasPermission_(user, "发放")) {
+  if (strategyQueueLevelAllowed_("release", user)) {
     counts.release = strategyQueueRows_("release", user, historyRows).length;
   }
   counts.total = counts.process + counts.dept + counts.release;
