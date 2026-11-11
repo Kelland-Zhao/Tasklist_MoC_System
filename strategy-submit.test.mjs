@@ -10,18 +10,25 @@ let sent;
 
 /**
  * 重建 MasterData / History / userID 三个 sheet，并安装 GAS 全局桩。
+ * @param {{omitDeptManager?:boolean,omitDocControl?:boolean}} [options]
  * @returns {{master:object, history:object, sent:Array}}
  */
-function setupStrategySheets() {
+function setupStrategySheets(options) {
+  const opts = options || {};
   const masterSheet = makeSheet([g.STRATEGY_MASTER_HEADERS.slice()]);
   const historySheet = makeSheet([g.STRATEGY_HISTORY_HEADERS.slice()]);
-  const userSheet = makeSheet([
+  const userRows = [
     [],
     [],
     makeUserRow({ jobNumber:'10001', name:'工序甲', pwd:'*', gmail:'pm.im@colpal.com', process:'IM', auth:'编辑,策略工序经理' }),
-    makeUserRow({ jobNumber:'10002', name:'部门乙', pwd:'*', gmail:'dept@colpal.com', process:'ALL', auth:'策略部门经理' }),
-    makeUserRow({ jobNumber:'10003', name:'文控丙', pwd:'*', gmail:'doc@colpal.com', process:'ALL', auth:'作废,发放' }),
-  ]);
+  ];
+  if (!opts.omitDeptManager) {
+    userRows.push(makeUserRow({ jobNumber:'10002', name:'部门乙', pwd:'*', gmail:'dept@colpal.com', process:'ALL', auth:'策略部门经理' }));
+  }
+  if (!opts.omitDocControl) {
+    userRows.push(makeUserRow({ jobNumber:'10003', name:'文控丙', pwd:'*', gmail:'doc@colpal.com', process:'ALL', auth:'作废,发放' }));
+  }
+  const userSheet = makeSheet(userRows);
   const env = installGas({
     sheetsById: {
       [g.STRATEGY_SS_ID]: {
@@ -35,8 +42,8 @@ function setupStrategySheets() {
   return { master: masterSheet, history: historySheet, sent: env.sent };
 }
 
-function resetSheets() {
-  const env = setupStrategySheets();
+function resetSheets(options) {
+  const env = setupStrategySheets(options);
   master = env.master;
   history = env.history;
   sent = env.sent;
@@ -127,4 +134,22 @@ test('作废单初始状态为作废待审批', () => {
   const res = g.submitStrategyVoid({ jobNumber:'10003', name:'申请人', strategyId:'PM-MD-0001', old:{...fields, version:'00'}, reason:'停止保养' });
   assert.equal(res.ok, true);
   assert.equal(history.values.at(-1)[9], '作废待审批/ Void Pending');
+});
+
+test('缺少部门经理时提交被拦下', () => {
+  resetSheets({ omitDeptManager: true });
+  const res = g.submitStrategyNew({ jobNumber:'10001', name:'申请人', fields, reason:'新增策略' });
+  assert.equal(res.ok, false);
+  assert.match(res.message, /审批人未配置/);
+  assert.equal(history.values.length, 1);
+  assert.equal(sent.length, 0);
+});
+
+test('缺少文控时提交被拦下', () => {
+  resetSheets({ omitDocControl: true });
+  const res = g.submitStrategyNew({ jobNumber:'10001', name:'申请人', fields, reason:'新增策略' });
+  assert.equal(res.ok, false);
+  assert.match(res.message, /审批人未配置/);
+  assert.equal(history.values.length, 1);
+  assert.equal(sent.length, 0);
 });

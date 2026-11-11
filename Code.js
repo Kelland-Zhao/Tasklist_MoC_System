@@ -2591,7 +2591,7 @@ function createStrategyRequest_(payload, action) {
 
   var process = String(fields["工序"]).trim();
   var approvers = getStrategyApprovers_(process);
-  if (!approvers.processManager) {
+  if (!approvers.processManager || !approvers.deptManager || !approvers.docControl) {
     return { ok: false, message: "审批人未配置 / Approver not configured" };
   }
 
