@@ -2660,6 +2660,14 @@ function createStrategyRequest_(payload, action) {
     var oldSnapshot = strategyBusinessSnapshot_(data.old);
     oldSnapshot.version = baseVersion;
     if (action === "edit") {
+      // 工序/机型锁定：审批人按工序路由，前端只读不足以防止绕过页面直接调用接口
+      var editedProcess = fields["工序"] === null || fields["工序"] === undefined ? "" : String(fields["工序"]).trim();
+      var masterProcess = masterRow["工序"] === null || masterRow["工序"] === undefined ? "" : String(masterRow["工序"]).trim();
+      var editedMachineType = fields["Machine Type"] === null || fields["Machine Type"] === undefined ? "" : String(fields["Machine Type"]).trim();
+      var masterMachineType = masterRow["Machine Type"] === null || masterRow["Machine Type"] === undefined ? "" : String(masterRow["Machine Type"]).trim();
+      if (editedProcess !== masterProcess || editedMachineType !== masterMachineType) {
+        return { ok: false, message: "工序/机型不可修改 / Process and Machine Type cannot be changed" };
+      }
       var baseNumber = parseInt(baseVersion, 10);
       if (isNaN(baseNumber)) baseNumber = 0;
       content = {

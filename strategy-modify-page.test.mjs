@@ -28,6 +28,21 @@ test('缺策略ID、变更原因或必填字段返回 null', () => {
   assert.equal(api.buildStrategyEditPayload('PM-MD-0001', old, { ...values, 'PM Description':'' }, user, '调整频率'), null);
 });
 
+test('工序与 Machine Type 强制取自 old，篡改 values 无效', () => {
+  const old = { '工序':'IM','Machine Type':'FCS','版本号':'00' };
+  const user = { jobNumber:'10001', name:'林飞' };
+  const tampered = {
+    '工序':'TF',
+    'Machine Type':'HACK',
+    'PM Frequency':'季',
+    'PM Description':'季度保养',
+    '策略 / Strategy':'RBM'
+  };
+  const p = api.buildStrategyEditPayload('PM-MD-0001', old, tampered, user, '调整频率');
+  assert.equal(p.fields['工序'], 'IM');
+  assert.equal(p.fields['Machine Type'], 'FCS');
+});
+
 /* 安全回归：URL 参数注入到 <script> 前必须转义 <，防止构造 </script> 逃逸 */
 const pageHtml = fs.readFileSync(new URL('./Strategy_Modify.html', import.meta.url), 'utf8');
 

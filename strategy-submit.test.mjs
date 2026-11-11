@@ -10,7 +10,7 @@ let sent;
 
 /**
  * 重建 MasterData / History / userID 三个 sheet，并安装 GAS 全局桩。
- * @param {{omitDeptManager?:boolean,omitDocControl?:boolean}} [options]
+ * @param {{omitDeptManager?:boolean,omitDocControl?:boolean,extraUsers?:Array}} [options]
  * @returns {{master:object, history:object, sent:Array}}
  */
 function setupStrategySheets(options) {
@@ -28,6 +28,9 @@ function setupStrategySheets(options) {
   if (!opts.omitDocControl) {
     userRows.push(makeUserRow({ jobNumber:'10003', name:'文控丙', pwd:'*', gmail:'doc@colpal.com', process:'ALL', auth:'作废,发放' }));
   }
+  (opts.extraUsers || []).forEach(function (user) {
+    userRows.push(makeUserRow(user));
+  });
   const userSheet = makeSheet(userRows);
   const env = installGas({
     sheetsById: {
@@ -126,6 +129,30 @@ test('基线版本不一致时修改被拦下', () => {
   const res = g.submitStrategyEdit({ jobNumber:'10001', name:'申请人', strategyId:'PM-MD-0001', old:{...fields, version:'00'}, fields, reason:'修改' });
   assert.equal(res.ok, false);
   assert.match(res.message, /已更新/);
+});
+
+test('工序或机型与主表不一致时修改被拦下且不写 History、不发邮件', () => {
+  resetSheets({ extraUsers: [
+    { jobNumber:'10004', name:'工序丁', pwd:'*', gmail:'pm.tf@colpal.com', process:'TF', auth:'编辑,策略工序经理' },
+  ] });
+  seedMaster({ '策略ID':'PM-MD-0001', '版本号':'00', ...fields });
+
+  const processRes = g.submitStrategyEdit({
+    jobNumber:'10001', name:'申请人', strategyId:'PM-MD-0001',
+    old:{ ...fields, version:'00' }, fields:{ ...fields, '工序':'TF' }, reason:'改工序'
+  });
+  assert.equal(processRes.ok, false);
+  assert.match(processRes.message, /工序\/机型不可修改/);
+
+  const machineRes = g.submitStrategyEdit({
+    jobNumber:'10001', name:'申请人', strategyId:'PM-MD-0001',
+    old:{ ...fields, version:'00' }, fields:{ ...fields, 'Machine Type':'OTHER' }, reason:'改机型'
+  });
+  assert.equal(machineRes.ok, false);
+  assert.match(machineRes.message, /工序\/机型不可修改/);
+
+  assert.equal(history.values.length, 1);
+  assert.equal(sent.length, 0);
 });
 
 test('作废单初始状态为作废待审批', () => {

@@ -129,12 +129,17 @@
     if (jobNumber === '' || reasonText === '') return null;
     if (strategyModifyMissingRequiredField_(values, old) !== '') return null;
     var fieldKeys = strategyModifyFieldKeys_(old);
+    var fields = strategyModifySnapshot_(values || {}, fieldKeys);
+    /* 工序/机型锁定：无论表单值如何，一律以主表基线为准 */
+    var lockedValues = strategyModifySnapshot_(old, STRATEGY_EDIT_LOCKED_KEYS);
+    fields['工序'] = lockedValues['工序'];
+    fields['Machine Type'] = lockedValues['Machine Type'];
     return {
       jobNumber: jobNumber,
       name: name,
       strategyId: id,
       old: strategyModifyOldSnapshot_(old),
-      fields: strategyModifySnapshot_(values || {}, fieldKeys),
+      fields: fields,
       reason: reasonText
     };
   }
