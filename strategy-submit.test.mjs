@@ -163,6 +163,30 @@ test('作废单初始状态为作废待审批', () => {
   assert.equal(history.values.at(-1)[9], '作废待审批/ Void Pending');
 });
 
+test('作废时工序或机型与主表不一致被拦下且不写 History、不发邮件', () => {
+  resetSheets({ extraUsers: [
+    { jobNumber:'10004', name:'工序丁', pwd:'*', gmail:'pm.tf@colpal.com', process:'TF', auth:'编辑,策略工序经理' },
+  ] });
+  seedMaster({ '策略ID':'PM-MD-0001', '版本号':'00', ...fields });
+
+  const processRes = g.submitStrategyVoid({
+    jobNumber:'10003', name:'申请人', strategyId:'PM-MD-0001',
+    old:{ ...fields, version:'00', '工序':'TF' }, reason:'停止保养'
+  });
+  assert.equal(processRes.ok, false);
+  assert.match(processRes.message, /工序\/机型不可修改/);
+
+  const machineRes = g.submitStrategyVoid({
+    jobNumber:'10003', name:'申请人', strategyId:'PM-MD-0001',
+    old:{ ...fields, version:'00', 'Machine Type':'OTHER' }, reason:'停止保养'
+  });
+  assert.equal(machineRes.ok, false);
+  assert.match(machineRes.message, /工序\/机型不可修改/);
+
+  assert.equal(history.values.length, 1);
+  assert.equal(sent.length, 0);
+});
+
 test('缺少部门经理时提交被拦下', () => {
   resetSheets({ omitDeptManager: true });
   const res = g.submitStrategyNew({ jobNumber:'10001', name:'申请人', fields, reason:'新增策略' });
