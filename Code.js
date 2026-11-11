@@ -2191,6 +2191,7 @@ function _buildMoCInfoTable(headers, rows) {
 var STRATEGY_SS_ID = "13LZMFurFP6Lc-iM0UrpNsoYDBgPHDBKVDfFxJ3G8bLs";
 var STRATEGY_MASTER_SHEET_NAME = "MasterData";
 var STRATEGY_HISTORY_SHEET_NAME = "History";
+var STRATEGY_RECORD_SHEET_NAME = "保养策略记录表";
 var STRATEGY_USERID_SS_ID = "1F7G3WOY5xM4fEYZ1s5RKulY4kJhqCZ9HefthmiVkraM";
 var STRATEGY_EQU_MASTER_SS_ID = "1Iw0-TEvX0m7kIBLSmIpAkF8Z4B6Ri_nQRrmrcfPNlEQ";
 var STRATEGY_EQU_MASTER_SHEET_NAME = "MasterData";
@@ -3213,6 +3214,8 @@ function releaseStrategy(payload) {
     }
   }
 
+  var recordSync = refreshStrategyRecordSheet();
+
   var approvers = getStrategyApprovers_(row.Process);
   var fields = content.new || content.old || {};
   var applicantEmail = row.submitMail === null || row.submitMail === undefined ? "" : String(row.submitMail).trim();
@@ -3236,7 +3239,7 @@ function releaseStrategy(payload) {
     extraValue: now
   });
 
-  return { ok: true, strategyId: strategyId, version: version };
+  return { ok: true, strategyId: strategyId, version: version, recordSync: recordSync };
 }
 
 /**
@@ -3549,5 +3552,53 @@ function importPMStrategyMasterData() {
     ]);
     count++;
   }
-  return { ok: true, count: count };
+  var recordSync = refreshStrategyRecordSheet();
+  return { ok: true, count: count, recordSync: recordSync };
+}
+
+/**
+ * 将 MasterData 的 14 个业务字段同步到人类可读的「保养策略记录表」。
+ * 保留第 1-3 行标题/表头，数据从第 4 行开始；按工序、机型、策略ID排序。
+ * @returns {{ok:boolean,count?:number,message?:string}}
+ */
+function refreshStrategyRecordSheet() {
+  try {
+    var ss = SpreadsheetApp.openById(STRATEGY_SS_ID);
+    var ws = ss.getSheetByName(STRATEGY_RECORD_SHEET_NAME);
+    if (!ws) {
+      return { ok: false, message: "保养策略记录表 sheet 未找到 / Strategy record sheet not found" };
+    }
+    var items = readStrategyMasterRows_().map(function (row) {
+      var process = row["工序"] === null || row["工序"] === undefined ? "" : String(row["工序"]).trim();
+      var machine = row["Machine Type"] === null || row["Machine Type"] === undefined ? "" : String(row["Machine Type"]).trim();
+      var strategyId = row["策略ID"] === null || row["策略ID"] === undefined ? "" : String(row["策略ID"]).trim();
+      return {
+        process: process,
+        machine: machine,
+        strategyId: strategyId,
+        fields: STRATEGY_BUSINESS_FIELDS.map(function (field) {
+          var value = row[field];
+          return value === null || value === undefined ? "" : value;
+        })
+      };
+    });
+    items.sort(function (a, b) {
+      if (a.process !== b.process) return a.process < b.process ? -1 : 1;
+      if (a.machine !== b.machine) return a.machine < b.machine ? -1 : 1;
+      if (a.strategyId !== b.strategyId) return a.strategyId < b.strategyId ? -1 : 1;
+      return 0;
+    });
+    var lastRow = ws.getLastRow();
+    if (lastRow >= 4) {
+      ws.getRange(4, 1, lastRow - 3, STRATEGY_BUSINESS_FIELDS.length).clearContent();
+    }
+    if (items.length > 0) {
+      ws.getRange(4, 1, items.length, STRATEGY_BUSINESS_FIELDS.length).setValues(items.map(function (item) {
+        return item.fields;
+      }));
+    }
+    return { ok: true, count: items.length };
+  } catch (e) {
+    return { ok: false, message: e.toString() };
+  }
 }

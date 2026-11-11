@@ -206,6 +206,16 @@ export function makeSheet(values) {
         writeRange(startRow, startCol, [[value]]);
         return this;
       },
+      clearContent: function () {
+        for (let r = 0; r < rows; r++) {
+          const targetRow = startRow - 1 + r;
+          if (!values[targetRow]) continue;
+          for (let c = 0; c < cols; c++) {
+            values[targetRow][startCol - 1 + c] = '';
+          }
+        }
+        return this;
+      },
     };
   }
 
