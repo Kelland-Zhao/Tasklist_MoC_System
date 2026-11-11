@@ -198,7 +198,7 @@ Expected: FAIL（`getStrategyApprovers_` 未定义）
 
 - [ ] **Step 3: 实现权限 helper 并扩展 `getPasswordData`**
 
-在 `getPasswordData` 的 `objData` 中追加 `objData.Process = r[49]; objData.Email = r[9];`。`getStrategyUsers_` 读取 `userID` 第 3 行到末行，只映射 A/B/C/J/AX/AY。`getStrategyApprovers_` 遍历用户，工序经理需同时满足 `策略工序经理` 且 `strategyProcessMatches_`，取第一个匹配；部门经理取第一个 `策略部门经理`；文控取第一个 `发放`。邮箱为空时返回 null。
+在 `getPasswordData` 的 `objData` 中追加 `objData.Process = r[49]; objData.Email = r[9];`。`getStrategyUsers_` 读取 `userID` 第 3 行到末行，映射 A/B/C/J/AX/AY/AD（邮箱取 J，J 为空时回退 AD）。`getStrategyApprovers_` 遍历用户，工序经理需同时满足 `策略工序经理` 且 `strategyProcessMatches_`，取第一个匹配；部门经理取第一个 `策略部门经理`；文控取第一个 `发放`。邮箱为空时返回 null。
 
 - [ ] **Step 4: 运行确认通过**
 
