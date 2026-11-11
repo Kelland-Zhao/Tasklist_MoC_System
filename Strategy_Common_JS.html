@@ -1,0 +1,135 @@
+<script>
+  /**
+   * 保养策略审批 — 共享前端 Helper
+   *
+   * 由 8 个 Strategy_* 页面通过 include("Strategy_Common_JS") 引入。
+   * 仅提供全局常量与纯函数，不绑定任何 DOM 事件。
+   */
+
+  /* 14 个业务字段（顺序与后端 STRATEGY_BUSINESS_FIELDS 一致） */
+  var STRATEGY_FIELDS = [
+    { key: '工序', label: '工序', labelEn: 'Process', type: 'select', options: ['FA', 'IM', 'PK', 'TF', 'WH'] },
+    { key: 'Machine Type', label: '机型', labelEn: 'Machine Type', type: 'text' },
+    { key: 'PM Frequency', label: '保养频率', labelEn: 'PM Frequency', type: 'text' },
+    { key: '单次停机时间/ h', label: '单次停机时间 / h', labelEn: 'Downtime per PM / h', type: 'text' },
+    { key: 'PM Description', label: '保养描述', labelEn: 'PM Description', type: 'text' },
+    { key: 'RBM保养间隔时间', label: 'RBM保养间隔时间', labelEn: 'RBM Maintenance Interval', type: 'text' },
+    { key: 'RBM保养提醒间隔时间', label: 'RBM保养提醒间隔时间', labelEn: 'RBM Maintenance Reminder Interval', type: 'text' },
+    { key: '强制保养频率/ Month', label: '强制保养频率 / Month', labelEn: 'Mandatory PM Frequency / Month', type: 'text' },
+    { key: '策略 / Strategy', label: '策略', labelEn: 'Strategy', type: 'select', options: ['TBM', 'RBM', 'CBM'] },
+    { key: 'TasklistName', label: '任务清单名称', labelEn: 'TasklistName', type: 'text' },
+    { key: '是否创工单', label: '是否创工单', labelEn: 'Create Work Order?', type: 'select', options: ['Y', 'N'] },
+    { key: '工单类型', label: '工单类型', labelEn: 'Work Order Type', type: 'select', options: ['PM02', 'PM10', 'NA', 'ZPM4'] },
+    { key: '是否计入AEM', label: '是否计入AEM', labelEn: 'Include in AEM?', type: 'select', options: ['Y', 'NA'] },
+    { key: '备注', label: '备注', labelEn: 'Remarks', type: 'text' }
+  ];
+
+  /* 取字段文本：null/undefined → ''，其余转字符串（不 trim，保留原样展示） */
+  function strategyFieldText_(fields, key) {
+    if (fields === null || fields === undefined) return '';
+    var value = fields[key];
+    if (value === null || value === undefined) return '';
+    return String(value);
+  }
+
+  /* 按工序 + 机型过滤主表行；空过滤条件表示不过滤 */
+  function filterStrategyMasterRows(rows, process, machineType) {
+    var list = Array.isArray(rows) ? rows : [];
+    var processFilter = process === null || process === undefined ? '' : String(process).trim();
+    var machineFilter = machineType === null || machineType === undefined ? '' : String(machineType).trim();
+    return list.filter(function (row) {
+      if (!row) return false;
+      var rowProcess = row['工序'] === null || row['工序'] === undefined ? '' : String(row['工序']).trim();
+      var rowMachine = row['Machine Type'] === null || row['Machine Type'] === undefined ? '' : String(row['Machine Type']).trim();
+      if (processFilter !== '' && rowProcess !== processFilter) return false;
+      if (machineFilter !== '' && rowMachine !== machineFilter) return false;
+      return true;
+    });
+  }
+
+  /* 申请动作标签：无 old → 新增；old+new → 修改；仅 old → 作废 */
+  function strategyActionLabel(content) {
+    var hasOld = !!(content && content.old);
+    var hasNew = !!(content && content.new);
+    if (hasOld && hasNew) return '修改 / Edit';
+    if (hasOld) return '作废 / Void';
+    return '新增 / Create';
+  }
+
+  /* 新旧字段差异：按 STRATEGY_FIELDS 顺序输出 14 行 */
+  function strategyDiffRows(oldFields, newFields) {
+    var hasNew = newFields !== null && newFields !== undefined;
+    return STRATEGY_FIELDS.map(function (field) {
+      var oldValue = strategyFieldText_(oldFields, field.key);
+      var newValue = strategyFieldText_(newFields, field.key);
+      var changed = hasNew ? oldValue.trim() !== newValue.trim() : true; // 无 new = 删除展示，全部标变化
+      return {
+        key: field.key,
+        label: field.label,
+        oldValue: oldValue,
+        newValue: newValue,
+        changed: changed
+      };
+    });
+  }
+
+  /* 状态徽章（颜色映射沿用 Tasklist_Approval1_JS） */
+  function strategyStatusBadge(status) {
+    var text = status === null || status === undefined ? '' : String(status);
+    var badgeClass = 'bg-secondary';
+    if (text === '待审批/ Pending') {
+      badgeClass = 'bg-warning text-dark';
+    } else if (text === '作废待审批/ Void Pending') {
+      badgeClass = 'bg-danger';
+    } else if (text === '拒绝/ Rejected') {
+      badgeClass = 'bg-danger';
+    } else if (text === '生效/ Effective') {
+      badgeClass = 'bg-success';
+    } else if (text === '取代/ Replace') {
+      badgeClass = 'bg-secondary';
+    } else if (text === '作废/ Void') {
+      badgeClass = 'bg-dark';
+    }
+    return '<span class="badge ' + badgeClass + '">' + strategyEscapeHtml(text) + '</span>';
+  }
+
+  /* 版本号两位补零；空版本按 00 处理 */
+  function strategyTwoDigitVersion_(version) {
+    var text = version === null || version === undefined ? '' : String(version).trim();
+    if (text === '') return '00';
+    return text.length < 2 ? '0' + text : text;
+  }
+
+  /* 展示编号：策略ID + '-' + 两位版本号；策略ID 为空时返回空串（待审批新单不显示 -00） */
+  function formatStrategyId(strategyId, version) {
+    var id = strategyId === null || strategyId === undefined ? '' : String(strategyId).trim();
+    if (id === '') return '';
+    return id + '-' + strategyTwoDigitVersion_(version);
+  }
+
+  /* 频率文本 → 月数，精确匹配（trim 后须完全一致）；无法识别返回 null */
+  function convertFrequencyToMonths(text) {
+    if (text === null || text === undefined) return null;
+    var value = String(text).trim();
+    var MAP = [
+      ['半年', 6], ['三年', 36], ['双年', 24], ['五年', 60], ['季度', 3],
+      ['双月', 2], ['双周', 0.5], ['三周', 0.75], ['五周', 1.25], ['0.5周', 0.125],
+      ['年', 12], ['季', 3], ['月', 1], ['周', 0.25]
+    ];
+    for (var i = 0; i < MAP.length; i++) {
+      if (value === MAP[i][0]) return MAP[i][1];
+    }
+    return null;
+  }
+
+  /* HTML 转义：& < > " ' */
+  function strategyEscapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+</script>
