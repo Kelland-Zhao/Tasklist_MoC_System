@@ -2408,3 +2408,294 @@ function getStrategyApprovers_(process) {
   }
   return result;
 }
+
+/**
+ * 读取策略数据表中的一行数据并转为对象数组（跳过表头）
+ * @param {string} sheetName
+ * @param {Array<string>} headers
+ * @returns {Array<Object>}
+ */
+function readStrategySheetRows_(sheetName, headers) {
+  var ss = SpreadsheetApp.openById(STRATEGY_SS_ID);
+  var ws = ss.getSheetByName(sheetName);
+  var lastRow = ws.getLastRow();
+  if (lastRow < 2) return [];
+  var data = ws.getSheetValues(2, 1, lastRow - 1, headers.length);
+  return data.map(function (row) {
+    return strategyRowToObject_(headers, row);
+  });
+}
+
+/**
+ * 读取主数据表当前有效版本（一行一条策略）
+ * @returns {Array<Object>}
+ */
+function readStrategyMasterRows_() {
+  return readStrategySheetRows_(STRATEGY_MASTER_SHEET_NAME, STRATEGY_MASTER_HEADERS);
+}
+
+/**
+ * 读取审批历史表（追加式，按行号升序）
+ * @returns {Array<Object>}
+ */
+function readStrategyHistoryRows_() {
+  return readStrategySheetRows_(STRATEGY_HISTORY_SHEET_NAME, STRATEGY_HISTORY_HEADERS);
+}
+
+/**
+ * 生成申请人/操作人字符串
+ * 格式：`工号/ JobNumber:  {jobNumber}_姓名/ Name:  {name} {timestamp}`
+ * @param {string|number} jobNumber
+ * @param {string} name
+ * @returns {string}
+ */
+function getStrategyOperator_(jobNumber, name) {
+  var job = jobNumber === null || jobNumber === undefined ? "" : String(jobNumber).trim();
+  var personName = name === null || name === undefined ? "" : String(name).trim();
+  var timestamp = Utilities.formatDate(new Date(), "Asia/Shanghai", "yyyy-MM-dd HH:mm:ss");
+  return "工号/ JobNumber:  " + job + "_姓名/ Name:  " + personName + " " + timestamp;
+}
+
+/**
+ * 解析 getStrategyOperator_ 生成的申请人/操作人字符串
+ * @param {string} operator
+ * @returns {{jobNumber:string,name:string}}
+ */
+function parseStrategyOperator_(operator) {
+  var text = operator === null || operator === undefined ? "" : String(operator);
+  var result = { jobNumber: "", name: "" };
+  var jobMatch = text.match(/JobNumber:\s*([^_]+)/);
+  if (jobMatch) result.jobNumber = jobMatch[1].trim();
+  var nameMatch = text.match(/Name:\s*(.+)$/);
+  if (nameMatch) {
+    result.name = nameMatch[1].replace(/\s*\d{4}[-\/]\d{1,2}[-\/]\d{1,2}.*$/, "").trim();
+  }
+  return result;
+}
+
+/**
+ * 判断指定策略是否存在在途申请（待审批 / 作废待审批 / 待发放）
+ * @param {Array<Object>} historyRows
+ * @param {string} strategyId
+ * @returns {boolean}
+ */
+function strategyHasPendingRequest_(historyRows, strategyId) {
+  var target = strategyId === null || strategyId === undefined ? "" : String(strategyId).trim();
+  if (target === "") return false;
+  var pendingStatuses = [
+    STRATEGY_STATUS.pending,
+    STRATEGY_STATUS.voidPending,
+    STRATEGY_STATUS.waitRelease
+  ];
+  for (var i = 0; i < (historyRows || []).length; i++) {
+    var row = historyRows[i] || {};
+    var status = row.Status === null || row.Status === undefined ? "" : String(row.Status).trim();
+    if (pendingStatuses.indexOf(status) === -1) continue;
+    var content = null;
+    try {
+      content = JSON.parse(row["Strategy Content"]);
+    } catch (e) {
+      content = null;
+    }
+    var rowStrategyId = content && content.strategyId !== null && content.strategyId !== undefined
+      ? String(content.strategyId).trim()
+      : "";
+    if (rowStrategyId === target) return true;
+  }
+  return false;
+}
+
+/**
+ * 返回第一个缺失的必填业务字段，全部存在时返回空字符串
+ * @param {Object} fields
+ * @returns {string}
+ */
+function strategyMissingRequiredField_(fields) {
+  var required = ["工序", "Machine Type", "PM Frequency", "PM Description", "策略 / Strategy"];
+  for (var i = 0; i < required.length; i++) {
+    var value = fields ? fields[required[i]] : "";
+    if (value === null || value === undefined || String(value).trim() === "") return required[i];
+  }
+  return "";
+}
+
+/**
+ * 仅保留 14 个业务字段并补空字符串
+ * @param {Object} source
+ * @returns {Object}
+ */
+function strategyBusinessSnapshot_(source) {
+  var result = {};
+  STRATEGY_BUSINESS_FIELDS.forEach(function (field) {
+    var value = source ? source[field] : "";
+    result[field] = value === null || value === undefined ? "" : value;
+  });
+  return result;
+}
+
+/**
+ * 提交阶段邮件通知工序经理
+ * @param {string} action `new` | `edit` | `void`
+ * @param {Object} fields 本次申请的业务字段
+ * @param {string} reason 变更原因
+ * @param {string} submitMail 申请人邮箱
+ * @param {{name:string,email:string}} processManager 工序经理
+ */
+function sendStrategySubmitMail_(action, fields, reason, submitMail, processManager) {
+  var actionLabel = action === "new" ? "新建/ New" : action === "edit" ? "修改/ Modify" : "作废/ Void";
+  var subject = "保养策略审批申请 - " + actionLabel;
+  var row = fields || {};
+  var bodyHtml = "";
+  bodyHtml += "<p style='font-size:15px;margin:0 0 12px'>您有新的保养策略申请，需要您的审批： / A new PM strategy request needs your approval:</p>";
+  bodyHtml += _buildMoCInfoTable(
+    ["工序/ Process", "机型/ Machine Type", "保养描述/ PM Description", "申请类型/ Request Type", "变更原因/ Reason", "申请人/ Applicant"],
+    [[
+      row["工序"] || "",
+      row["Machine Type"] || "",
+      row["PM Description"] || "",
+      actionLabel,
+      reason,
+      submitMail
+    ]]
+  );
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  GmailApp.sendEmail(processManager.email, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
+}
+
+/**
+ * 新建/修改/作废的统一提交逻辑
+ * @param {Object} payload 新建 `{jobNumber,name,fields,reason}`；修改 `{jobNumber,name,strategyId,old,fields,reason}`；作废 `{jobNumber,name,strategyId,old,reason}`
+ * @param {string} action `new` | `edit` | `void`
+ * @returns {{ok:boolean,message?:string,operator?:string}}
+ */
+function createStrategyRequest_(payload, action) {
+  var data = payload || {};
+  var user = getStrategyUserByJobNumber_(data.jobNumber);
+  if (!user) {
+    return { ok: false, message: "用户不存在或未登录 / User not found" };
+  }
+  var requiredPermission = action === "void" ? "作废" : "编辑";
+  if (!strategyHasPermission_(user, requiredPermission)) {
+    return { ok: false, message: "没有" + requiredPermission + "权限 / No permission" };
+  }
+
+  var fields = action === "void" ? data.old : data.fields;
+  var missing = strategyMissingRequiredField_(fields);
+  if (missing !== "") {
+    return { ok: false, message: "必填字段缺失 / Missing required field: " + missing };
+  }
+  var reason = data.reason === null || data.reason === undefined ? "" : String(data.reason).trim();
+  if (reason === "") {
+    return { ok: false, message: "变更原因必填 / Reason is required" };
+  }
+
+  var process = String(fields["工序"]).trim();
+  var approvers = getStrategyApprovers_(process);
+  if (!approvers.processManager) {
+    return { ok: false, message: "审批人未配置 / Approver not configured" };
+  }
+
+  var content;
+  if (action === "new") {
+    content = {
+      strategyId: "",
+      version: "00",
+      new: strategyBusinessSnapshot_(data.fields)
+    };
+  } else {
+    var strategyId = data.strategyId === null || data.strategyId === undefined ? "" : String(data.strategyId).trim();
+    if (strategyId === "") {
+      return { ok: false, message: "策略ID缺失 / Strategy ID is required" };
+    }
+    if (!data.old) {
+      return { ok: false, message: "缺少基线版本 / Baseline version is required" };
+    }
+    if (strategyHasPendingRequest_(readStrategyHistoryRows_(), strategyId)) {
+      return { ok: false, message: "该策略正在审批中 / Strategy is under approval" };
+    }
+    var masterRow = null;
+    var masterRows = readStrategyMasterRows_();
+    for (var i = 0; i < masterRows.length; i++) {
+      var rowId = masterRows[i]["策略ID"];
+      if (rowId !== null && rowId !== undefined && String(rowId).trim() === strategyId) {
+        masterRow = masterRows[i];
+        break;
+      }
+    }
+    if (!masterRow) {
+      return { ok: false, message: "策略不存在，请刷新后重试 / Strategy not found, please refresh" };
+    }
+    var baseVersion = normalizeStrategyVersion_(data.old.version);
+    var masterVersion = normalizeStrategyVersion_(masterRow["版本号"]);
+    if (baseVersion !== masterVersion) {
+      return { ok: false, message: "策略已更新，请刷新后重试 / Strategy has been updated, please refresh" };
+    }
+    var oldSnapshot = strategyBusinessSnapshot_(data.old);
+    oldSnapshot.version = baseVersion;
+    if (action === "edit") {
+      var baseNumber = parseInt(baseVersion, 10);
+      if (isNaN(baseNumber)) baseNumber = 0;
+      content = {
+        strategyId: strategyId,
+        version: String(baseNumber + 1).padStart(2, "0"),
+        old: oldSnapshot,
+        new: strategyBusinessSnapshot_(data.fields)
+      };
+    } else {
+      content = {
+        strategyId: strategyId,
+        version: baseVersion,
+        old: oldSnapshot
+      };
+    }
+  }
+
+  var operator = getStrategyOperator_(data.jobNumber, data.name);
+  var submitMail = Session.getActiveUser().getEmail();
+  var status = action === "void" ? STRATEGY_STATUS.voidPending : STRATEGY_STATUS.pending;
+  var ws = SpreadsheetApp.openById(STRATEGY_SS_ID).getSheetByName(STRATEGY_HISTORY_SHEET_NAME);
+  ws.appendRow([
+    String(fields["Machine Type"]).trim(),
+    JSON.stringify(content),
+    operator,
+    reason,
+    "",
+    "",
+    "",
+    "",
+    "",
+    status,
+    submitMail,
+    process
+  ]);
+
+  sendStrategySubmitMail_(action, fields, reason, submitMail, approvers.processManager);
+  return { ok: true, operator: operator };
+}
+
+/**
+ * 提交新策略申请
+ * @param {{jobNumber:string,name:string,fields:Object,reason:string}} payload
+ * @returns {{ok:boolean,message?:string,operator?:string}}
+ */
+function submitStrategyNew(payload) {
+  return createStrategyRequest_(payload, "new");
+}
+
+/**
+ * 提交策略修改申请
+ * @param {{jobNumber:string,name:string,strategyId:string,old:Object,fields:Object,reason:string}} payload
+ * @returns {{ok:boolean,message?:string,operator?:string}}
+ */
+function submitStrategyEdit(payload) {
+  return createStrategyRequest_(payload, "edit");
+}
+
+/**
+ * 提交策略作废申请
+ * @param {{jobNumber:string,name:string,strategyId:string,old:Object,reason:string}} payload
+ * @returns {{ok:boolean,message?:string,operator?:string}}
+ */
+function submitStrategyVoid(payload) {
+  return createStrategyRequest_(payload, "void");
+}
