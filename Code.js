@@ -2997,6 +2997,26 @@ function findStrategyPreviousEffectiveRow_(currentRowNumber, strategyId) {
 }
 
 /**
+ * 读取 History 中所有非空的策略ID（含已作废策略，避免新策略复用旧号）
+ * @returns {Array<string>}
+ */
+function readStrategyHistoryStrategyIds_() {
+  return readStrategyHistoryRows_().map(function (historyRowItem) {
+    var content = null;
+    try {
+      content = JSON.parse(historyRowItem["Strategy Content"]);
+    } catch (e) {
+      content = null;
+    }
+    return content && content.strategyId !== null && content.strategyId !== undefined
+      ? String(content.strategyId).trim()
+      : "";
+  }).filter(function (id) {
+    return id !== "";
+  });
+}
+
+/**
  * 生成发放人列文字：`发放/ Release {email} {timestamp}`
  * @param {string} email 文控邮箱
  * @returns {string}
@@ -3116,7 +3136,7 @@ function releaseStrategy(payload) {
   if (action === "new") {
     var existingIds = readStrategyMasterRows_().map(function (masterRowItem) {
       return masterRowItem["策略ID"];
-    });
+    }).concat(readStrategyHistoryStrategyIds_());
     strategyId = nextStrategyId_(existingIds);
     version = "00";
     releaseStatus = STRATEGY_STATUS.effective;

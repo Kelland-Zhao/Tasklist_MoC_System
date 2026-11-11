@@ -88,6 +88,29 @@ function seedEffectiveHistory(strategyId, version) {
 }
 
 /**
+ * 向 History 追加一条已作废的基线记录。
+ * @param {string} strategyId
+ * @param {string} version
+ */
+function seedVoidedHistory(strategyId, version) {
+  const content = { strategyId: strategyId, version: version, new: baseFields() };
+  history.appendRow([
+    content.new['Machine Type'],
+    JSON.stringify(content),
+    'OP-VOID',
+    '历史作废',
+    '',
+    '',
+    '',
+    '',
+    '发放/ Release doc@colpal.com 2026-11-02 11:00:00',
+    g.STRATEGY_STATUS.void,
+    'applicant@colpal.com',
+    content.new['工序'],
+  ]);
+}
+
+/**
  * 向 History 追加一条待文控发放的记录。
  * @param {{operator:string,action:string,strategyId?:string,baseVersion?:string,process?:string,submitMail?:string}} options
  */
@@ -140,6 +163,17 @@ test('新增发放：生成 PM-MD-0001，版本 00，History 生效', () => {
   assert.match(history.values[1][8], /^批准\/ Approve|^发放/);
   assert.equal(sent.at(-1).to, 'applicant@colpal.com');
   assert.deepEqual((sent.at(-1).cc || '').split(',').sort(), ['dept@colpal.com','pm.im@colpal.com'].sort());
+});
+
+test('新增发放不复用 History 中已作废的策略ID', () => {
+  seedMaster({ '策略ID':'PM-MD-0001', '版本号':'00', ...fields });
+  seedVoidedHistory('PM-MD-0002', '00');
+  seedWaitRelease({ operator:'OP-N2', action:'new', process:'IM' });
+  const res = g.releaseStrategy({ jobNumber:'10003', name:'文控丙', operator:'OP-N2' });
+  assert.equal(res.ok, true);
+  assert.equal(res.strategyId, 'PM-MD-0003');
+  assert.equal(master.values.length, 3);
+  assert.equal(master.values[2][14], 'PM-MD-0003');
 });
 
 test('修改发放：版本 +1，上一条生效记录改取代', () => {
