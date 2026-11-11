@@ -16,6 +16,7 @@
 - 权限只读 `userID`：AY 权限（索引 50）、AX 工序（索引 49）、J 邮箱（索引 9）；不新增权限表。
 - 主表只保留当前有效版本；History 只追加，历史内容不改写（状态流转除外）。
 - 所有页面遵循 `docs/UI规范.md`：双语中上英下、红底表头、SweetAlert 规范、按钮图标化。
+- 页面注入 `STRATEGY_JOB_NUMBER` / `STRATEGY_USER_NAME` 时必须转义 `<`：`JSON.stringify(...).replace(/</g,'\\u003c')`，防止 URL 参数反射注入。
 - 文件命名：`Strategy_*.html` + `Strategy_*_JS.html`；页面用 `<?!=include("...")?>` 引入。
 - 测试命令：`node --test <file>.test.mjs`；语法检查：`node --check Code.js`。
 - 提交信息格式：`VYYYYMMDD.XX_描述`，`XX` 为跨天连续序号；执行前用 `git log --oneline` 查最新号再递增。
