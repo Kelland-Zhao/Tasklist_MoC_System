@@ -2345,14 +2345,20 @@ function getStrategyUserByJobNumber_(jobNumber) {
 }
 
 /**
- * 判断用户 AY 权限串中是否含指定权限
- * @param {{authorization:string}} user
+ * 判断用户权限串中是否含指定权限
+ * 同时支持原始用户（AY `authorization` 字符串）与 getStrategyUserContext 的 `permissions` 数组
+ * @param {{authorization?:string,permissions?:Array<string>}} user
  * @param {string} token 权限名，如 `编辑` / `作废` / `发放`
  * @returns {boolean}
  */
 function strategyHasPermission_(user, token) {
   var need = token === null || token === undefined ? "" : String(token).trim();
   if (!user || need === "") return false;
+  if (Array.isArray(user.permissions)) {
+    return user.permissions.map(function (item) {
+      return item === null || item === undefined ? "" : String(item).trim();
+    }).indexOf(need) !== -1;
+  }
   var authorization = user.authorization === null || user.authorization === undefined ? "" : String(user.authorization);
   return authorization.split(",").map(function (item) {
     return item.trim();
@@ -3368,7 +3374,9 @@ function getStrategyWorkQueue(level, jobNumber) {
 }
 
 /**
- * 统计当前用户的策略待办数（复用队列过滤规则）
+ * 统计当前用户的策略待办数
+ * 按角色过滤：工序经理统计本人工序范围的待审单，部门经理统计部门节点，文控统计待发放；
+ * 用户没有对应角色权限时该项恒为 0
  * @param {string|number} jobNumber
  * @returns {{process:number,dept:number,release:number,total:number}}
  */
@@ -3377,9 +3385,16 @@ function getStrategyPendingCounts(jobNumber) {
   var user = getStrategyUserContext(jobNumber);
   if (!user) return counts;
   var historyRows = readStrategyHistoryRows_();
-  counts.process = strategyQueueRows_("process", user, historyRows).length;
-  counts.dept = strategyQueueRows_("dept", user, historyRows).length;
-  counts.release = strategyQueueRows_("release", user, historyRows).length;
+  var processScope = user.process === null || user.process === undefined ? "" : String(user.process).trim();
+  if (strategyHasPermission_(user, "策略工序经理") && processScope !== "") {
+    counts.process = strategyQueueRows_("process", user, historyRows).length;
+  }
+  if (strategyHasPermission_(user, "策略部门经理")) {
+    counts.dept = strategyQueueRows_("dept", user, historyRows).length;
+  }
+  if (strategyHasPermission_(user, "发放")) {
+    counts.release = strategyQueueRows_("release", user, historyRows).length;
+  }
   counts.total = counts.process + counts.dept + counts.release;
   return counts;
 }

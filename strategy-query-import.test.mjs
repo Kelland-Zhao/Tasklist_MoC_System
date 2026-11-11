@@ -75,7 +75,7 @@ function baseFields() {
 
 /**
  * 向 History 追加一条在途记录。
- * @param {{operator?:string,process?:string,isVoid?:boolean,strategyId?:string,approver1?:string,submitMail?:string}} [options]
+ * @param {{operator?:string,process?:string,isVoid?:boolean,strategyId?:string,approver1?:string,submitMail?:string,status?:string}} [options]
  */
 function seedPending(options) {
   const opts = options || {};
@@ -84,6 +84,7 @@ function seedPending(options) {
     ? { strategyId: opts.strategyId || '', version: '00', old: { ...baseFields(), version: '00' } }
     : { strategyId: opts.strategyId || '', version: '01', old: { ...baseFields(), version: '00' }, new: baseFields() };
   const contentFields = content.new || content.old;
+  const status = opts.status || (isVoid ? g.STRATEGY_STATUS.voidPending : g.STRATEGY_STATUS.pending);
   history.appendRow([
     contentFields['Machine Type'] || '',
     JSON.stringify(content),
@@ -94,7 +95,7 @@ function seedPending(options) {
     '',
     '',
     '',
-    isVoid ? g.STRATEGY_STATUS.voidPending : g.STRATEGY_STATUS.pending,
+    status,
     opts.submitMail || 'applicant@colpal.com',
     opts.process || 'IM',
   ]);
@@ -114,6 +115,23 @@ test('工序经理队列只含本工序待审单', () => {
 test('待办计数按角色返回', () => {
   const c = g.getStrategyPendingCounts('10001');
   assert.equal(c.process, 1);
+});
+
+test('只有工序经理权限：部门与发放计数为 0', () => {
+  // 追加一条部门经理待审单和一条待发放单，验证计数不会被其他角色队列污染
+  seedPending({ operator:'OP-DEPT', process:'IM', isVoid:false, approver1:'批准/ Approve pm.im@colpal.com 2026-11-11 09:00:00' });
+  seedPending({ operator:'OP-REL', process:'IM', isVoid:false, approver1:'批准/ Approve pm.im@colpal.com 2026-11-11 09:00:00', status:g.STRATEGY_STATUS.waitRelease });
+  const c = g.getStrategyPendingCounts('10001');
+  assert.equal(c.process, 1);
+  assert.equal(c.dept, 0);
+  assert.equal(c.release, 0);
+});
+
+test('只有部门经理权限：工序与发放计数为 0', () => {
+  const c = g.getStrategyPendingCounts('10002');
+  assert.equal(c.process, 0);
+  assert.equal(c.dept, 1);
+  assert.equal(c.release, 0);
 });
 
 test('导入 2 条 EQU 数据并生成基线 History', () => {
