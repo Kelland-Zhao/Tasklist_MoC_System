@@ -89,6 +89,7 @@ test('工序经理批准：写 Approver1，状态保持待审批，通知申请�
   assert.equal(history.values[1][5], '同意');
   assert.equal(history.values[1][9], '待审批/ Pending');
   assert.deepEqual(sent.map(m => m.to).sort(), ['applicant@colpal.com','dept@colpal.com'].sort());
+  sent.forEach(m => assert.equal(m.cc, ''));
 });
 
 test('部门经理批准：状态转待发放，通知申请人+文控', () => {
@@ -97,6 +98,7 @@ test('部门经理批准：状态转待发放，通知申请人+文控', () => {
   assert.equal(res.ok, true);
   assert.equal(history.values[1][9], '待发放/ Wait for Dissminater');
   assert.deepEqual(sent.map(m => m.to).sort(), ['applicant@colpal.com','doc@colpal.com'].sort());
+  sent.forEach(m => assert.equal(m.cc, 'pm.im@colpal.com'));
 });
 
 test('工序经理不能审批其他工序的单', () => {
@@ -111,6 +113,16 @@ test('任一节点拒绝：状态置拒绝并通知申请人', () => {
   assert.equal(res.ok, true);
   assert.equal(history.values[1][9], '拒绝/ Rejected');
   assert.equal(sent.at(-1).to, 'applicant@colpal.com');
+  assert.equal(sent.at(-1).cc, '');
+});
+
+test('部门经理拒绝：状态置拒绝，通知申请人并抄送工序经理', () => {
+  seedPending({ operator:'OP-5', process:'IM', isVoid:false, approver1:'批准/ Approve pm.im@colpal.com 2026-11-11 09:00:00' });
+  const res = g.saveStrategyApproval({ jobNumber:'10002', name:'部门乙', operator:'OP-5', level:2, decision:'reject', comment:'不通过' });
+  assert.equal(res.ok, true);
+  assert.equal(history.values[1][9], '拒绝/ Rejected');
+  assert.deepEqual(sent.map(m => m.to), ['applicant@colpal.com']);
+  assert.equal(sent[0].cc, 'pm.im@colpal.com');
 });
 
 test('允许自审批', () => {

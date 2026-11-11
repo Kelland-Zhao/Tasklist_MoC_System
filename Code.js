@@ -2317,7 +2317,8 @@ function getStrategyUsers_() {
       pwd: r[2],
       authorization: r[50],
       process: r[49],
-      email: r[9]
+      // J 列 GMail 优先，为空时回退 AD 列邮箱
+      email: r[9] || r[29]
     };
   });
 }
