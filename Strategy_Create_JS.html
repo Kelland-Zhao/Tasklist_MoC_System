@@ -1,0 +1,292 @@
+<script>
+  /* EDS §8.1 双语 helper（字符串拼接，避免模板字符串与测试注入冲突） */
+  const swalTitle = (cn, en) => cn + '<span style="display:block;font-size:0.65em;color:#888;font-weight:400;line-height:1.3;margin-top:4px;">' + en + '</span>';
+  const swalHtml  = (cn, en) => '<div>' + cn + '<div style="font-size:0.85em;color:#888;margin-top:6px;line-height:1.4;">' + en + '</div></div>';
+
+  /* 新建策略的必填业务字段（与后端 strategyMissingRequiredField_ 一致） */
+  var STRATEGY_CREATE_REQUIRED_KEYS = ['工序', 'Machine Type', 'PM Frequency', 'PM Description', '策略 / Strategy'];
+
+  /* null/undefined → ''，其余转字符串并 trim */
+  function strategyCreateText_(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).trim();
+  }
+
+  /* 字段选择器：用 data 属性定位，避免中文字段名进入 id/选择器转义 */
+  function strategyCreateFieldSelector_(key) {
+    return '[data-strategy-field="' + String(key) + '"]';
+  }
+
+  /**
+   * 收集 14 个业务字段值
+   * @param {Function} $ jQuery
+   * @returns {Object<string,string>}
+   */
+  function collectStrategyFormValues($) {
+    var values = {};
+    var fields = typeof STRATEGY_FIELDS !== 'undefined' && STRATEGY_FIELDS ? STRATEGY_FIELDS : [];
+    for (var i = 0; i < fields.length; i++) {
+      var key = fields[i].key;
+      var $input = $(strategyCreateFieldSelector_(key));
+      var value = '';
+      if ($input && $input.length) value = $input.val();
+      values[key] = value === null || value === undefined ? '' : String(value);
+    }
+    return values;
+  }
+
+  /**
+   * 构造 submitStrategyNew payload；必填字段或变更原因缺失/空白时返回 null
+   * @param {Object<string,string>} values 14 个业务字段
+   * @param {{jobNumber:string,name:string}} user
+   * @param {string} reason 变更原因
+   * @returns {{jobNumber:string,name:string,fields:Object,reason:string}|null}
+   */
+  function buildStrategyCreatePayload(values, user, reason) {
+    var fields = values || {};
+    var account = user || {};
+    var jobNumber = strategyCreateText_(account.jobNumber);
+    var name = strategyCreateText_(account.name);
+    var reasonText = strategyCreateText_(reason);
+    if (jobNumber === '' || reasonText === '') return null;
+    for (var i = 0; i < STRATEGY_CREATE_REQUIRED_KEYS.length; i++) {
+      if (strategyCreateText_(fields[STRATEGY_CREATE_REQUIRED_KEYS[i]]) === '') return null;
+    }
+    var snapshot = {};
+    for (var key in fields) {
+      if (Object.prototype.hasOwnProperty.call(fields, key)) snapshot[key] = fields[key];
+    }
+    return {
+      jobNumber: jobNumber,
+      name: name,
+      fields: snapshot,
+      reason: reasonText
+    };
+  }
+
+  /* 字段 DOM id（按 STRATEGY_FIELDS 顺序，避免中文字段名进 id） */
+  function strategyCreateFieldId_(index) {
+    return 'strategyField' + index;
+  }
+
+  function strategyCreateIsRequired_(key) {
+    return STRATEGY_CREATE_REQUIRED_KEYS.indexOf(key) !== -1;
+  }
+
+  /* 单个字段的 label + 控件 HTML */
+  function strategyCreateFieldHtml_(field, index) {
+    var id = strategyCreateFieldId_(index);
+    var requiredMark = strategyCreateIsRequired_(field.key) ? '<span class="req">*</span>' : '';
+    var html = '<div class="col-md-6 col-xl-4 mb-3">';
+    html += '<label class="field-label" for="' + id + '">' + field.label + requiredMark;
+    html += '<span class="en">' + field.labelEn + '</span></label>';
+    if (field.type === 'select') {
+      html += '<select class="form-select" id="' + id + '" data-strategy-field="' + field.key + '">';
+      html += '<option value="">请选择 / Please select</option>';
+      var options = field.options || [];
+      for (var i = 0; i < options.length; i++) {
+        html += '<option value="' + options[i] + '">' + options[i] + '</option>';
+      }
+      html += '</select>';
+    } else {
+      html += '<input type="text" class="form-control" id="' + id + '" data-strategy-field="' + field.key + '" placeholder="请输入 / Enter">';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  /* 按 STRATEGY_FIELDS 渲染 14 个字段（中文在上、英文在下） */
+  function renderStrategyForm($) {
+    var html = '';
+    var fields = typeof STRATEGY_FIELDS !== 'undefined' && STRATEGY_FIELDS ? STRATEGY_FIELDS : [];
+    for (var i = 0; i < fields.length; i++) {
+      html += strategyCreateFieldHtml_(fields[i], i);
+    }
+    $('#strategyForm').html(html);
+  }
+
+  /* 频率文本 → 月数；helper 缺失时按无法识别处理 */
+  function strategyCreateFrequencyMonths_(text) {
+    if (typeof convertFrequencyToMonths === 'function') return convertFrequencyToMonths(text);
+    return null;
+  }
+
+  /* PM Frequency 变化：可识别则回填强制保养频率，否则加黄色提醒 */
+  function updateStrategyMandatoryFrequency($) {
+    var months = strategyCreateFrequencyMonths_($(strategyCreateFieldSelector_('PM Frequency')).val());
+    var $target = $(strategyCreateFieldSelector_('强制保养频率/ Month'));
+    if (months === null) {
+      $target.addClass('bg-warning');
+    } else {
+      $target.val(String(months));
+      $target.removeClass('bg-warning');
+    }
+  }
+
+  /* 清空表单与频率高亮 */
+  function resetStrategyCreateForm($) {
+    var fields = typeof STRATEGY_FIELDS !== 'undefined' && STRATEGY_FIELDS ? STRATEGY_FIELDS : [];
+    for (var i = 0; i < fields.length; i++) {
+      $(strategyCreateFieldSelector_(fields[i].key)).val('');
+    }
+    $(strategyCreateFieldSelector_('强制保养频率/ Month')).removeClass('bg-warning');
+    $('#changeReason').val('');
+  }
+
+  /* 同工序+机型下是否存在相同（trim 后）PM Description 的行 */
+  function strategyCreateHasDuplicateDescription_(rows, process, machineType, description) {
+    var filtered = typeof filterStrategyMasterRows === 'function'
+      ? filterStrategyMasterRows(rows, process, machineType)
+      : (Array.isArray(rows) ? rows : []);
+    var target = strategyCreateText_(description);
+    if (target === '') return false;
+    for (var i = 0; i < filtered.length; i++) {
+      if (strategyCreateText_(filtered[i]['PM Description']) === target) return true;
+    }
+    return false;
+  }
+
+  /* 失败提示：把后端「中文 / English」消息拆成双语 swalHtml */
+  function showStrategyCreateError_(message) {
+    var text = strategyCreateText_(message);
+    var cn = '后端返回异常，请重试。';
+    var en = 'Backend error, please retry.';
+    if (text !== '') {
+      cn = text;
+      en = text;
+      var parts = text.split(' / ');
+      if (parts.length >= 2) {
+        cn = parts[0];
+        en = parts.slice(1).join(' / ');
+      }
+    }
+    Swal.close();
+    Swal.fire({
+      icon: 'error',
+      title: swalTitle('操作失败', 'Failed'),
+      html: swalHtml(cn, en),
+      confirmButtonText: '确定 / OK'
+    });
+  }
+
+  /* 调用 submitStrategyNew；成功后清空表单 */
+  function submitStrategyCreatePayload_($, payload) {
+    Swal.fire({
+      title: swalTitle('请等待', 'Please Wait'),
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (r && r.ok) {
+          Swal.close();
+          Swal.fire({
+            icon: 'success',
+            title: swalTitle('提交成功', 'Submitted'),
+            timer: 1500,
+            showConfirmButton: false
+          });
+          resetStrategyCreateForm($);
+        } else {
+          showStrategyCreateError_(r && r.message ? r.message : '');
+        }
+      })
+      .withFailureHandler(function () {
+        showStrategyCreateError_('后端返回异常，请重试。/ Backend error, please retry.');
+      })
+      .submitStrategyNew(payload);
+  }
+
+  /* 重复描述确认：提示但允许继续 */
+  function confirmStrategyCreateDuplicate_($, payload) {
+    Swal.fire({
+      icon: 'warning',
+      title: swalTitle('重复提示', 'Duplicate Found'),
+      html: swalHtml('该机型已有相同描述的保养策略，是否继续？', 'A strategy with the same PM Description already exists for this machine type. Continue?'),
+      showCancelButton: true,
+      confirmButtonText: '继续提交 / Continue',
+      cancelButtonText: '取消 / Cancel',
+      confirmButtonColor: '#E60012'
+    }).then(function (result) {
+      if (result.isConfirmed) submitStrategyCreatePayload_($, payload);
+    });
+  }
+
+  /* 提交入口：校验必填 → 查主数据重复 → 提交 */
+  function handleStrategyCreateSubmit($) {
+    var values = collectStrategyFormValues($);
+    var payload = buildStrategyCreatePayload(values, {
+      jobNumber: typeof STRATEGY_JOB_NUMBER !== 'undefined' ? STRATEGY_JOB_NUMBER : '',
+      name: typeof STRATEGY_USER_NAME !== 'undefined' ? STRATEGY_USER_NAME : ''
+    }, $('#changeReason').val());
+
+    if (payload === null) {
+      Swal.fire({
+        icon: 'error',
+        title: swalTitle('填写不完整', 'Incomplete Form'),
+        html: swalHtml('请填写所有必填字段及变更原因。', 'Please fill in all required fields and the change reason.'),
+        confirmButtonText: '确定 / OK'
+      });
+      return;
+    }
+
+    Swal.fire({
+      title: swalTitle('检查中', 'Checking'),
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    google.script.run
+      .withSuccessHandler(function (r) {
+        Swal.close();
+        var rows = r && r.rows ? r.rows : [];
+        var duplicate = strategyCreateHasDuplicateDescription_(
+          rows,
+          values['工序'],
+          values['Machine Type'],
+          values['PM Description']
+        );
+        if (duplicate) {
+          confirmStrategyCreateDuplicate_($, payload);
+        } else {
+          submitStrategyCreatePayload_($, payload);
+        }
+      })
+      .withFailureHandler(function () {
+        // 主数据读取失败不阻塞新建提交
+        Swal.close();
+        submitStrategyCreatePayload_($, payload);
+      })
+      .getStrategyMasterData();
+  }
+
+  /* 页面初始化 */
+  function initStrategyCreatePage($) {
+    renderStrategyForm($);
+
+    var userName = typeof STRATEGY_USER_NAME !== 'undefined' && STRATEGY_USER_NAME ? String(STRATEGY_USER_NAME) : '';
+    var jobNumber = typeof STRATEGY_JOB_NUMBER !== 'undefined' && STRATEGY_JOB_NUMBER ? String(STRATEGY_JOB_NUMBER) : '';
+    $('#Name').text(userName === '' ? '-' : userName);
+    $('#JobNumber').text(jobNumber);
+
+    $('#strategyForm').on('input change', strategyCreateFieldSelector_('PM Frequency'), function () {
+      updateStrategyMandatoryFrequency($);
+    });
+
+    $('#submitStrategy').on('click', function () {
+      handleStrategyCreateSubmit($);
+    });
+
+    $('#resetStrategyForm').on('click', function () {
+      resetStrategyCreateForm($);
+    });
+  }
+
+  if (typeof $ !== 'undefined') {
+    $(document).ready(function () {
+      initStrategyCreatePage($);
+    });
+  }
+</script>
