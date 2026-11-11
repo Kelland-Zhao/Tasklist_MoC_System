@@ -289,7 +289,8 @@ function dataSave(
       .getRange(2, 1, ws_mailAddress.getLastRow() - 1, ws_mailAddress.getLastColumn())
       .getValues();
 
-    let machineType = JSON.parse(obj)[0].MachineType;
+    // 机型可能来自 Tasklist JSON，历史数据中存在前导/尾随空格，写入前统一清理
+    let machineType = (JSON.parse(obj)[0].MachineType || '').toString().trim();
 
     console.log("machineType", machineType);
 

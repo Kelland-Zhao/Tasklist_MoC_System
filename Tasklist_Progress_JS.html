@@ -29,11 +29,13 @@
       return { action: action, name: name, date: date };
     }
 
-    // 某节点配置的审批人完整邮箱（从邮件链配置取）
+    // 某节点配置的审批人完整邮箱（从邮件链配置取；机型值两侧空格忽略）
     function getApproverEmail(machineType, key) {
+      var target = (machineType == null ? '' : machineType.toString()).trim();
       var item = null;
       for (var j = 0; j < emailConfig.length; j++) {
-        if (emailConfig[j].MachineType === machineType) { item = emailConfig[j]; break; }
+        var cfgMachineType = (emailConfig[j].MachineType == null ? '' : emailConfig[j].MachineType.toString()).trim();
+        if (cfgMachineType === target) { item = emailConfig[j]; break; }
       }
       if (!item) return '';
       if (key === 'prod') return item['Mail_Production'] || '';
