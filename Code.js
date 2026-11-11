@@ -2176,6 +2176,10 @@ var STRATEGY_MASTER_SHEET_NAME = "MasterData";
 var STRATEGY_HISTORY_SHEET_NAME = "History";
 var STRATEGY_USERID_SS_ID = "1F7G3WOY5xM4fEYZ1s5RKulY4kJhqCZ9HefthmiVkraM";
 var STRATEGY_EQU_MASTER_SS_ID = "1Iw0-TEvX0m7kIBLSmIpAkF8Z4B6Ri_nQRrmrcfPNlEQ";
+var STRATEGY_EQU_MASTER_SHEET_NAME = "MasterData";
+var STRATEGY_EQU_IMPORT_COLUMNS = 20;
+var STRATEGY_IMPORT_OPERATOR = "系统导入";
+var STRATEGY_IMPORT_REASON = "初始导入";
 
 // 14 个业务字段（顺序同设计文档 2.1）
 var STRATEGY_BUSINESS_FIELDS = [
@@ -3261,4 +3265,193 @@ function returnStrategy(payload) {
   });
 
   return { ok: true };
+}
+
+/**
+ * 读取当前生效的主数据（含表头）
+ * @returns {{headers:Array<string>,rows:Array<Object>}}
+ */
+function getStrategyMasterData() {
+  return {
+    headers: STRATEGY_MASTER_HEADERS.slice(),
+    rows: readStrategyMasterRows_()
+  };
+}
+
+/**
+ * 读取审批历史（含表头）
+ * @returns {{headers:Array<string>,rows:Array<Object>}}
+ */
+function getStrategyHistoryData() {
+  return {
+    headers: STRATEGY_HISTORY_HEADERS.slice(),
+    rows: readStrategyHistoryRows_()
+  };
+}
+
+/**
+ * 返回登录用户的策略上下文，找不到用户时返回 null
+ * @param {string|number} jobNumber
+ * @returns {{jobNumber:string,name:string,email:string,permissions:Array<string>,process:string}|null}
+ */
+function getStrategyUserContext(jobNumber) {
+  var user = getStrategyUserByJobNumber_(jobNumber);
+  if (!user) return null;
+  var authorization = user.authorization === null || user.authorization === undefined
+    ? ""
+    : String(user.authorization);
+  var permissions = authorization.split(",").map(function (item) {
+    return item.trim();
+  }).filter(function (item) {
+    return item !== "";
+  });
+  return {
+    jobNumber: user.jobNumber === null || user.jobNumber === undefined ? "" : String(user.jobNumber).trim(),
+    name: user.name === null || user.name === undefined ? "" : user.name,
+    email: user.email === null || user.email === undefined ? "" : user.email,
+    permissions: permissions,
+    process: user.process === null || user.process === undefined ? "" : user.process
+  };
+}
+
+/**
+ * 按队列级别过滤 History 行
+ * process：待审批/作废待审批 + Approver1 空 + 工序命中本人 AX 范围
+ * dept：待审批/作废待审批 + Approver1 已填 + Approver2 空
+ * release：待发放
+ * @param {string} level `process` | `dept` | `release`
+ * @param {Object|null} user getStrategyUserContext 的返回值
+ * @param {Array<Object>} historyRows
+ * @returns {Array<Object>}
+ */
+function strategyQueueRows_(level, user, historyRows) {
+  var result = [];
+  (historyRows || []).forEach(function (row) {
+    var status = row.Status === null || row.Status === undefined ? "" : String(row.Status).trim();
+    var approver1 = row.Approver1 === null || row.Approver1 === undefined ? "" : String(row.Approver1).trim();
+    var approver2 = row.Approver2 === null || row.Approver2 === undefined ? "" : String(row.Approver2).trim();
+    if (level === "process") {
+      if (status !== STRATEGY_STATUS.pending && status !== STRATEGY_STATUS.voidPending) return;
+      if (approver1 !== "") return;
+      if (!strategyProcessMatches_(user, row.Process)) return;
+    } else if (level === "dept") {
+      if (status !== STRATEGY_STATUS.pending && status !== STRATEGY_STATUS.voidPending) return;
+      if (approver1 === "" || approver2 !== "") return;
+    } else if (level === "release") {
+      if (status !== STRATEGY_STATUS.waitRelease) return;
+    } else {
+      return;
+    }
+    result.push(row);
+  });
+  return result;
+}
+
+/**
+ * 读取指定角色的待办队列
+ * @param {string} level `process` | `dept` | `release`
+ * @param {string|number} jobNumber
+ * @returns {{rows:Array<Object>,user:Object|null,master:Array<Object>}}
+ */
+function getStrategyWorkQueue(level, jobNumber) {
+  var user = getStrategyUserContext(jobNumber);
+  if (!user) return { rows: [], user: null, master: [] };
+  var queueLevel = level === null || level === undefined ? "" : String(level).trim();
+  if (["process", "dept", "release"].indexOf(queueLevel) === -1) {
+    return { rows: [], user: user, master: [] };
+  }
+  return {
+    rows: strategyQueueRows_(queueLevel, user, readStrategyHistoryRows_()),
+    user: user,
+    master: readStrategyMasterRows_()
+  };
+}
+
+/**
+ * 统计当前用户的策略待办数（复用队列过滤规则）
+ * @param {string|number} jobNumber
+ * @returns {{process:number,dept:number,release:number,total:number}}
+ */
+function getStrategyPendingCounts(jobNumber) {
+  var counts = { process: 0, dept: 0, release: 0, total: 0 };
+  var user = getStrategyUserContext(jobNumber);
+  if (!user) return counts;
+  var historyRows = readStrategyHistoryRows_();
+  counts.process = strategyQueueRows_("process", user, historyRows).length;
+  counts.dept = strategyQueueRows_("dept", user, historyRows).length;
+  counts.release = strategyQueueRows_("release", user, historyRows).length;
+  counts.total = counts.process + counts.dept + counts.release;
+  return counts;
+}
+
+/**
+ * 判断 14 个业务字段是否全为空
+ * @param {Object} fields
+ * @returns {boolean}
+ */
+function strategyFieldsAllBlank_(fields) {
+  for (var i = 0; i < STRATEGY_BUSINESS_FIELDS.length; i++) {
+    var value = fields ? fields[STRATEGY_BUSINESS_FIELDS[i]] : "";
+    if (value !== null && value !== undefined && String(value).trim() !== "") return false;
+  }
+  return true;
+}
+
+/**
+ * 从 EQU 保养主数据表初始导入策略（仅当 MasterData 为空时允许）
+ * @returns {{ok:boolean,count?:number,message?:string}}
+ */
+function importPMStrategyMasterData() {
+  var masterWs = SpreadsheetApp.openById(STRATEGY_SS_ID).getSheetByName(STRATEGY_MASTER_SHEET_NAME);
+  if (masterWs.getLastRow() > 1) {
+    return { ok: false, message: "主数据表已有数据，禁止重复导入 / MasterData is not empty" };
+  }
+  var historyRows = readStrategyHistoryRows_();
+  for (var i = 0; i < historyRows.length; i++) {
+    var operator = historyRows[i].Operator === null || historyRows[i].Operator === undefined
+      ? ""
+      : String(historyRows[i].Operator).trim();
+    if (operator === STRATEGY_IMPORT_OPERATOR) {
+      return { ok: false, message: "已存在初始导入记录，禁止重复导入 / Import baseline already exists" };
+    }
+  }
+
+  var equWs = SpreadsheetApp.openById(STRATEGY_EQU_MASTER_SS_ID).getSheetByName(STRATEGY_EQU_MASTER_SHEET_NAME);
+  var lastRow = equWs.getLastRow();
+  if (lastRow < 2) return { ok: true, count: 0 };
+  var data = equWs.getSheetValues(2, 1, lastRow - 1, STRATEGY_EQU_IMPORT_COLUMNS);
+
+  var now = Utilities.formatDate(new Date(), "Asia/Shanghai", "yyyy-MM-dd HH:mm:ss");
+  var historyWs = SpreadsheetApp.openById(STRATEGY_SS_ID).getSheetByName(STRATEGY_HISTORY_SHEET_NAME);
+  var count = 0;
+  for (var r = 0; r < data.length; r++) {
+    var row = data[r] || [];
+    var fields = strategyRowToObject_(STRATEGY_BUSINESS_FIELDS, row.slice(0, STRATEGY_BUSINESS_FIELDS.length));
+    if (strategyFieldsAllBlank_(fields)) continue;
+    var strategyId = row[15] === null || row[15] === undefined ? "" : String(row[15]).trim();
+    var modifier = row[18] === null || row[18] === undefined ? "" : String(row[18]).trim();
+    var modifiedTime = row[19] === null || row[19] === undefined ? "" : String(row[19]).trim();
+    masterWs.appendRow(buildStrategyMasterRow_(fields, strategyId, "00", now, modifier, modifiedTime));
+    var content = {
+      strategyId: strategyId,
+      version: "00",
+      new: strategyBusinessSnapshot_(fields)
+    };
+    historyWs.appendRow([
+      String(fields["Machine Type"]).trim(),
+      JSON.stringify(content),
+      STRATEGY_IMPORT_OPERATOR,
+      STRATEGY_IMPORT_REASON,
+      "",
+      "",
+      "",
+      "",
+      "",
+      STRATEGY_STATUS.effective,
+      "",
+      String(fields["工序"]).trim()
+    ]);
+    count++;
+  }
+  return { ok: true, count: count };
 }
