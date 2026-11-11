@@ -2912,3 +2912,333 @@ function saveStrategyApproval(payload) {
 
   return { ok: true };
 }
+
+/**
+ * 从 Operator 解析申请人工号/姓名，供 MasterData「最后修改人」使用
+ * @param {string} operator
+ * @returns {string}
+ */
+function strategyApplicantLabel_(operator) {
+  var parsed = parseStrategyOperator_(operator);
+  if (parsed.jobNumber === "" && parsed.name === "") return "";
+  return parsed.jobNumber + "/" + parsed.name;
+}
+
+/**
+ * 组装 MasterData 的 19 列行数据（14 个业务字段 + 策略ID/版本号/生效时间/最后修改人/最后修改时间）
+ * @param {Object} fields 14 个业务字段
+ * @param {string} strategyId
+ * @param {string} version
+ * @param {string} effectiveTime
+ * @param {string} modifier
+ * @param {string} modifiedTime
+ * @returns {Array<*>}
+ */
+function buildStrategyMasterRow_(fields, strategyId, version, effectiveTime, modifier, modifiedTime) {
+  var snapshot = strategyBusinessSnapshot_(fields);
+  var row = STRATEGY_BUSINESS_FIELDS.map(function (field) {
+    return snapshot[field];
+  });
+  row.push(strategyId, version, effectiveTime, modifier, modifiedTime);
+  return row;
+}
+
+/**
+ * 按策略ID查找 MasterData 行（含 1-based 行号）
+ * @param {string} strategyId
+ * @returns {{rowNumber:number,row:Object}|null}
+ */
+function findStrategyMasterRow_(strategyId) {
+  var target = strategyId === null || strategyId === undefined ? "" : String(strategyId).trim();
+  if (target === "") return null;
+  var ws = SpreadsheetApp.openById(STRATEGY_SS_ID).getSheetByName(STRATEGY_MASTER_SHEET_NAME);
+  var lastRow = ws.getLastRow();
+  if (lastRow < 2) return null;
+  var data = ws.getSheetValues(2, 1, lastRow - 1, STRATEGY_MASTER_HEADERS.length);
+  for (var i = 0; i < data.length; i++) {
+    var current = data[i][14];
+    var text = current === null || current === undefined ? "" : String(current).trim();
+    if (text === target) {
+      return { rowNumber: i + 2, row: strategyRowToObject_(STRATEGY_MASTER_HEADERS, data[i]) };
+    }
+  }
+  return null;
+}
+
+/**
+ * 查找同一策略在当前行之前最近一条生效记录的行号
+ * @param {number} currentRowNumber 当前 History 行号（1-based）
+ * @param {string} strategyId
+ * @returns {number} 未找到返回 0
+ */
+function findStrategyPreviousEffectiveRow_(currentRowNumber, strategyId) {
+  var target = strategyId === null || strategyId === undefined ? "" : String(strategyId).trim();
+  if (target === "") return 0;
+  var ws = SpreadsheetApp.openById(STRATEGY_SS_ID).getSheetByName(STRATEGY_HISTORY_SHEET_NAME);
+  var lastRow = Math.min(ws.getLastRow(), currentRowNumber - 1);
+  if (lastRow < 2) return 0;
+  var data = ws.getSheetValues(2, 1, lastRow - 1, STRATEGY_HISTORY_HEADERS.length);
+  var found = 0;
+  for (var i = 0; i < data.length; i++) {
+    var status = data[i][9] === null || data[i][9] === undefined ? "" : String(data[i][9]).trim();
+    if (status !== STRATEGY_STATUS.effective) continue;
+    var content = null;
+    try {
+      content = JSON.parse(data[i][1]);
+    } catch (e) {
+      content = null;
+    }
+    var rowStrategyId = content && content.strategyId !== null && content.strategyId !== undefined
+      ? String(content.strategyId).trim()
+      : "";
+    if (rowStrategyId === target) found = i + 2;
+  }
+  return found;
+}
+
+/**
+ * 生成发放人列文字：`发放/ Release {email} {timestamp}`
+ * @param {string} email 文控邮箱
+ * @returns {string}
+ */
+function strategyReleaseWord_(email) {
+  var person = email === null || email === undefined ? "" : String(email).trim();
+  var timestamp = Utilities.formatDate(new Date(), "Asia/Shanghai", "yyyy-MM-dd HH:mm:ss");
+  return "发放/ Release " + person + " " + timestamp;
+}
+
+/**
+ * 生成退回人列文字：`退回/ Return {email} {timestamp} - {reason}`
+ * @param {string} email 文控邮箱
+ * @param {string} reason 退回原因
+ * @returns {string}
+ */
+function strategyReturnWord_(email, reason) {
+  var person = email === null || email === undefined ? "" : String(email).trim();
+  var text = reason === null || reason === undefined ? "" : String(reason).trim();
+  var timestamp = Utilities.formatDate(new Date(), "Asia/Shanghai", "yyyy-MM-dd HH:mm:ss");
+  return "退回/ Return " + person + " " + timestamp + " - " + text;
+}
+
+/**
+ * 发送发放/退回结果邮件（收件人为申请人，可抄送两位经理）
+ * @param {{subject:string,introHtml:string,to:string,cc:Array<string>,row:Object,fields:Object,action:string,extraHeader:string,extraValue:string}} mail
+ */
+function sendStrategyReleaseResultMail_(mail) {
+  var recipient = mail.to === null || mail.to === undefined ? "" : String(mail.to).trim();
+  if (recipient === "") return;
+  var row = mail.row || {};
+  var fields = mail.fields || {};
+  var actionLabel = mail.action === "new" ? "新建/ New" : mail.action === "edit" ? "修改/ Modify" : mail.action === "void" ? "作废/ Void" : "";
+  var ccList = (mail.cc || []).map(function (item) {
+    return item === null || item === undefined ? "" : String(item).trim();
+  }).filter(function (item) {
+    return item !== "";
+  }).join(",");
+  var bodyHtml = mail.introHtml || "";
+  bodyHtml += _buildMoCInfoTable(
+    ["工序/ Process", "机型/ Machine Type", "策略描述/ PM Description", "申请类型/ Request Type", "变更原因/ Reason", "申请人/ Applicant", mail.extraHeader],
+    [[
+      row.Process || "",
+      row.MachineType || "",
+      fields["PM Description"] || "",
+      actionLabel,
+      row.Reason || "",
+      row.submitMail || "",
+      mail.extraValue || ""
+    ]]
+  );
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  var options = { htmlBody: _buildMoCEmailShell(mail.subject, bodyHtml) };
+  if (ccList !== "") options.cc = ccList;
+  GmailApp.sendEmail(recipient, mail.subject, "", options);
+}
+
+/**
+ * 文控发放保养策略申请（新增 / 修改 / 作废）
+ * @param {{jobNumber:string,name:string,operator:string}} payload
+ * @returns {{ok:boolean,message?:string,strategyId?:string,version?:string}}
+ */
+function releaseStrategy(payload) {
+  var data = payload || {};
+  var user = getStrategyUserByJobNumber_(data.jobNumber);
+  if (!user) {
+    return { ok: false, message: "用户不存在或未登录 / User not found" };
+  }
+  if (!strategyHasPermission_(user, "发放")) {
+    return { ok: false, message: "没有发放权限 / No release permission" };
+  }
+
+  var found = findStrategyHistoryRow_(data.operator);
+  if (!found) {
+    return { ok: false, message: "发放记录不存在 / Release record not found" };
+  }
+  var row = found.row;
+  var status = row.Status === null || row.Status === undefined ? "" : String(row.Status).trim();
+  if (status !== STRATEGY_STATUS.waitRelease) {
+    return { ok: false, message: "该申请不在待发放状态 / Request is not waiting for release" };
+  }
+
+  var content = null;
+  try {
+    content = JSON.parse(row["Strategy Content"]);
+  } catch (e) {
+    content = null;
+  }
+  var action = strategyAction_(content);
+  if (action === "") {
+    return { ok: false, message: "策略内容无效 / Invalid strategy content" };
+  }
+  var strategyId = content.strategyId === null || content.strategyId === undefined
+    ? ""
+    : String(content.strategyId).trim();
+
+  var masterRow = action === "new" ? null : findStrategyMasterRow_(strategyId);
+  if (action !== "new") {
+    if (!masterRow) {
+      return { ok: false, message: "策略不存在，无法发放 / Strategy not found, cannot release" };
+    }
+    var baseVersion = normalizeStrategyVersion_(content.old ? content.old.version : "");
+    var masterVersion = normalizeStrategyVersion_(masterRow.row["版本号"]);
+    if (baseVersion !== masterVersion) {
+      return { ok: false, message: "策略已更新，请刷新后重试 / Strategy has been updated, please refresh" };
+    }
+  }
+
+  var now = Utilities.formatDate(new Date(), "Asia/Shanghai", "yyyy-MM-dd HH:mm:ss");
+  var modifier = strategyApplicantLabel_(row.Operator);
+  var ss = SpreadsheetApp.openById(STRATEGY_SS_ID);
+  var masterWs = ss.getSheetByName(STRATEGY_MASTER_SHEET_NAME);
+  var historyWs = ss.getSheetByName(STRATEGY_HISTORY_SHEET_NAME);
+  var version;
+  var releaseStatus;
+
+  if (action === "new") {
+    var existingIds = readStrategyMasterRows_().map(function (masterRowItem) {
+      return masterRowItem["策略ID"];
+    });
+    strategyId = nextStrategyId_(existingIds);
+    version = "00";
+    releaseStatus = STRATEGY_STATUS.effective;
+    masterWs.appendRow(buildStrategyMasterRow_(content.new, strategyId, version, now, modifier, now));
+    content.strategyId = strategyId;
+    historyWs.getRange(found.rowNumber, 2).setValue(JSON.stringify(content));
+  } else if (action === "edit") {
+    version = normalizeStrategyVersion_(content.version);
+    releaseStatus = STRATEGY_STATUS.effective;
+    masterWs.getRange(masterRow.rowNumber, 1, 1, STRATEGY_MASTER_HEADERS.length)
+      .setValues([buildStrategyMasterRow_(content.new, strategyId, version, now, modifier, now)]);
+  } else {
+    version = normalizeStrategyVersion_(content.old.version);
+    releaseStatus = STRATEGY_STATUS.void;
+    masterWs.deleteRow(masterRow.rowNumber);
+  }
+
+  var releaseEmail = user.email === null || user.email === undefined ? "" : String(user.email).trim();
+  if (releaseEmail === "") {
+    releaseEmail = Session.getActiveUser().getEmail();
+  }
+  historyWs.getRange(found.rowNumber, 9).setValue(strategyReleaseWord_(releaseEmail));
+  historyWs.getRange(found.rowNumber, 10).setValue(releaseStatus);
+
+  if (action === "edit" || action === "void") {
+    var previousRowNumber = findStrategyPreviousEffectiveRow_(found.rowNumber, strategyId);
+    if (previousRowNumber > 0) {
+      historyWs.getRange(previousRowNumber, 10).setValue(
+        action === "edit" ? STRATEGY_STATUS.replaced : STRATEGY_STATUS.void
+      );
+    }
+  }
+
+  var approvers = getStrategyApprovers_(row.Process);
+  var fields = content.new || content.old || {};
+  var applicantEmail = row.submitMail === null || row.submitMail === undefined ? "" : String(row.submitMail).trim();
+  var isVoid = action === "void";
+  sendStrategyReleaseResultMail_({
+    subject: isVoid
+      ? "保养策略作废 -- 已发放/ PM Strategy Void -- Released"
+      : "保养策略发放 -- 生效/ PM Strategy Release -- Effective",
+    introHtml: isVoid
+      ? "<p style='font-size:15px;margin:0 0 12px'>您的保养策略作废申请已由文控发放，策略已作废 / Your PM strategy void request has been released and the strategy is now void.</p>"
+      : "<p style='font-size:15px;margin:0 0 12px'>您的保养策略申请已由文控发放并生效 / Your PM strategy application has been released and is now effective.</p>",
+    to: applicantEmail,
+    cc: [
+      approvers.processManager ? approvers.processManager.email : "",
+      approvers.deptManager ? approvers.deptManager.email : ""
+    ],
+    row: row,
+    fields: fields,
+    action: action,
+    extraHeader: "生效时间/ Effective Time",
+    extraValue: now
+  });
+
+  return { ok: true, strategyId: strategyId, version: version };
+}
+
+/**
+ * 文控退回保养策略申请（不写 MasterData，状态置拒绝解锁）
+ * @param {{jobNumber:string,name:string,operator:string,reason:string}} payload
+ * @returns {{ok:boolean,message?:string}}
+ */
+function returnStrategy(payload) {
+  var data = payload || {};
+  var user = getStrategyUserByJobNumber_(data.jobNumber);
+  if (!user) {
+    return { ok: false, message: "用户不存在或未登录 / User not found" };
+  }
+  if (!strategyHasPermission_(user, "发放")) {
+    return { ok: false, message: "没有发放权限 / No release permission" };
+  }
+
+  var found = findStrategyHistoryRow_(data.operator);
+  if (!found) {
+    return { ok: false, message: "退回记录不存在 / Release record not found" };
+  }
+  var row = found.row;
+  var status = row.Status === null || row.Status === undefined ? "" : String(row.Status).trim();
+  if (status !== STRATEGY_STATUS.waitRelease) {
+    return { ok: false, message: "该申请不在待发放状态 / Request is not waiting for release" };
+  }
+
+  var reason = data.reason === null || data.reason === undefined ? "" : String(data.reason).trim();
+  if (reason === "") {
+    return { ok: false, message: "退回原因必填 / Reason is required" };
+  }
+
+  var content = null;
+  try {
+    content = JSON.parse(row["Strategy Content"]);
+  } catch (e) {
+    content = null;
+  }
+  var action = strategyAction_(content);
+  var fields = content && (content.new || content.old) ? (content.new || content.old) : {};
+
+  var returnEmail = user.email === null || user.email === undefined ? "" : String(user.email).trim();
+  if (returnEmail === "") {
+    returnEmail = Session.getActiveUser().getEmail();
+  }
+  var ws = SpreadsheetApp.openById(STRATEGY_SS_ID).getSheetByName(STRATEGY_HISTORY_SHEET_NAME);
+  ws.getRange(found.rowNumber, 9).setValue(strategyReturnWord_(returnEmail, reason));
+  ws.getRange(found.rowNumber, 10).setValue(STRATEGY_STATUS.rejected);
+
+  var approvers = getStrategyApprovers_(row.Process);
+  var applicantEmail = row.submitMail === null || row.submitMail === undefined ? "" : String(row.submitMail).trim();
+  sendStrategyReleaseResultMail_({
+    subject: "保养策略退回/ PM Strategy Returned",
+    introHtml: "<p style='font-size:15px;margin:0 0 12px'>您的保养策略申请已被文控退回，请修改后重新提交 / Your PM strategy application has been returned by document control. Please revise and resubmit.</p>",
+    to: applicantEmail,
+    cc: [
+      approvers.processManager ? approvers.processManager.email : "",
+      approvers.deptManager ? approvers.deptManager.email : ""
+    ],
+    row: row,
+    fields: fields,
+    action: action,
+    extraHeader: "退回原因/ Return Reason",
+    extraValue: reason
+  });
+
+  return { ok: true };
+}
