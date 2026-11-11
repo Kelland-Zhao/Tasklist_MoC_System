@@ -1703,6 +1703,8 @@ function getPasswordData() {
     objData.Name = r[1];
     objData.PWD = r[2];
     objData.Authorization = r[50];
+    objData.Process = r[49];
+    objData.Email = r[9];
     // console.log(objData)
     objArray.push(objData);
   });
@@ -2295,5 +2297,114 @@ function strategyRowToObject_(headers, row) {
   (headers || []).forEach(function (header, index) {
     result[header] = row && index < row.length ? row[index] : "";
   });
+  return result;
+}
+
+/**
+ * 读取 userID 表的所有用户（第 3 行起，跳过区块标题与字段标题）
+ * @returns {Array<{jobNumber:string,name:string,pwd:string,authorization:string,process:string,email:string}>}
+ */
+function getStrategyUsers_() {
+  var ss = SpreadsheetApp.openById(STRATEGY_USERID_SS_ID);
+  var ws = ss.getSheetByName("userID");
+  var lastRow = ws.getLastRow();
+  if (lastRow < 3) return [];
+  var data = ws.getSheetValues(3, 1, lastRow - 2, ws.getLastColumn());
+  return data.map(function (r) {
+    return {
+      jobNumber: r[0],
+      name: r[1],
+      pwd: r[2],
+      authorization: r[50],
+      process: r[49],
+      email: r[9]
+    };
+  });
+}
+
+/**
+ * 按工号查找用户，找不到返回 null
+ * @param {string|number} jobNumber
+ * @returns {{jobNumber:string,name:string,pwd:string,authorization:string,process:string,email:string}|null}
+ */
+function getStrategyUserByJobNumber_(jobNumber) {
+  var target = jobNumber === null || jobNumber === undefined ? "" : String(jobNumber).trim();
+  if (target === "") return null;
+  var users = getStrategyUsers_();
+  for (var i = 0; i < users.length; i++) {
+    var current = users[i].jobNumber;
+    var text = current === null || current === undefined ? "" : String(current).trim();
+    if (text === target) return users[i];
+  }
+  return null;
+}
+
+/**
+ * 判断用户 AY 权限串中是否含指定权限
+ * @param {{authorization:string}} user
+ * @param {string} token 权限名，如 `编辑` / `作废` / `发放`
+ * @returns {boolean}
+ */
+function strategyHasPermission_(user, token) {
+  var need = token === null || token === undefined ? "" : String(token).trim();
+  if (!user || need === "") return false;
+  var authorization = user.authorization === null || user.authorization === undefined ? "" : String(user.authorization);
+  return authorization.split(",").map(function (item) {
+    return item.trim();
+  }).indexOf(need) !== -1;
+}
+
+/**
+ * 判断用户 AX 工序范围是否覆盖目标工序（`ALL` 匹配任意工序）
+ * @param {{process:string}} user
+ * @param {string} process
+ * @returns {boolean}
+ */
+function strategyProcessMatches_(user, process) {
+  if (!user) return false;
+  var scope = user.process === null || user.process === undefined ? "" : String(user.process).trim().toUpperCase();
+  if (scope === "ALL") return true;
+  var target = process === null || process === undefined ? "" : String(process).trim().toUpperCase();
+  return scope !== "" && scope === target;
+}
+
+/**
+ * 把用户转为审批人信息，邮箱为空时返回 null
+ * @param {{name:string,email:string}} user
+ * @returns {{name:string,email:string}|null}
+ */
+function strategyApproverInfo_(user) {
+  var email = user && user.email !== null && user.email !== undefined ? String(user.email).trim() : "";
+  if (email === "") return null;
+  var name = user && user.name !== null && user.name !== undefined ? String(user.name).trim() : "";
+  return { name: name, email: email };
+}
+
+/**
+ * 按工序解析三级审批人，未配置的角色返回 null
+ * @param {string} process
+ * @returns {{processManager:{name:string,email:string}|null,deptManager:{name:string,email:string}|null,docControl:{name:string,email:string}|null}}
+ */
+function getStrategyApprovers_(process) {
+  var users = getStrategyUsers_();
+  var result = { processManager: null, deptManager: null, docControl: null };
+  var foundProcessManager = false;
+  var foundDeptManager = false;
+  var foundDocControl = false;
+  for (var i = 0; i < users.length; i++) {
+    var user = users[i];
+    if (!foundProcessManager && strategyHasPermission_(user, "策略工序经理") && strategyProcessMatches_(user, process)) {
+      foundProcessManager = true;
+      result.processManager = strategyApproverInfo_(user);
+    }
+    if (!foundDeptManager && strategyHasPermission_(user, "策略部门经理")) {
+      foundDeptManager = true;
+      result.deptManager = strategyApproverInfo_(user);
+    }
+    if (!foundDocControl && strategyHasPermission_(user, "发放")) {
+      foundDocControl = true;
+      result.docControl = strategyApproverInfo_(user);
+    }
+  }
   return result;
 }
