@@ -2165,3 +2165,135 @@ function _buildMoCInfoTable(headers, rows) {
   html += '</table>';
   return html;
 }
+
+// ===== 保养策略审批 =====
+
+// 数据表
+var STRATEGY_SS_ID = "13LZMFurFP6Lc-iM0UrpNsoYDBgPHDBKVDfFxJ3G8bLs";
+var STRATEGY_MASTER_SHEET_NAME = "MasterData";
+var STRATEGY_HISTORY_SHEET_NAME = "History";
+var STRATEGY_USERID_SS_ID = "1F7G3WOY5xM4fEYZ1s5RKulY4kJhqCZ9HefthmiVkraM";
+var STRATEGY_EQU_MASTER_SS_ID = "1Iw0-TEvX0m7kIBLSmIpAkF8Z4B6Ri_nQRrmrcfPNlEQ";
+
+// 14 个业务字段（顺序同设计文档 2.1）
+var STRATEGY_BUSINESS_FIELDS = [
+  "工序",
+  "Machine Type",
+  "PM Frequency",
+  "单次停机时间/ h",
+  "PM Description",
+  "RBM保养间隔时间",
+  "RBM保养提醒间隔时间",
+  "强制保养频率/ Month",
+  "策略 / Strategy",
+  "TasklistName",
+  "是否创工单",
+  "工单类型",
+  "是否计入AEM",
+  "备注"
+];
+
+// 主表 19 列：14 个业务字段 + 策略ID/版本号/生效时间/最后修改人/最后修改时间
+var STRATEGY_MASTER_HEADERS = STRATEGY_BUSINESS_FIELDS.concat([
+  "策略ID",
+  "版本号",
+  "生效时间",
+  "最后修改人",
+  "最后修改时间"
+]);
+
+// History 12 列（设计文档 2.2）
+var STRATEGY_HISTORY_HEADERS = [
+  "MachineType",
+  "Strategy Content",
+  "Operator",
+  "Reason",
+  "Approver1",
+  "Comment1",
+  "Approver2",
+  "Comment2",
+  "Dissminater",
+  "Status",
+  "submitMail",
+  "Process"
+];
+
+// 状态值（设计文档 4.1）
+var STRATEGY_STATUS = {
+  pending: "待审批/ Pending",
+  voidPending: "作废待审批/ Void Pending",
+  waitRelease: "待发放/ Wait for Dissminater",
+  rejected: "拒绝/ Rejected",
+  effective: "生效/ Effective",
+  replaced: "取代/ Replace",
+  void: "作废/ Void"
+};
+
+/**
+ * 展示用完整编号：策略ID + "-" + 两位版本号
+ * @param {string} strategyId
+ * @param {string|number} version
+ * @returns {string}
+ */
+function strategyDisplayId_(strategyId, version) {
+  var id = strategyId === null || strategyId === undefined ? "" : String(strategyId);
+  return id + "-" + normalizeStrategyVersion_(version);
+}
+
+/**
+ * 根据 Strategy Content 的 old/new 推断申请类型
+ * @param {Object} content
+ * @returns {string} "new" | "void" | "edit" | ""
+ */
+function strategyAction_(content) {
+  var hasOld = !!(content && content.old);
+  var hasNew = !!(content && content.new);
+  if (hasNew && !hasOld) return "new";
+  if (hasOld && !hasNew) return "void";
+  if (hasOld && hasNew) return "edit";
+  return "";
+}
+
+/**
+ * 版本号统一为两位字符串；空值返回空字符串
+ * @param {string|number} value
+ * @returns {string}
+ */
+function normalizeStrategyVersion_(value) {
+  if (value === null || value === undefined) return "";
+  var text = String(value).trim();
+  if (text === "") return "";
+  return text.padStart(2, "0");
+}
+
+/**
+ * 取现有策略ID中的最大序号 + 1，四位补零
+ * @param {Array<string>} existingIds
+ * @returns {string}
+ */
+function nextStrategyId_(existingIds) {
+  var max = 0;
+  (existingIds || []).forEach(function (id) {
+    var text = id === null || id === undefined ? "" : String(id).trim();
+    var match = text.match(/^PM-MD-(\d+)$/);
+    if (match) {
+      var number = parseInt(match[1], 10);
+      if (number > max) max = number;
+    }
+  });
+  return "PM-MD-" + String(max + 1).padStart(4, "0");
+}
+
+/**
+ * 按表头把一行数据转为对象
+ * @param {Array<string>} headers
+ * @param {Array<*>} row
+ * @returns {Object}
+ */
+function strategyRowToObject_(headers, row) {
+  var result = {};
+  (headers || []).forEach(function (header, index) {
+    result[header] = row && index < row.length ? row[index] : "";
+  });
+  return result;
+}
