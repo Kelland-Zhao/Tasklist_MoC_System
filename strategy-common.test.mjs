@@ -50,6 +50,10 @@ test('规范化：RBM + Y 保留原值', () => {
 });
 
 test('14 个业务字段齐备', () => assert.equal(api.STRATEGY_FIELDS.length, 14));
+test('是否计入AEM 选项包含 Y/N/NA', () => {
+  const field = api.STRATEGY_FIELDS.find((item) => item.key === '是否计入AEM');
+  assert.deepEqual(field.options, ['Y', 'N', 'NA']);
+});
 test('按工序+机型过滤策略行', () => {
   const rows = [{ '工序':'IM','Machine Type':'FCS','策略ID':'PM-MD-0001' },{ '工序':'TF','Machine Type':'FCS','策略ID':'PM-MD-0002' }];
   assert.equal(api.filterStrategyMasterRows(rows,'IM','FCS').length, 1);
