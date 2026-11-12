@@ -9,6 +9,18 @@
     return String(value).trim();
   }
 
+  /* 共享转义 helper 缺失时退化为本地实现 */
+  function strategyCreateEscape_(value) {
+    if (typeof strategyEscapeHtml === 'function') return strategyEscapeHtml(value);
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   /* 字段选择器：用 data 属性定位，避免中文字段名进入 id/选择器转义 */
   function strategyCreateFieldSelector_(key) {
     return '[data-strategy-field="' + String(key) + '"]';
@@ -131,20 +143,66 @@
     $('#strategyForm').html(html);
   }
 
-  /* 给 TasklistName 多选追加选项（跳过空白与已存在项） */
-  function appendStrategyCreateTasklistOptions_($, $select, names) {
+  /* 选项统一为 {value,label}；兼容旧的纯字符串数组（label = value） */
+  function strategyCreateNormalizeTasklistOptions_(options) {
+    var list = Array.isArray(options) ? options : [];
+    var result = [];
+    for (var i = 0; i < list.length; i++) {
+      var item = list[i];
+      var value = '';
+      var label = '';
+      if (item && typeof item === 'object') {
+        value = strategyCreateText_(item.value);
+        label = item.label === null || item.label === undefined ? value : strategyCreateText_(item.label);
+      } else {
+        value = strategyCreateText_(item);
+        label = value;
+      }
+      if (value === '') continue;
+      result.push({ value: value, label: label === '' ? value : label });
+    }
+    return result;
+  }
+
+  /* 追加选项后刷新 Select2；未初始化或未加载 Select2 时静默跳过 */
+  function refreshStrategyCreateTasklistSelect2_($, $select) {
+    if (!$select || !$select.length) return;
+    if (typeof $select.hasClass !== 'function') return;
+    if (!$select.hasClass('select2-hidden-accessible')) return;
+    $select.trigger('change.select2');
+  }
+
+  /* 给 TasklistName 多选追加选项（跳过空白与已存在项），标签带工序前缀 */
+  function appendStrategyCreateTasklistOptions_($, $select, options) {
     if (!$select || !$select.length) return;
     var existing = {};
     $select.find('option').each(function () {
       existing[String(this.value)] = true;
     });
-    var list = Array.isArray(names) ? names : [];
+    var list = strategyCreateNormalizeTasklistOptions_(options);
+    var html = '';
     for (var i = 0; i < list.length; i++) {
-      var name = strategyCreateText_(list[i]);
-      if (name === '' || Object.prototype.hasOwnProperty.call(existing, name)) continue;
-      existing[name] = true;
-      $select.append($('<option></option>').val(name).text(name));
+      if (Object.prototype.hasOwnProperty.call(existing, list[i].value)) continue;
+      existing[list[i].value] = true;
+      html += '<option value="' + strategyCreateEscape_(list[i].value) + '">' +
+        strategyCreateEscape_(list[i].label) + '</option>';
     }
+    if (html !== '') $select.append(html);
+    refreshStrategyCreateTasklistSelect2_($, $select);
+  }
+
+  /* TasklistName 多选初始化 Select2；重复调用或未加载 Select2 时静默跳过 */
+  function initStrategyCreateTasklistSelect2_($, $select) {
+    if (!$select || !$select.length) return;
+    if (typeof $select.select2 !== 'function') return;
+    if (typeof $select.hasClass === 'function' && $select.hasClass('select2-hidden-accessible')) return;
+    $select.select2({
+      theme: 'bootstrap-5',
+      placeholder: '请选择 / Please select',
+      width: '100%',
+      closeOnSelect: false,
+      allowClear: true
+    });
   }
 
   /* 读取当前生效任务清单并填充 TasklistName 多选；失败时提示并保持为空 */
@@ -152,7 +210,9 @@
     google.script.run
       .withSuccessHandler(function (r) {
         if (r && r.ok) {
-          appendStrategyCreateTasklistOptions_($, $(strategyCreateFieldSelector_('TasklistName')), r.names || []);
+          var $select = $(strategyCreateFieldSelector_('TasklistName'));
+          appendStrategyCreateTasklistOptions_($, $select, r.options || []);
+          initStrategyCreateTasklistSelect2_($, $select);
         } else {
           showStrategyCreateError_(r && r.message
             ? r.message
@@ -225,7 +285,7 @@
     for (var i = 0; i < fields.length; i++) {
       $(strategyCreateFieldSelector_(fields[i].key)).val('');
     }
-    $(strategyCreateFieldSelector_('TasklistName')).val([]);
+    $(strategyCreateFieldSelector_('TasklistName')).val(null).trigger('change');
     $(strategyCreateFieldSelector_('强制保养频率/ Month')).removeClass('bg-warning');
     $('#changeReason').val('');
     applyStrategyCreateConditionalState($);
@@ -363,6 +423,7 @@
   /* 页面初始化 */
   function initStrategyCreatePage($) {
     renderStrategyForm($);
+    initStrategyCreateTasklistSelect2_($, $(strategyCreateFieldSelector_('TasklistName')));
     loadStrategyCreateTasklistOptions($);
     applyStrategyCreateConditionalState($);
 

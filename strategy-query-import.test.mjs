@@ -277,15 +277,17 @@ test('History 已有系统导入基线时禁止再次导入', () => {
 });
 
 /**
- * 构造 PM Tasklist_history 的 13 列行：A=MachineType、M=Status。
+ * 构造 PM Tasklist_history 的 15 列行：A=MachineType、M=Status、O=Process。
  * @param {string} machineType
  * @param {string} status
+ * @param {string} [process]
  * @returns {Array<string>}
  */
-function tasklistHistoryRow(machineType, status) {
-  const row = new Array(13).fill('');
+function tasklistHistoryRow(machineType, status, process) {
+  const row = new Array(15).fill('');
   row[0] = machineType;
   row[12] = status;
+  row[14] = process === undefined ? '' : process;
   return row;
 }
 
@@ -296,9 +298,10 @@ function tasklistHistoryRow(machineType, status) {
  */
 function setupTasklistHistory(rows) {
   setupStrategySheets();
-  const header = new Array(13).fill('');
+  const header = new Array(15).fill('');
   header[0] = 'MachineType';
   header[12] = 'Status';
+  header[14] = 'Process';
   const tasklistSheet = makeSheet([header].concat((rows || []).map(function (row) {
     return row.slice();
   })));
@@ -309,23 +312,49 @@ function setupTasklistHistory(rows) {
   return tasklistSheet;
 }
 
-test('getStrategyTasklistNames 只返回生效清单：去重、trim、升序', () => {
+test('getStrategyTasklistNames 只返回生效清单：去重、trim、按标签升序', () => {
   setupTasklistHistory([
-    tasklistHistoryRow('FCS', '生效/ Effective'),
-    tasklistHistoryRow('  UV  ', '生效/ Effective'),
-    tasklistHistoryRow('FCS', '生效/ Effective'),
-    tasklistHistoryRow('ABC', '生效'),
-    tasklistHistoryRow('IM', 'Effective'),
-    tasklistHistoryRow('OLD', '取代/ Replace'),
-    tasklistHistoryRow('VOID', '作废/ Void'),
-    tasklistHistoryRow('', '生效/ Effective'),
-    tasklistHistoryRow('   ', '生效/ Effective'),
-    tasklistHistoryRow('ZZZ', '生效/ Effective'),
+    tasklistHistoryRow('FCS', '生效/ Effective', 'TF'),
+    tasklistHistoryRow('  UV  ', '生效/ Effective', 'IM'),
+    tasklistHistoryRow('FCS', '生效/ Effective', 'IM'),
+    tasklistHistoryRow('ABC', '生效', ''),
+    tasklistHistoryRow('IM', 'Effective', ''),
+    tasklistHistoryRow('OLD', '取代/ Replace', 'IM'),
+    tasklistHistoryRow('VOID', '作废/ Void', 'IM'),
+    tasklistHistoryRow('', '生效/ Effective', 'IM'),
+    tasklistHistoryRow('   ', '生效/ Effective', 'IM'),
+    tasklistHistoryRow('ZZZ', '生效/ Effective', '   '),
+    tasklistHistoryRow('3AX', '生效/ Effective', ' IM '),
   ]);
 
   const res = g.getStrategyTasklistNames();
   assert.equal(res.ok, true);
-  assert.deepEqual(res.names, ['ABC', 'FCS', 'IM', 'UV', 'ZZZ']);
+  assert.deepEqual(res.options, [
+    { value: 'ABC', label: 'ABC' },
+    { value: 'IM', label: 'IM' },
+    { value: '3AX', label: 'IM - 3AX' },
+    { value: 'UV', label: 'IM - UV' },
+    { value: 'FCS', label: 'TF - FCS' },
+    { value: 'ZZZ', label: 'ZZZ' },
+  ]);
+});
+
+test('getStrategyTasklistNames 同一清单保留第一个非空 Process', () => {
+  setupTasklistHistory([
+    tasklistHistoryRow('FCS', '生效/ Effective', ''),
+    tasklistHistoryRow('FCS', '生效/ Effective', 'TF'),
+    tasklistHistoryRow('FCS', '生效/ Effective', 'IM'),
+  ]);
+
+  const res = g.getStrategyTasklistNames();
+  assert.deepEqual(res.options, [{ value: 'FCS', label: 'TF - FCS' }]);
+});
+
+test('getStrategyTasklistNames Process 为空时标签等于清单名', () => {
+  setupTasklistHistory([tasklistHistoryRow('FCS', 'Effective', '')]);
+
+  const res = g.getStrategyTasklistNames();
+  assert.deepEqual(res.options, [{ value: 'FCS', label: 'FCS' }]);
 });
 
 test('getStrategyTasklistNames 表不存在时返回空数组', () => {
@@ -333,13 +362,13 @@ test('getStrategyTasklistNames 表不存在时返回空数组', () => {
   sheetsById[g.STRATEGY_PM_TASKLIST_HISTORY_SS_ID] = {};
   installGas({ sheetsById: sheetsById, sent: sent });
 
-  assert.deepEqual(g.getStrategyTasklistNames(), { ok: true, names: [] });
+  assert.deepEqual(g.getStrategyTasklistNames(), { ok: true, options: [] });
 });
 
 test('getStrategyTasklistNames 空表（仅表头）时返回空数组', () => {
   setupTasklistHistory([]);
 
-  assert.deepEqual(g.getStrategyTasklistNames(), { ok: true, names: [] });
+  assert.deepEqual(g.getStrategyTasklistNames(), { ok: true, options: [] });
 });
 
 test('getStrategyTasklistNames 读取异常时返回 ok:false', () => {

@@ -3395,31 +3395,48 @@ function getStrategyHistoryData() {
 }
 
 /**
- * 读取当前生效的 PM 任务清单名称（PM Tasklist_history 的 MachineType）。
- * 过滤 M 列 Status 含「生效」或「Effective」的行，去重、trim、升序。
- * @returns {{ok:boolean,names?:Array<string>,message?:string}}
+ * 读取当前生效的 PM 任务清单（PM Tasklist_history）。
+ * A 列 MachineType 为清单名，M 列 Status 需含「生效」或「Effective」，O 列 Process 为工序。
+ * 按清单名去重（trim），同一清单保留第一个非空 Process；标签为「工序 - 清单名」，
+ * Process 为空时标签即清单名。按标签升序返回。
+ * @returns {{ok:boolean,options?:Array<{value:string,label:string}>,message?:string}}
  */
 function getStrategyTasklistNames() {
   try {
     var ss = SpreadsheetApp.openById(STRATEGY_PM_TASKLIST_HISTORY_SS_ID);
     var ws = ss.getSheetByName(STRATEGY_PM_TASKLIST_HISTORY_SHEET_NAME);
-    if (!ws) return { ok: true, names: [] };
+    if (!ws) return { ok: true, options: [] };
     var lastRow = ws.getLastRow();
-    if (lastRow < 2) return { ok: true, names: [] };
-    var data = ws.getSheetValues(2, 1, lastRow - 1, 13);
-    var seen = {};
-    var names = [];
+    if (lastRow < 2) return { ok: true, options: [] };
+    var data = ws.getSheetValues(2, 1, lastRow - 1, 15);
+    var byName = {};
+    var order = [];
     for (var i = 0; i < data.length; i++) {
       var row = data[i] || [];
       var status = row[12] === null || row[12] === undefined ? "" : String(row[12]);
       if (status.indexOf("生效") === -1 && status.indexOf("Effective") === -1) continue;
       var name = row[0] === null || row[0] === undefined ? "" : String(row[0]).trim();
-      if (name === "" || Object.prototype.hasOwnProperty.call(seen, name)) continue;
-      seen[name] = true;
-      names.push(name);
+      if (name === "") continue;
+      var process = row[14] === null || row[14] === undefined ? "" : String(row[14]).trim();
+      if (!Object.prototype.hasOwnProperty.call(byName, name)) {
+        byName[name] = { value: name, process: "" };
+        order.push(name);
+      }
+      if (byName[name].process === "" && process !== "") byName[name].process = process;
     }
-    names.sort();
-    return { ok: true, names: names };
+    var options = order.map(function (name) {
+      var item = byName[name];
+      return {
+        value: item.value,
+        label: item.process === "" ? item.value : item.process + " - " + item.value
+      };
+    });
+    options.sort(function (a, b) {
+      if (a.label < b.label) return -1;
+      if (a.label > b.label) return 1;
+      return 0;
+    });
+    return { ok: true, options: options };
   } catch (e) {
     return { ok: false, message: e.toString() };
   }

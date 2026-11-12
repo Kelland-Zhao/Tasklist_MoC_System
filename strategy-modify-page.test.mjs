@@ -5,7 +5,7 @@ import { extractScript, makeJQueryStub } from './strategy-test-utils.mjs';
 
 const commonSrc = extractScript(fs.readFileSync(new URL('./Strategy_Common_JS.html', import.meta.url), 'utf8'));
 const src = extractScript(fs.readFileSync(new URL('./Strategy_Modify_JS.html', import.meta.url), 'utf8'));
-const api = new Function(`${commonSrc}; ${src}; return { buildStrategyEditPayload, applyStrategyModifyConditionalState, collectStrategyEditFormValues, fillStrategyEditForm, strategyModifyFieldHtml_, STRATEGY_FIELDS };`)();
+const api = new Function(`${commonSrc}; ${src}; return { buildStrategyEditPayload, applyStrategyModifyConditionalState, collectStrategyEditFormValues, fillStrategyEditForm, strategyModifyFieldHtml_, strategyModifyAppendTasklistOptions_, initStrategyModifyTasklistSelect2_, loadStrategyModifyTasklistOptions, STRATEGY_FIELDS };`)();
 
 function fullOld(overrides) {
   return {
@@ -204,6 +204,151 @@ test('载入主表行时 legacy 非方括号值仍可见并选中', () => {
   const jq = makeJQueryStub(initial);
   api.fillStrategyEditForm(jq, fullOld({ 'TasklistName': 'LEGACY-LIST' }));
   assert.deepEqual(jq('[data-strategy-field="TasklistName"]').val(), ['LEGACY-LIST']);
+});
+
+/* TasklistName 多选桩：记录 append 的 HTML，支持 find('option') / hasClass / select2 */
+function tasklistSelectStub(initialOptions) {
+  const state = {
+    options: (initialOptions || []).map(function (value) { return { value: value }; }),
+    appended: [],
+    value: [],
+    triggers: [],
+    select2Active: false
+  };
+  const $select = {
+    length: 1,
+    state: state,
+    find: function () {
+      return {
+        each: function (callback) {
+          state.options.forEach(function (option) {
+            callback.call({ value: option.value }, 0, { value: option.value });
+          });
+        }
+      };
+    },
+    append: function (html) {
+      state.appended.push(html);
+      const re = /<option value="([^"]*)"/g;
+      let match;
+      while ((match = re.exec(html)) !== null) state.options.push({ value: match[1] });
+      return $select;
+    },
+    hasClass: function (name) {
+      return name === 'select2-hidden-accessible' && state.select2Active;
+    },
+    trigger: function (name) {
+      state.triggers.push(name);
+      return $select;
+    },
+    val: function (value) {
+      if (arguments.length) {
+        state.value = value;
+        return $select;
+      }
+      return state.value;
+    },
+    select2: function () {
+      state.select2Active = true;
+      return $select;
+    }
+  };
+  return $select;
+}
+
+test('TasklistName 选项带工序前缀，legacy 字符串回退为原始名并转义', () => {
+  const select = tasklistSelectStub(['EXISTING']);
+  api.strategyModifyAppendTasklistOptions_(null, select, [
+    { value: '3AX', label: 'IM - 3AX' },
+    { value: 'EXISTING', label: 'TF - EXISTING' },
+    'LEGACY-LIST',
+    '',
+    { value: 'NO-LABEL' },
+    { value: '<X>', label: '<IM> - X' }
+  ]);
+
+  assert.deepEqual(select.state.appended, [
+    '<option value="3AX">IM - 3AX</option>' +
+    '<option value="LEGACY-LIST">LEGACY-LIST</option>' +
+    '<option value="NO-LABEL">NO-LABEL</option>' +
+    '<option value="&lt;X&gt;">&lt;IM&gt; - X</option>'
+  ]);
+});
+
+test('载入 legacy TasklistName 时补原始名选项，保证值可见', () => {
+  const initial = {};
+  api.STRATEGY_FIELDS.forEach((field) => {
+    initial[`[data-strategy-field="${field.key}"]`] = '';
+  });
+  const jq = makeJQueryStub(initial);
+  const select = tasklistSelectStub([]);
+  const wrapped = function (target) {
+    if (String(target) === '[data-strategy-field="TasklistName"]') return select;
+    return jq(target);
+  };
+
+  api.fillStrategyEditForm(wrapped, fullOld({ 'TasklistName': 'LEGACY-LIST' }));
+
+  assert.deepEqual(select.state.value, ['LEGACY-LIST']);
+  assert.deepEqual(select.state.appended, ['<option value="LEGACY-LIST">LEGACY-LIST</option>']);
+});
+
+test('Select2 初始化参数正确且可重复调用', () => {
+  const calls = [];
+  const select = tasklistSelectStub([]);
+  select.select2 = function (options) {
+    calls.push(options);
+    this.state.select2Active = true;
+    return this;
+  };
+
+  api.initStrategyModifyTasklistSelect2_(null, select);
+  api.initStrategyModifyTasklistSelect2_(null, select);
+
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0], {
+    theme: 'bootstrap-5',
+    placeholder: '请选择 / Please select',
+    width: '100%',
+    closeOnSelect: false,
+    allowClear: true
+  });
+});
+
+test('加载任务清单使用 options 并初始化 Select2', () => {
+  const select = tasklistSelectStub([]);
+  const jq = makeJQueryStub({});
+  const $ = function (target) {
+    if (String(target) === '[data-strategy-field="TasklistName"]') return select;
+    return jq(target);
+  };
+  const original = globalThis.google;
+  globalThis.google = {
+    script: {
+      run: {
+        withSuccessHandler: function (fn) {
+          this._success = fn;
+          return this;
+        },
+        withFailureHandler: function (fn) {
+          this._failure = fn;
+          return this;
+        },
+        getStrategyTasklistNames: function () {
+          this._success({ ok: true, options: [{ value: '3AX', label: 'IM - 3AX' }] });
+        }
+      }
+    }
+  };
+  try {
+    api.loadStrategyModifyTasklistOptions($);
+  } finally {
+    if (original === undefined) delete globalThis.google;
+    else globalThis.google = original;
+  }
+
+  assert.deepEqual(select.state.appended, ['<option value="3AX">IM - 3AX</option>']);
+  assert.equal(select.state.select2Active, true);
 });
 
 /* 安全回归：URL 参数注入到 <script> 前必须转义 <，防止构造 </script> 逃逸 */
