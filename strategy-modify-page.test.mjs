@@ -311,7 +311,7 @@ test('Select2 初始化参数正确且可重复调用', () => {
     placeholder: '请选择 / Please select',
     width: '100%',
     closeOnSelect: false,
-    allowClear: true
+    allowClear: false
   });
 });
 
