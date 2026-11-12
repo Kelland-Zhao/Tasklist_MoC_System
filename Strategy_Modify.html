@@ -89,6 +89,33 @@
       display: none !important;
     }
 
+    /* 左右分栏：左侧列表内部滚动，右侧编辑区 sticky */
+    .strategy-workspace { align-items: flex-start; }
+    .strategy-list-card .strategy-table-wrap {
+      max-height: calc(100vh - 300px);
+      overflow-y: auto;
+    }
+    .strategy-edit-placeholder {
+      text-align: center; color: #6c757d; font-size: 14px;
+      padding: 48px 20px; line-height: 1.8;
+    }
+    .strategy-edit-placeholder i {
+      display: block; font-size: 36px; color: #E60012; margin-bottom: 10px;
+    }
+    .strategy-edit-placeholder .en { font-size: 12px; opacity: .85; }
+    @media (min-width: 992px) {
+      .strategy-edit-col {
+        position: sticky;
+        top: 16px;
+        align-self: flex-start;
+        max-height: calc(100vh - 32px);
+        overflow-y: auto;
+      }
+    }
+    @media (max-width: 991.98px) {
+      .strategy-list-card .strategy-table-wrap { max-height: none; overflow-y: visible; }
+    }
+
     @media (max-width: 768px) {
       .form-card .row > [class*="col-"] { margin-bottom: 8px; }
       .table-responsive { overflow-x: auto; }
@@ -119,70 +146,84 @@
       <span id="Code" style="display:none;">工号/ JobNumber: <span id="JobNumber"></span></span>
     </div>
 
-    <div class="section-title">选择策略 / SELECT STRATEGY</div>
-    <div class="form-card">
-      <div class="row">
-        <div class="col-md-6 col-xl-3 mb-3">
-          <label class="field-label" for="processSelect">工序<span class="en">Process</span></label>
-          <select class="form-select" id="processSelect">
-            <option value="">全部 / All</option>
-            <option value="FA">FA</option>
-            <option value="IM">IM</option>
-            <option value="PK">PK</option>
-            <option value="TF">TF</option>
-            <option value="WH">WH</option>
-          </select>
-        </div>
-        <div class="col-md-6 col-xl-3 mb-3">
-          <label class="field-label" for="machineTypeInput">机型<span class="en">Machine Type</span></label>
-          <input type="text" class="form-control" id="machineTypeInput" placeholder="请输入机型 / Enter machine type">
-        </div>
-      </div>
-      <div class="table-responsive">
-        <table id="strategyTable" class="table table-sm table-bordered align-middle mb-0">
-          <thead>
-            <tr>
-              <th>保养描述<br><small>PM Description</small></th>
-              <th>保养频率<br><small>PM Frequency</small></th>
-              <th>版本号<br><small>Version</small></th>
-              <th>策略ID<br><small>Strategy ID</small></th>
-              <th>策略<br><small>Strategy</small></th>
-              <th>操作<br><small>Action</small></th>
-            </tr>
-          </thead>
-          <tbody id="strategyTableBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="strategyEditSection" style="display:none;">
-      <div class="section-title">策略信息 / STRATEGY INFO</div>
-      <div class="form-card">
-        <div class="row mb-1">
-          <div class="col-md-6 col-xl-4 mb-3">
-            <label class="field-label" for="strategyIdDisplay">策略ID<span class="en">Strategy ID</span></label>
-            <input type="text" class="form-control" id="strategyIdDisplay" readonly>
+    <div class="row g-3 strategy-workspace">
+      <div class="col-12 col-lg-6 strategy-list-col">
+        <div class="section-title">选择策略 / SELECT STRATEGY</div>
+        <div class="form-card strategy-list-card">
+          <div class="row">
+            <div class="col-md-6 col-xl-3 mb-3">
+              <label class="field-label" for="processSelect">工序<span class="en">Process</span></label>
+              <select class="form-select" id="processSelect">
+                <option value="">全部 / All</option>
+                <option value="FA">FA</option>
+                <option value="IM">IM</option>
+                <option value="PK">PK</option>
+                <option value="TF">TF</option>
+                <option value="WH">WH</option>
+              </select>
+            </div>
+            <div class="col-md-6 col-xl-3 mb-3">
+              <label class="field-label" for="machineTypeInput">机型<span class="en">Machine Type</span></label>
+              <input type="text" class="form-control" id="machineTypeInput" placeholder="请输入机型 / Enter machine type">
+            </div>
+          </div>
+          <div class="table-responsive strategy-table-wrap">
+            <table id="strategyTable" class="table table-sm table-bordered align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>保养描述<br><small>PM Description</small></th>
+                  <th>保养频率<br><small>PM Frequency</small></th>
+                  <th>版本号<br><small>Version</small></th>
+                  <th>策略ID<br><small>Strategy ID</small></th>
+                  <th>策略<br><small>Strategy</small></th>
+                  <th>操作<br><small>Action</small></th>
+                </tr>
+              </thead>
+              <tbody id="strategyTableBody"></tbody>
+            </table>
           </div>
         </div>
-        <div class="row" id="strategyForm"></div>
       </div>
-    </div>
 
-    <div class="section-title">变更原因 / CHANGE REASON</div>
-    <div class="form-card">
-      <label class="field-label" for="changeReason">
-        变更原因<span class="req">*</span><span class="en">Change Reason</span>
-      </label>
-      <textarea class="form-control" id="changeReason" rows="3" placeholder="请输入变更原因 / Enter change reason"></textarea>
-    </div>
+      <div class="col-12 col-lg-6 strategy-edit-col">
+        <div id="strategyEditPlaceholder" class="form-card strategy-edit-placeholder">
+          <i class="bi bi-arrow-left-circle"></i>
+          <div>请从左侧选择一条策略开始编辑</div>
+          <div class="en">Select a strategy from the list to edit</div>
+        </div>
 
-    <div class="d-flex justify-content-end gap-2 mb-4">
-      <button type="button" class="btn btn-outline-secondary" id="resetStrategyForm">
-        <i class="bi bi-arrow-counterclockwise"></i> 重置 / Reset
-      </button>
-      <button type="button" class="btn btn-brand" id="submitStrategy">
-        <i class="bi bi-send"></i> 提交 / Submit
-      </button>
+        <div id="strategyEditPanel" style="display:none;">
+          <div id="strategyEditSection">
+            <div class="section-title">策略信息 / STRATEGY INFO</div>
+            <div class="form-card">
+              <div class="row mb-1">
+                <div class="col-md-6 col-xl-4 mb-3">
+                  <label class="field-label" for="strategyIdDisplay">策略ID<span class="en">Strategy ID</span></label>
+                  <input type="text" class="form-control" id="strategyIdDisplay" readonly>
+                </div>
+              </div>
+              <div class="row" id="strategyForm"></div>
+            </div>
+          </div>
+
+          <div class="section-title">变更原因 / CHANGE REASON</div>
+          <div class="form-card">
+            <label class="field-label" for="changeReason">
+              变更原因<span class="req">*</span><span class="en">Change Reason</span>
+            </label>
+            <textarea class="form-control" id="changeReason" rows="3" placeholder="请输入变更原因 / Enter change reason"></textarea>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mb-4">
+            <button type="button" class="btn btn-outline-secondary" id="resetStrategyForm">
+              <i class="bi bi-arrow-counterclockwise"></i> 重置 / Reset
+            </button>
+            <button type="button" class="btn btn-brand" id="submitStrategy">
+              <i class="bi bi-send"></i> 提交 / Submit
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>

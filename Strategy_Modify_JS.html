@@ -434,7 +434,8 @@
     $(strategyModifyFieldSelector_('强制保养频率/ Month')).removeClass('bg-warning');
     $('#changeReason').val('');
     applyStrategyModifyConditionalState($);
-    $('#strategyEditSection').hide();
+    $('#strategyEditPanel').hide();
+    $('#strategyEditPlaceholder').show();
     $('#strategyTableBody tr').removeClass('table-active');
   }
 
@@ -493,7 +494,12 @@
     if (!row) return;
     strategyModifySelectedRow = row;
     fillStrategyEditForm($, row);
-    $('#strategyEditSection').show();
+    $('#strategyEditPanel').show();
+    $('#strategyEditPlaceholder').hide();
+    if (window.innerWidth < 992) {
+      var panel = document.getElementById('strategyEditPanel');
+      if (panel && panel.scrollIntoView) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   /* 失败提示：把后端「中文 / English」消息拆成双语 swalHtml */
@@ -593,7 +599,8 @@
     $('#Name').text(userName === '' ? '-' : userName);
     $('#JobNumber').text(jobNumber);
 
-    $('#strategyEditSection').hide();
+    $('#strategyEditPanel').hide();
+    $('#strategyEditPlaceholder').show();
 
     $('#processSelect').on('change', function () {
       renderStrategyEditTable($);
