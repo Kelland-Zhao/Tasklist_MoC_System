@@ -17,7 +17,7 @@
     { key: 'RBM保养提醒间隔时间', label: 'RBM保养提醒间隔时间', labelEn: 'RBM Maintenance Reminder Interval', type: 'text' },
     { key: '强制保养频率/ Month', label: '强制保养频率 / Month', labelEn: 'Mandatory PM Frequency / Month', type: 'text' },
     { key: '策略 / Strategy', label: '策略', labelEn: 'Strategy', type: 'select', options: ['TBM', 'RBM', 'CBM'] },
-    { key: 'TasklistName', label: '任务清单名称', labelEn: 'TasklistName', type: 'text' },
+    { key: 'TasklistName', label: '任务清单名称', labelEn: 'TasklistName', type: 'multiselect' },
     { key: '是否创工单', label: '是否创工单', labelEn: 'Create Work Order?', type: 'select', options: ['Y', 'N'] },
     { key: '工单类型', label: '工单类型', labelEn: 'Work Order Type', type: 'select', options: ['PM02', 'PM10', 'NA', 'ZPM4'] },
     { key: '是否计入AEM', label: '是否计入AEM', labelEn: 'Include in AEM?', type: 'select', options: ['Y', 'N', 'NA'] },
@@ -44,6 +44,33 @@
     var value = fields[key];
     if (value === null || value === undefined) return '';
     return String(value);
+  }
+
+  /* 任务清单多选 → 存储格式 [A,B]；空白项剔除，无有效项返回 '' */
+  function formatStrategyTasklistNames(names) {
+    var list = Array.isArray(names) ? names : (names === null || names === undefined ? [] : [names]);
+    var cleaned = [];
+    for (var i = 0; i < list.length; i++) {
+      var text = list[i] === null || list[i] === undefined ? '' : String(list[i]).trim();
+      if (text !== '') cleaned.push(text);
+    }
+    if (!cleaned.length) return '';
+    return '[' + cleaned.join(',') + ']';
+  }
+
+  /* 解析存储值：'[A,B]' → ['A','B']；非方括号值 → [value]；空值 → [] */
+  function parseStrategyTasklistNames(value) {
+    if (value === null || value === undefined) return [];
+    var text = String(value).trim();
+    if (text === '') return [];
+    if (text.charAt(0) !== '[' || text.charAt(text.length - 1) !== ']') return [text];
+    var parts = text.slice(1, -1).split(',');
+    var result = [];
+    for (var i = 0; i < parts.length; i++) {
+      var item = parts[i].trim();
+      if (item !== '') result.push(item);
+    }
+    return result;
   }
 
   /* 按条件返回必填字段键数组（不含变更原因，页面单独校验） */

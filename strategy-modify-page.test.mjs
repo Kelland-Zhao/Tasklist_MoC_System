@@ -5,7 +5,7 @@ import { extractScript, makeJQueryStub } from './strategy-test-utils.mjs';
 
 const commonSrc = extractScript(fs.readFileSync(new URL('./Strategy_Common_JS.html', import.meta.url), 'utf8'));
 const src = extractScript(fs.readFileSync(new URL('./Strategy_Modify_JS.html', import.meta.url), 'utf8'));
-const api = new Function(`${commonSrc}; ${src}; return { buildStrategyEditPayload, applyStrategyModifyConditionalState, fillStrategyEditForm, strategyModifyFieldHtml_, STRATEGY_FIELDS };`)();
+const api = new Function(`${commonSrc}; ${src}; return { buildStrategyEditPayload, applyStrategyModifyConditionalState, collectStrategyEditFormValues, fillStrategyEditForm, strategyModifyFieldHtml_, STRATEGY_FIELDS };`)();
 
 function fullOld(overrides) {
   return {
@@ -146,6 +146,64 @@ test('条件字段渲染带动态必填标记', () => {
     5
   );
   assert.match(html, /data-strategy-required="RBM保养间隔时间"/);
+});
+
+test('TasklistName 渲染为多选下拉（multiple / size 6）', () => {
+  const html = api.strategyModifyFieldHtml_(
+    api.STRATEGY_FIELDS.find((field) => field.key === 'TasklistName'),
+    9
+  );
+  assert.match(html, /<select multiple class="form-select" size="6"/);
+  assert.match(html, /data-strategy-field="TasklistName"/);
+  assert.doesNotMatch(html, /<input/);
+});
+
+/* 构造带全部字段值的 jQuery 桩，供收集函数使用 */
+function stubWithValues(overrides) {
+  const values = fullValues(overrides);
+  const initial = {};
+  Object.keys(values).forEach((key) => {
+    initial[`[data-strategy-field="${key}"]`] = values[key];
+  });
+  return { jq: makeJQueryStub(initial), values };
+}
+
+test('collectStrategyEditFormValues：多选值排序、去空白并保存为 [A,B]', () => {
+  const { jq } = stubWithValues();
+  jq('[data-strategy-field="TasklistName"]').val([' UV ', 'FCS', '', 'UV']);
+  const collected = api.collectStrategyEditFormValues(jq);
+  assert.equal(collected['TasklistName'], '[FCS,UV]');
+  const p = api.buildStrategyEditPayload('PM-MD-0001', fullOld(), collected, user, '调整清单');
+  assert.notEqual(p, null);
+  assert.equal(p.fields['TasklistName'], '[FCS,UV]');
+});
+
+test('collectStrategyEditFormValues：多选未选择时为 \'\'，builder 判定必填失败', () => {
+  const { jq } = stubWithValues();
+  jq('[data-strategy-field="TasklistName"]').val([]);
+  const collected = api.collectStrategyEditFormValues(jq);
+  assert.equal(collected['TasklistName'], '');
+  assert.equal(api.buildStrategyEditPayload('PM-MD-0001', fullOld(), collected, user, '调整清单'), null);
+});
+
+test('载入主表行时解析 [A,B] 并选中多选', () => {
+  const initial = {};
+  api.STRATEGY_FIELDS.forEach((field) => {
+    initial[`[data-strategy-field="${field.key}"]`] = '';
+  });
+  const jq = makeJQueryStub(initial);
+  api.fillStrategyEditForm(jq, fullOld({ 'TasklistName': '[FCS, UV]' }));
+  assert.deepEqual(jq('[data-strategy-field="TasklistName"]').val(), ['FCS', 'UV']);
+});
+
+test('载入主表行时 legacy 非方括号值仍可见并选中', () => {
+  const initial = {};
+  api.STRATEGY_FIELDS.forEach((field) => {
+    initial[`[data-strategy-field="${field.key}"]`] = '';
+  });
+  const jq = makeJQueryStub(initial);
+  api.fillStrategyEditForm(jq, fullOld({ 'TasklistName': 'LEGACY-LIST' }));
+  assert.deepEqual(jq('[data-strategy-field="TasklistName"]').val(), ['LEGACY-LIST']);
 });
 
 /* 安全回归：URL 参数注入到 <script> 前必须转义 <，防止构造 </script> 逃逸 */

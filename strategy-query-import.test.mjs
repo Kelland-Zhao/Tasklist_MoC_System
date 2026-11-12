@@ -275,3 +275,77 @@ test('History 已有系统导入基线时禁止再次导入', () => {
   assert.equal(res.ok, false);
   assert.match(res.message, /初始导入/);
 });
+
+/**
+ * 构造 PM Tasklist_history 的 13 列行：A=MachineType、M=Status。
+ * @param {string} machineType
+ * @param {string} status
+ * @returns {Array<string>}
+ */
+function tasklistHistoryRow(machineType, status) {
+  const row = new Array(13).fill('');
+  row[0] = machineType;
+  row[12] = status;
+  return row;
+}
+
+/**
+ * 重建策略数据表并挂载 PM Tasklist_history（含表头行）。
+ * @param {Array<Array<string>>} rows 数据行
+ * @returns {object} Tasklist_history sheet
+ */
+function setupTasklistHistory(rows) {
+  setupStrategySheets();
+  const header = new Array(13).fill('');
+  header[0] = 'MachineType';
+  header[12] = 'Status';
+  const tasklistSheet = makeSheet([header].concat((rows || []).map(function (row) {
+    return row.slice();
+  })));
+  sheetsById[g.STRATEGY_PM_TASKLIST_HISTORY_SS_ID] = {
+    [g.STRATEGY_PM_TASKLIST_HISTORY_SHEET_NAME]: tasklistSheet,
+  };
+  installGas({ sheetsById: sheetsById, sent: sent });
+  return tasklistSheet;
+}
+
+test('getStrategyTasklistNames 只返回生效清单：去重、trim、升序', () => {
+  setupTasklistHistory([
+    tasklistHistoryRow('FCS', '生效/ Effective'),
+    tasklistHistoryRow('  UV  ', '生效/ Effective'),
+    tasklistHistoryRow('FCS', '生效/ Effective'),
+    tasklistHistoryRow('ABC', '生效'),
+    tasklistHistoryRow('IM', 'Effective'),
+    tasklistHistoryRow('OLD', '取代/ Replace'),
+    tasklistHistoryRow('VOID', '作废/ Void'),
+    tasklistHistoryRow('', '生效/ Effective'),
+    tasklistHistoryRow('   ', '生效/ Effective'),
+    tasklistHistoryRow('ZZZ', '生效/ Effective'),
+  ]);
+
+  const res = g.getStrategyTasklistNames();
+  assert.equal(res.ok, true);
+  assert.deepEqual(res.names, ['ABC', 'FCS', 'IM', 'UV', 'ZZZ']);
+});
+
+test('getStrategyTasklistNames 表不存在时返回空数组', () => {
+  setupStrategySheets();
+  sheetsById[g.STRATEGY_PM_TASKLIST_HISTORY_SS_ID] = {};
+  installGas({ sheetsById: sheetsById, sent: sent });
+
+  assert.deepEqual(g.getStrategyTasklistNames(), { ok: true, names: [] });
+});
+
+test('getStrategyTasklistNames 空表（仅表头）时返回空数组', () => {
+  setupTasklistHistory([]);
+
+  assert.deepEqual(g.getStrategyTasklistNames(), { ok: true, names: [] });
+});
+
+test('getStrategyTasklistNames 读取异常时返回 ok:false', () => {
+  setupStrategySheets();
+
+  const res = g.getStrategyTasklistNames();
+  assert.equal(res.ok, false);
+  assert.match(res.message, /未配置/);
+});

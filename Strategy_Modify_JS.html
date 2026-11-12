@@ -187,6 +187,8 @@
         html += '<option value="' + options[i] + '">' + options[i] + '</option>';
       }
       html += '</select>';
+    } else if (field.type === 'multiselect') {
+      html += '<select multiple class="form-select" size="6" id="' + id + '" data-strategy-field="' + field.key + '"></select>';
     } else {
       html += '<input type="text" class="form-control" id="' + id + '" data-strategy-field="' + field.key + '"' + (locked ? ' readonly' : '') + ' placeholder="请输入 / Enter">';
     }
@@ -204,6 +206,21 @@
     $('#strategyForm').html(html);
   }
 
+  /* 多选控件值统一为排序、去重、去空白的字符串数组 */
+  function strategyModifySelectedValues_(value) {
+    var list = Array.isArray(value) ? value : (value === null || value === undefined || value === '' ? [] : [value]);
+    var seen = {};
+    var result = [];
+    for (var i = 0; i < list.length; i++) {
+      var text = strategyModifyText_(list[i]);
+      if (text === '' || Object.prototype.hasOwnProperty.call(seen, text)) continue;
+      seen[text] = true;
+      result.push(text);
+    }
+    result.sort();
+    return result;
+  }
+
   /* 收集 14 个业务字段值 */
   function collectStrategyEditFormValues($) {
     var values = {};
@@ -213,16 +230,75 @@
       var $input = $(strategyModifyFieldSelector_(key));
       var value = '';
       if ($input && $input.length) value = $input.val();
-      values[key] = value === null || value === undefined ? '' : String(value);
+      if (fields[i].type === 'multiselect') {
+        values[key] = formatStrategyTasklistNames(strategyModifySelectedValues_(value));
+      } else {
+        values[key] = value === null || value === undefined ? '' : String(value);
+      }
     }
     return values;
   }
 
-  /* 给字段赋值；工序下拉若缺少该值则临时补一个选项，保证历史值可见 */
+  /* 按字段 key 取 STRATEGY_FIELDS 定义 */
+  function strategyModifyFieldByKey_(key) {
+    var fields = typeof STRATEGY_FIELDS !== 'undefined' && STRATEGY_FIELDS ? STRATEGY_FIELDS : [];
+    for (var i = 0; i < fields.length; i++) {
+      if (fields[i].key === key) return fields[i];
+    }
+    return null;
+  }
+
+  /* 给 TasklistName 多选追加选项（跳过空白与已存在项） */
+  function strategyModifyAppendTasklistOptions_($, $select, names) {
+    if (!$select || !$select.length) return;
+    var existing = {};
+    $select.find('option').each(function () {
+      existing[String(this.value)] = true;
+    });
+    var list = Array.isArray(names) ? names : [];
+    for (var i = 0; i < list.length; i++) {
+      var name = strategyModifyText_(list[i]);
+      if (name === '' || Object.prototype.hasOwnProperty.call(existing, name)) continue;
+      existing[name] = true;
+      $select.append($('<option></option>').val(name).text(name));
+    }
+  }
+
+  /* 读取当前生效任务清单并合并到 TasklistName 多选（保留已有选中项） */
+  function loadStrategyModifyTasklistOptions($) {
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (r && r.ok) {
+          strategyModifyAppendTasklistOptions_(
+            $,
+            $(strategyModifyFieldSelector_('TasklistName')),
+            r.names || []
+          );
+        } else {
+          showStrategyEditError_(r && r.message
+            ? r.message
+            : '任务清单加载失败，请刷新重试。/ Failed to load tasklist names, please refresh.');
+        }
+      })
+      .withFailureHandler(function () {
+        showStrategyEditError_('任务清单加载失败，请刷新重试。/ Failed to load tasklist names, please refresh.');
+      })
+      .getStrategyTasklistNames();
+  }
+
+  /* 给字段赋值；多选按 [A,B] 解析，工序下拉若缺少该值则临时补一个选项，保证历史值可见 */
   function strategyModifySetFieldValue_($, key, value) {
     var $input = $(strategyModifyFieldSelector_(key));
     if (!$input || !$input.length) return;
     var text = value === null || value === undefined ? '' : String(value);
+    var field = strategyModifyFieldByKey_(key);
+    if (field && field.type === 'multiselect') {
+      var names = typeof parseStrategyTasklistNames === 'function' ? parseStrategyTasklistNames(text) : [];
+      /* 选项未加载或历史值不在当前清单时，补选项保证可见可选中 */
+      strategyModifyAppendTasklistOptions_($, $input, names);
+      $input.val(names);
+      return;
+    }
     if ($input.is('select') && text !== '') {
       var exists = false;
       $input.find('option').each(function () {
@@ -306,6 +382,7 @@
     for (var i = 0; i < fields.length; i++) {
       $(strategyModifyFieldSelector_(fields[i].key)).val('');
     }
+    $(strategyModifyFieldSelector_('TasklistName')).val([]);
     $('#strategyIdDisplay').val('');
     $(strategyModifyFieldSelector_('强制保养频率/ Month')).removeClass('bg-warning');
     $('#changeReason').val('');
@@ -461,6 +538,7 @@
   /* 页面初始化 */
   function initStrategyModifyPage($) {
     renderStrategyEditForm($);
+    loadStrategyModifyTasklistOptions($);
 
     var userName = typeof STRATEGY_USER_NAME !== 'undefined' && STRATEGY_USER_NAME ? String(STRATEGY_USER_NAME) : '';
     var jobNumber = typeof STRATEGY_JOB_NUMBER !== 'undefined' && STRATEGY_JOB_NUMBER ? String(STRATEGY_JOB_NUMBER) : '';

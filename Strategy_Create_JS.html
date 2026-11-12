@@ -14,6 +14,21 @@
     return '[data-strategy-field="' + String(key) + '"]';
   }
 
+  /* 多选控件值统一为排序、去重、去空白的字符串数组 */
+  function strategyCreateSelectedValues_(value) {
+    var list = Array.isArray(value) ? value : (value === null || value === undefined || value === '' ? [] : [value]);
+    var seen = {};
+    var result = [];
+    for (var i = 0; i < list.length; i++) {
+      var text = strategyCreateText_(list[i]);
+      if (text === '' || Object.prototype.hasOwnProperty.call(seen, text)) continue;
+      seen[text] = true;
+      result.push(text);
+    }
+    result.sort();
+    return result;
+  }
+
   /**
    * 收集 14 个业务字段值
    * @param {Function} $ jQuery
@@ -27,7 +42,11 @@
       var $input = $(strategyCreateFieldSelector_(key));
       var value = '';
       if ($input && $input.length) value = $input.val();
-      values[key] = value === null || value === undefined ? '' : String(value);
+      if (fields[i].type === 'multiselect') {
+        values[key] = formatStrategyTasklistNames(strategyCreateSelectedValues_(value));
+      } else {
+        values[key] = value === null || value === undefined ? '' : String(value);
+      }
     }
     return values;
   }
@@ -93,6 +112,8 @@
         html += '<option value="' + options[i] + '">' + options[i] + '</option>';
       }
       html += '</select>';
+    } else if (field.type === 'multiselect') {
+      html += '<select multiple class="form-select" size="6" id="' + id + '" data-strategy-field="' + field.key + '"></select>';
     } else {
       html += '<input type="text" class="form-control" id="' + id + '" data-strategy-field="' + field.key + '" placeholder="请输入 / Enter">';
     }
@@ -108,6 +129,40 @@
       html += strategyCreateFieldHtml_(fields[i], i);
     }
     $('#strategyForm').html(html);
+  }
+
+  /* 给 TasklistName 多选追加选项（跳过空白与已存在项） */
+  function appendStrategyCreateTasklistOptions_($, $select, names) {
+    if (!$select || !$select.length) return;
+    var existing = {};
+    $select.find('option').each(function () {
+      existing[String(this.value)] = true;
+    });
+    var list = Array.isArray(names) ? names : [];
+    for (var i = 0; i < list.length; i++) {
+      var name = strategyCreateText_(list[i]);
+      if (name === '' || Object.prototype.hasOwnProperty.call(existing, name)) continue;
+      existing[name] = true;
+      $select.append($('<option></option>').val(name).text(name));
+    }
+  }
+
+  /* 读取当前生效任务清单并填充 TasklistName 多选；失败时提示并保持为空 */
+  function loadStrategyCreateTasklistOptions($) {
+    google.script.run
+      .withSuccessHandler(function (r) {
+        if (r && r.ok) {
+          appendStrategyCreateTasklistOptions_($, $(strategyCreateFieldSelector_('TasklistName')), r.names || []);
+        } else {
+          showStrategyCreateError_(r && r.message
+            ? r.message
+            : '任务清单加载失败，请刷新重试。/ Failed to load tasklist names, please refresh.');
+        }
+      })
+      .withFailureHandler(function () {
+        showStrategyCreateError_('任务清单加载失败，请刷新重试。/ Failed to load tasklist names, please refresh.');
+      })
+      .getStrategyTasklistNames();
   }
 
   /* 频率文本 → 月数；helper 缺失时按无法识别处理 */
@@ -170,6 +225,7 @@
     for (var i = 0; i < fields.length; i++) {
       $(strategyCreateFieldSelector_(fields[i].key)).val('');
     }
+    $(strategyCreateFieldSelector_('TasklistName')).val([]);
     $(strategyCreateFieldSelector_('强制保养频率/ Month')).removeClass('bg-warning');
     $('#changeReason').val('');
     applyStrategyCreateConditionalState($);
@@ -307,6 +363,7 @@
   /* 页面初始化 */
   function initStrategyCreatePage($) {
     renderStrategyForm($);
+    loadStrategyCreateTasklistOptions($);
     applyStrategyCreateConditionalState($);
 
     var userName = typeof STRATEGY_USER_NAME !== 'undefined' && STRATEGY_USER_NAME ? String(STRATEGY_USER_NAME) : '';

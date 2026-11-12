@@ -5,7 +5,7 @@ import { extractScript, makeJQueryStub } from './strategy-test-utils.mjs';
 
 const commonSrc = extractScript(fs.readFileSync(new URL('./Strategy_Common_JS.html', import.meta.url), 'utf8'));
 const src = extractScript(fs.readFileSync(new URL('./Strategy_Create_JS.html', import.meta.url), 'utf8'));
-const api = new Function(`${commonSrc}; ${src}; return { buildStrategyCreatePayload, applyStrategyCreateConditionalState, strategyCreateFieldHtml_, STRATEGY_FIELDS };`)();
+const api = new Function(`${commonSrc}; ${src}; return { buildStrategyCreatePayload, applyStrategyCreateConditionalState, collectStrategyFormValues, strategyCreateFieldHtml_, STRATEGY_FIELDS };`)();
 
 function fullValues(overrides) {
   return {
@@ -110,6 +110,49 @@ test('条件字段渲染带动态必填标记', () => {
     10
   );
   assert.match(html, /data-strategy-required="工单类型"/);
+});
+
+test('TasklistName 渲染为多选下拉（multiple / size 6）', () => {
+  const html = api.strategyCreateFieldHtml_(
+    api.STRATEGY_FIELDS.find((field) => field.key === 'TasklistName'),
+    9
+  );
+  assert.match(html, /<select multiple class="form-select" size="6"/);
+  assert.match(html, /data-strategy-field="TasklistName"/);
+  assert.doesNotMatch(html, /<input/);
+});
+
+/* 构造带全部字段值的 jQuery 桩，供收集函数使用 */
+function stubWithValues(overrides) {
+  const values = fullValues(overrides);
+  const initial = {};
+  Object.keys(values).forEach((key) => {
+    initial[`[data-strategy-field="${key}"]`] = values[key];
+  });
+  return { jq: makeJQueryStub(initial), values };
+}
+
+test('collectStrategyFormValues：多选值排序、去空白并保存为 [A,B]', () => {
+  const { jq } = stubWithValues();
+  jq('[data-strategy-field="TasklistName"]').val([' UV ', 'FCS', '', 'UV']);
+  const collected = api.collectStrategyFormValues(jq);
+  assert.equal(collected['TasklistName'], '[FCS,UV]');
+  assert.equal(collected['PM Description'], '季度保养');
+  assert.equal(api.buildStrategyCreatePayload(collected, user, '新增')['fields']['TasklistName'], '[FCS,UV]');
+});
+
+test('collectStrategyFormValues：多选未选择时为 \'\'，builder 判定必填失败', () => {
+  const { jq } = stubWithValues();
+  jq('[data-strategy-field="TasklistName"]').val([]);
+  const collected = api.collectStrategyFormValues(jq);
+  assert.equal(collected['TasklistName'], '');
+  assert.equal(api.buildStrategyCreatePayload(collected, user, '新增'), null);
+});
+
+test('collectStrategyFormValues：浏览器可能返回单值字符串时也能格式化为 [A]', () => {
+  const { jq } = stubWithValues();
+  jq('[data-strategy-field="TasklistName"]').val('FCS');
+  assert.equal(api.collectStrategyFormValues(jq)['TasklistName'], '[FCS]');
 });
 
 /* 安全回归：URL 参数注入到 <script> 前必须转义 <，防止构造 </script> 逃逸 */

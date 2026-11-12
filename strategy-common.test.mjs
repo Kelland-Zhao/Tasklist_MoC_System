@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { extractScript } from './strategy-test-utils.mjs';
 
 const src = extractScript(fs.readFileSync(new URL('./Strategy_Common_JS.html', import.meta.url), 'utf8'));
-const api = new Function(`${src}; return { STRATEGY_FIELDS, strategyActionLabel, strategyDiffRows, strategyStatusBadge, formatStrategyId, convertFrequencyToMonths, filterStrategyMasterRows, strategyRequiredKeysFor, strategyNormalizeConditionalFields };`)();
+const api = new Function(`${src}; return { STRATEGY_FIELDS, strategyActionLabel, strategyDiffRows, strategyStatusBadge, formatStrategyId, convertFrequencyToMonths, filterStrategyMasterRows, strategyRequiredKeysFor, strategyNormalizeConditionalFields, formatStrategyTasklistNames, parseStrategyTasklistNames };`)();
 
 const ALWAYS_REQUIRED = ['工序', 'Machine Type', 'PM Frequency', 'PM Description', '策略 / Strategy', '单次停机时间/ h', 'TasklistName', '是否创工单', '是否计入AEM'];
 const RBM_REQUIRED = ['RBM保养间隔时间', 'RBM保养提醒间隔时间', '强制保养频率/ Month'];
@@ -50,6 +50,30 @@ test('规范化：RBM + Y 保留原值', () => {
 });
 
 test('14 个业务字段齐备', () => assert.equal(api.STRATEGY_FIELDS.length, 14));
+test('TasklistName 字段为多选且保留中英文标签', () => {
+  const field = api.STRATEGY_FIELDS.find((item) => item.key === 'TasklistName');
+  assert.equal(field.type, 'multiselect');
+  assert.equal(field.label, '任务清单名称');
+  assert.equal(field.labelEn, 'TasklistName');
+});
+test('formatStrategyTasklistNames：方括号 + 逗号拼接', () => {
+  assert.equal(api.formatStrategyTasklistNames(['FCS', 'UV']), '[FCS,UV]');
+  assert.equal(api.formatStrategyTasklistNames(['FCS']), '[FCS]');
+  assert.equal(api.formatStrategyTasklistNames([]), '');
+  assert.equal(api.formatStrategyTasklistNames(null), '');
+  assert.equal(api.formatStrategyTasklistNames([' A ', '', '  ', null]), '[A]');
+});
+test('parseStrategyTasklistNames：解析 [A,B]、单值与空值', () => {
+  assert.deepEqual(api.parseStrategyTasklistNames('[FCS,UV]'), ['FCS', 'UV']);
+  assert.deepEqual(api.parseStrategyTasklistNames('[ FCS , UV ]'), ['FCS', 'UV']);
+  assert.deepEqual(api.parseStrategyTasklistNames('[FCS]'), ['FCS']);
+  assert.deepEqual(api.parseStrategyTasklistNames(' LEGACY '), ['LEGACY']);
+  assert.deepEqual(api.parseStrategyTasklistNames('[,]'), []);
+  assert.deepEqual(api.parseStrategyTasklistNames(''), []);
+  assert.deepEqual(api.parseStrategyTasklistNames(null), []);
+  assert.deepEqual(api.parseStrategyTasklistNames(undefined), []);
+});
+
 test('是否计入AEM 选项包含 Y/N/NA', () => {
   const field = api.STRATEGY_FIELDS.find((item) => item.key === '是否计入AEM');
   assert.deepEqual(field.options, ['Y', 'N', 'NA']);

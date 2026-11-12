@@ -477,6 +477,9 @@ export function makeJQueryStub(values) {
       is: function () {
         return false;
       },
+      find: function (selector) {
+        return element(key + ' ' + String(selector));
+      },
       each: function (callback) {
         callback.call(api, 0, api);
         return api;

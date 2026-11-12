@@ -2198,6 +2198,8 @@ var STRATEGY_EQU_MASTER_SHEET_NAME = "MasterData";
 var STRATEGY_EQU_IMPORT_COLUMNS = 20;
 var STRATEGY_IMPORT_OPERATOR = "系统导入";
 var STRATEGY_IMPORT_REASON = "初始导入";
+var STRATEGY_PM_TASKLIST_HISTORY_SS_ID = "1bYKTK5a63yJWRHzM_UPP6b4hwF67eZKEM5dCKLWR59U";
+var STRATEGY_PM_TASKLIST_HISTORY_SHEET_NAME = "Tasklist_history";
 
 // 14 个业务字段（顺序同设计文档 2.1）
 var STRATEGY_BUSINESS_FIELDS = [
@@ -3390,6 +3392,37 @@ function getStrategyHistoryData() {
     headers: STRATEGY_HISTORY_HEADERS.slice(),
     rows: readStrategyHistoryRows_()
   };
+}
+
+/**
+ * 读取当前生效的 PM 任务清单名称（PM Tasklist_history 的 MachineType）。
+ * 过滤 M 列 Status 含「生效」或「Effective」的行，去重、trim、升序。
+ * @returns {{ok:boolean,names?:Array<string>,message?:string}}
+ */
+function getStrategyTasklistNames() {
+  try {
+    var ss = SpreadsheetApp.openById(STRATEGY_PM_TASKLIST_HISTORY_SS_ID);
+    var ws = ss.getSheetByName(STRATEGY_PM_TASKLIST_HISTORY_SHEET_NAME);
+    if (!ws) return { ok: true, names: [] };
+    var lastRow = ws.getLastRow();
+    if (lastRow < 2) return { ok: true, names: [] };
+    var data = ws.getSheetValues(2, 1, lastRow - 1, 13);
+    var seen = {};
+    var names = [];
+    for (var i = 0; i < data.length; i++) {
+      var row = data[i] || [];
+      var status = row[12] === null || row[12] === undefined ? "" : String(row[12]);
+      if (status.indexOf("生效") === -1 && status.indexOf("Effective") === -1) continue;
+      var name = row[0] === null || row[0] === undefined ? "" : String(row[0]).trim();
+      if (name === "" || Object.prototype.hasOwnProperty.call(seen, name)) continue;
+      seen[name] = true;
+      names.push(name);
+    }
+    names.sort();
+    return { ok: true, names: names };
+  } catch (e) {
+    return { ok: false, message: e.toString() };
+  }
 }
 
 /**
