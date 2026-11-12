@@ -69,7 +69,7 @@ function doGet(e) {
       strategy_release: "保养策略文控发放 / PM Strategy Document Control Release",
       strategy_progress: "保养策略进度 / PM Strategy Progress",
       strategy_viewer: "保养策略查阅 / PM Strategy View",
-      home: "任务清单变更管理主页 | Tasklist MoC Home"
+      home: "保养变更管理主页 | Tasklist MoC Home"
     };
     
     // 设置页面标题
@@ -347,7 +347,7 @@ function dataSave(
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "保养/ PM", reason, userEmail]]
     );
-    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(recipient, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
     return true;
   } catch (e) {
@@ -434,7 +434,7 @@ function dataSave_IN(
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "点检/ Inspection", reason, userEmail]]
     );
-    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(recipient, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
     return true;
   } catch (e) {
@@ -628,7 +628,7 @@ function saveCommet1(r) {
     ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "修改意见/ Comment"],
     [[machineType, "保养/ PM", reason, submitMail, comment]]
   );
-  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
   GmailApp.sendEmail(submitMail, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
   // console.log(userEmail);
   return true;
@@ -662,7 +662,7 @@ function save_Production_Commet(r) {
     ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "修改意见/ Comment"],
     [[machineType, "点检/ Inspection", reason, submitMail, comment]]
   );
-  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
   GmailApp.sendEmail(submitMail, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
   // console.log(userEmail);
   return true;
@@ -692,7 +692,7 @@ function saveCommet1_IN(r) {
     ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "修改意见/ Comment"],
     [[machineType, "点检/ Inspection", reason, submitMail, comment]]
   );
-  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
   GmailApp.sendEmail(submitMail, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
   return true;
 }
@@ -725,7 +725,7 @@ function saveCommet2(r) {
     ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "修改意见/ Comment"],
     [[machineType, "保养/ PM", reason, submitMail, comment]]
   );
-  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
   GmailApp.sendEmail(submitMail, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
   // console.log(userEmail);
   return true;
@@ -759,7 +759,7 @@ function save_Production_Commet_IN(r) {
     ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "修改意见/ Comment"],
     [[machineType, "点检/ Inspection", reason, submitMail, comment]]
   );
-  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
   GmailApp.sendEmail(submitMail, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
   // console.log(userEmail);
   return true;
@@ -789,7 +789,7 @@ function saveCommet2_IN(r) {
     ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "修改意见/ Comment"],
     [[machineType, "点检/ Inspection", reason, submitMail, comment]]
   );
-  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
   GmailApp.sendEmail(submitMail, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
   // console.log(userEmail);
   return true;
@@ -834,7 +834,7 @@ function saveApprove1(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "保养/ PM", reason, mailSubmit]]
     );
-    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(mailSubmit, subjectLevel1, "", { htmlBody: _buildMoCEmailShell(subjectLevel1, bodyInfo) });
 
     //  邮件发送给Approval 2
@@ -846,7 +846,7 @@ function saveApprove1(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "保养/ PM", reason, mailSubmit]]
     );
-    bodyApproval2 += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyApproval2 += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(maiApproval2, subjectApproval2, "", {
       htmlBody: _buildMoCEmailShell(subjectApproval2, bodyApproval2),
     });
@@ -867,7 +867,7 @@ function saveApprove1(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "保养/ PM", reason, mailSubmit]]
     );
-    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(mailSubmit, subjectReject, "", { htmlBody: _buildMoCEmailShell(subjectReject, bodyHtml) });
     return true;
   }
@@ -915,7 +915,7 @@ function save_Production_Approve(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "点检/ Inspection", reason, mailSubmit]]
     );
-    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(mailSubmit, subjectLevel1, "", { htmlBody: _buildMoCEmailShell(subjectLevel1, bodyInfo) });
 
     //  邮件发送给Approval 1
@@ -927,7 +927,7 @@ function save_Production_Approve(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "保养/ PM", reason, mailSubmit]]
     );
-    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(maiApproval1, subjectApproval2, "", { htmlBody: _buildMoCEmailShell(subjectApproval2, bodyHtml) });
 
     return true;
@@ -950,7 +950,7 @@ function save_Production_Approve(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "保养/ PM", reason, mailSubmit]]
     );
-    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(mailSubmit, subjectReject, "", { htmlBody: _buildMoCEmailShell(subjectReject, bodyHtml) });
     return true;
   }
@@ -999,7 +999,7 @@ function saveApprove1_IN(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "点检/ Inspection", reason, mailSubmit]]
     );
-    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(mailSubmit, subjectLevel1, "", { htmlBody: _buildMoCEmailShell(subjectLevel1, bodyInfo) });
 
     //  邮件发送给Approval 2
@@ -1011,7 +1011,7 @@ function saveApprove1_IN(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "点检/ Inspection", reason, mailSubmit]]
     );
-    bodyApproval2 += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyApproval2 += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(maiApproval2, subjectApproval2, "", { htmlBody: _buildMoCEmailShell(subjectApproval2, bodyApproval2) });
 
     return true;
@@ -1029,7 +1029,7 @@ function saveApprove1_IN(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "点检/ Inspection", reason, mailSubmit]]
     );
-    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(mailSubmit, subjectReject, "", { htmlBody: _buildMoCEmailShell(subjectReject, bodyHtml) });
     return true;
   }
@@ -1073,7 +1073,7 @@ function saveApprove2(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "保养/ PM", reason, mailSubmit]]
     );
-    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(mailSubmit, subjectLevel1, "", {
       htmlBody: _buildMoCEmailShell(subjectLevel1, bodyInfo),
       cc: maiApproval1,
@@ -1088,7 +1088,7 @@ function saveApprove2(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "保养/ PM", reason, mailSubmit]]
     );
-    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(mailDisseninate, subjectApproval2, "", { htmlBody: _buildMoCEmailShell(subjectApproval2, bodyHtml) });
 
     return true;
@@ -1109,7 +1109,7 @@ function saveApprove2(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "保养/ PM", reason, mailSubmit]]
     );
-    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     ws_Tasklisthistory.getRange(rowNumber, 13).setValue(status);
     GmailApp.sendEmail(mailSubmit, subjectReject, "", {
       htmlBody: _buildMoCEmailShell(subjectReject, bodyHtml),
@@ -1154,7 +1154,7 @@ function save_Production_Approve_IN(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "点检/ Inspection", reason, mailSubmit]]
     );
-    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(mailSubmit, subjectLevel1, "", { htmlBody: _buildMoCEmailShell(subjectLevel1, bodyInfo) });
 
     //  邮件发送给Approval Level 1
@@ -1167,7 +1167,7 @@ function save_Production_Approve_IN(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "点检/ Inspection", reason, mailSubmit]]
     );
-    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(maiApproval1, subjectApproval2, "", {
       htmlBody: _buildMoCEmailShell(subjectApproval2, bodyHtml),
       cc: mailSubmit,
@@ -1192,7 +1192,7 @@ function save_Production_Approve_IN(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "点检/ Inspection", reason, mailSubmit]]
     );
-    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     ws_Tasklisthistory.getRange(rowNumber, 13).setValue(status);
     GmailApp.sendEmail(mailSubmit, subjectReject, "", { htmlBody: _buildMoCEmailShell(subjectReject, bodyHtml) });
     return true;
@@ -1236,7 +1236,7 @@ function saveApprove2_IN(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "点检/ Inspection", reason, mailSubmit]]
     );
-    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(mailSubmit, subjectLevel1, "", {
       htmlBody: _buildMoCEmailShell(subjectLevel1, bodyInfo),
       cc: maiApproval1,
@@ -1251,7 +1251,7 @@ function saveApprove2_IN(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "点检/ Inspection", reason, mailSubmit]]
     );
-    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     GmailApp.sendEmail(mailDisseninate, subjectApproval2, "", { htmlBody: _buildMoCEmailShell(subjectApproval2, bodyHtml) });
 
     return true;
@@ -1272,7 +1272,7 @@ function saveApprove2_IN(r) {
       ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier"],
       [[machineType, "点检/ Inspection", reason, mailSubmit]]
     );
-    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+    bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
     ws_Tasklisthistory.getRange(rowNumber, 13).setValue(status);
     GmailApp.sendEmail(mailSubmit, subjectReject, "", {
       htmlBody: _buildMoCEmailShell(subjectReject, bodyHtml),
@@ -1388,7 +1388,7 @@ function saveDissminater(r) {
     ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "生效日期/ Effective Date"],
     [[machineType, "保养/ PM", reason, mailSubmit, date]]
   );
-  bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
   GmailApp.sendEmail(mailSubmit, subjectDissminater, "", {
     htmlBody: _buildMoCEmailShell(subjectDissminater, bodyInfo),
     cc: ccList,
@@ -1490,7 +1490,7 @@ function saveDissminater_IN(r) {
     ["机型/ Machine Type", "任务类型/ Task Type", "变更原因/ Change Reason", "申请人/ Applier", "生效日期/ Effective Date"],
     [[machineType, "点检/ Inspection", reason, mailSubmit, date]]
   );
-  bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  bodyInfo += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
   GmailApp.sendEmail(mailSubmit, subjectDissminater, "", {
     htmlBody: _buildMoCEmailShell(subjectDissminater, bodyInfo),
     cc: ccList,
@@ -1564,7 +1564,7 @@ function submitRequest(r) {
     ["机型/ Machine Type", "任务类型/ Task Type", "新建原因/ Create Reason", "申请人/ Applier"],
     [[machineType, "保养/ PM", reason, submitEmail]]
   );
-  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
   GmailApp.sendEmail(recipient, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
 
   return true;
@@ -1635,7 +1635,7 @@ function submitRequest_IN(r) {
     ["机型/ Machine Type", "任务类型/ Task Type", "新建原因/ Create Reason", "申请人/ Applier"],
     [[machineType, "点检/ Inspection", reason, submitEmail]]
   );
-  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
   GmailApp.sendEmail(recipient, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
 
   return true;
@@ -2154,7 +2154,7 @@ function _buildMoCEmailShell(title, bodyHtml) {
   html += '</div>';
   html += '<div style="padding:20px 28px">';
   html += bodyHtml;
-  html += '<p style="color:#bdc3c7;font-size:11px;margin-top:28px">此邮件由 任务清单变更管理系统 自动发送 / This email is auto-sent by Tasklist MoC System</p>';
+  html += '<p style="color:#bdc3c7;font-size:11px;margin-top:28px">此邮件由 保养变更管理系统 自动发送 / This email is auto-sent by Tasklist MoC System</p>';
   html += '</div>';
   html += '</div></body></html>';
   return html;
@@ -2648,7 +2648,7 @@ function sendStrategySubmitMail_(action, fields, reason, submitMail, processMana
       submitMail
     ]]
   );
-  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
   GmailApp.sendEmail(processManager.email, subject, "", { htmlBody: _buildMoCEmailShell(subject, bodyHtml) });
 }
 
@@ -2869,7 +2869,7 @@ function sendStrategyApprovalMail_(mail) {
       row.submitMail || ""
     ]]
   );
-  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
   var htmlBody = _buildMoCEmailShell(mail.subject, bodyHtml);
   var cc = mail.cc === null || mail.cc === undefined ? "" : String(mail.cc).trim();
   (mail.to || []).forEach(function (recipient) {
@@ -3175,7 +3175,7 @@ function sendStrategyReleaseResultMail_(mail) {
       mail.extraValue || ""
     ]]
   );
-  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>任务清单变更管理/ Tasklist MoC</a></p>";
+  bodyHtml += "<p style='font-size:13px;margin-top:16px'>您可以点击下面的链接来登录系统：<br><a href='https://script.google.com/a/macros/colpal.com/s/AKfycbxpDYL02i5FaFzUDcIoW3siG2U94cvWUUnz_F5x2BO1jnrXoMGzFQH-jw9C4nvZ7FE/exec'>保养变更管理/ Tasklist MoC</a></p>";
   var options = { htmlBody: _buildMoCEmailShell(mail.subject, bodyHtml) };
   if (ccList !== "") options.cc = ccList;
   GmailApp.sendEmail(recipient, mail.subject, "", options);
