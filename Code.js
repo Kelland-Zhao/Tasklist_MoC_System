@@ -2534,16 +2534,75 @@ function strategyHasPendingRequest_(historyRows, strategyId) {
   return false;
 }
 
+// 新建/修改始终必填的 9 个业务字段
+var STRATEGY_ALWAYS_REQUIRED_FIELDS = [
+  "工序",
+  "Machine Type",
+  "PM Frequency",
+  "PM Description",
+  "策略 / Strategy",
+  "单次停机时间/ h",
+  "TasklistName",
+  "是否创工单",
+  "是否计入AEM"
+];
+
+// 策略为 RBM 时追加必填的三个字段
+var STRATEGY_RBM_CONDITIONAL_FIELDS = [
+  "RBM保养间隔时间",
+  "RBM保养提醒间隔时间",
+  "强制保养频率/ Month"
+];
+
+/**
+ * 取字段 trim 后的文本；null/undefined → ''
+ * @param {Object} fields
+ * @param {string} key
+ * @returns {string}
+ */
+function strategyTrimmedFieldValue_(fields, key) {
+  var value = fields ? fields[key] : "";
+  return value === null || value === undefined ? "" : String(value).trim();
+}
+
+/**
+ * 按策略/是否创工单把不适用的条件字段规范化为 NA。
+ * 返回浅拷贝，不修改入参。
+ * @param {Object} fields
+ * @returns {Object}
+ */
+function normalizeStrategyConditionalFields_(fields) {
+  var source = fields || {};
+  var result = {};
+  for (var key in source) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) result[key] = source[key];
+  }
+  if (strategyTrimmedFieldValue_(source, "策略 / Strategy") !== "RBM") {
+    STRATEGY_RBM_CONDITIONAL_FIELDS.forEach(function (field) {
+      result[field] = "NA";
+    });
+  }
+  if (strategyTrimmedFieldValue_(source, "是否创工单") !== "Y") {
+    result["工单类型"] = "NA";
+  }
+  return result;
+}
+
 /**
  * 返回第一个缺失的必填业务字段，全部存在时返回空字符串
  * @param {Object} fields
  * @returns {string}
  */
 function strategyMissingRequiredField_(fields) {
-  var required = ["工序", "Machine Type", "PM Frequency", "PM Description", "策略 / Strategy"];
+  var required = STRATEGY_ALWAYS_REQUIRED_FIELDS.slice();
+  if (strategyTrimmedFieldValue_(fields, "策略 / Strategy") === "RBM") {
+    required = required.concat(STRATEGY_RBM_CONDITIONAL_FIELDS);
+  }
+  if (strategyTrimmedFieldValue_(fields, "是否创工单") === "Y") {
+    required.push("工单类型");
+  }
   for (var i = 0; i < required.length; i++) {
-    var value = fields ? fields[required[i]] : "";
-    if (value === null || value === undefined || String(value).trim() === "") return required[i];
+    if (strategyTrimmedFieldValue_(fields, required[i]) === "") return required[i];
   }
   return "";
 }
@@ -2611,6 +2670,8 @@ function createStrategyRequest_(payload, action) {
   var fields = action === "void" ? data.old : data.fields;
   // 作废只要求变更原因：导入的历史策略可能存在 PM Frequency / PM Description / 策略 为空的记录
   if (action !== "void") {
+    // 不适用条件字段统一写 NA，再做必填校验并写入快照
+    fields = normalizeStrategyConditionalFields_(data.fields);
     var missing = strategyMissingRequiredField_(fields);
     if (missing !== "") {
       return { ok: false, message: "必填字段缺失 / Missing required field: " + missing };
@@ -2635,7 +2696,7 @@ function createStrategyRequest_(payload, action) {
     content = {
       strategyId: "",
       version: "00",
-      new: strategyBusinessSnapshot_(data.fields)
+      new: strategyBusinessSnapshot_(fields)
     };
   } else {
     var strategyId = data.strategyId === null || data.strategyId === undefined ? "" : String(data.strategyId).trim();
@@ -2684,7 +2745,7 @@ function createStrategyRequest_(payload, action) {
         strategyId: strategyId,
         version: String(baseNumber + 1).padStart(2, "0"),
         old: oldSnapshot,
-        new: strategyBusinessSnapshot_(data.fields)
+        new: strategyBusinessSnapshot_(fields)
       };
     } else {
       content = {

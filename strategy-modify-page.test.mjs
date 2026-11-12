@@ -1,46 +1,151 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { extractScript } from './strategy-test-utils.mjs';
+import { extractScript, makeJQueryStub } from './strategy-test-utils.mjs';
 
+const commonSrc = extractScript(fs.readFileSync(new URL('./Strategy_Common_JS.html', import.meta.url), 'utf8'));
 const src = extractScript(fs.readFileSync(new URL('./Strategy_Modify_JS.html', import.meta.url), 'utf8'));
-const api = new Function(`${src}; return { buildStrategyEditPayload };`)();
+const api = new Function(`${commonSrc}; ${src}; return { buildStrategyEditPayload, applyStrategyModifyConditionalState, fillStrategyEditForm, strategyModifyFieldHtml_, STRATEGY_FIELDS };`)();
+
+function fullOld(overrides) {
+  return {
+    '工序': 'IM',
+    'Machine Type': 'FCS',
+    'PM Frequency': '季',
+    '单次停机时间/ h': '8',
+    'PM Description': '季度保养',
+    'RBM保养间隔时间': '6',
+    'RBM保养提醒间隔时间': '1',
+    '强制保养频率/ Month': '3',
+    '策略 / Strategy': 'RBM',
+    'TasklistName': '[FCS]',
+    '是否创工单': 'Y',
+    '工单类型': 'PM10',
+    '是否计入AEM': 'Y',
+    '备注': '',
+    '策略ID': 'PM-MD-0001',
+    '版本号': '00',
+    ...(overrides || {})
+  };
+}
+
+function fullValues(overrides) {
+  const values = fullOld(overrides);
+  delete values['策略ID'];
+  delete values['版本号'];
+  return values;
+}
+
+const user = { jobNumber: '10001', name: '林飞' };
 
 test('修改 payload 带 strategyId 与 old.version', () => {
-  const p = api.buildStrategyEditPayload('PM-MD-0001', { '工序':'IM','版本号':'00' }, { '工序':'IM','备注':'x' }, { jobNumber:'10001', name:'林飞' }, '调整频率');
+  const p = api.buildStrategyEditPayload('PM-MD-0001', fullOld(), fullValues({ '备注': 'x' }), user, '调整频率');
   assert.equal(p.strategyId, 'PM-MD-0001');
   assert.equal(p.old.version, '00');
   assert.equal(p.reason, '调整频率');
+  assert.equal(p.fields['备注'], 'x');
 });
 
 test('缺策略ID、变更原因或必填字段返回 null', () => {
-  const old = { '工序':'IM','版本号':'00' };
-  const user = { jobNumber:'10001', name:'林飞' };
-  const values = {
-    '工序':'IM',
-    'Machine Type':'FCS',
-    'PM Frequency':'季',
-    'PM Description':'季度保养',
-    '策略 / Strategy':'RBM'
-  };
+  const old = fullOld();
+  const values = fullValues();
   assert.equal(api.buildStrategyEditPayload('PM-MD-0001', old, values, user, ''), null);
   assert.equal(api.buildStrategyEditPayload('', old, values, user, '调整频率'), null);
-  assert.equal(api.buildStrategyEditPayload('PM-MD-0001', old, { ...values, 'PM Description':'' }, user, '调整频率'), null);
+  ['单次停机时间/ h', 'TasklistName', '是否创工单', '是否计入AEM'].forEach((key) => {
+    assert.equal(
+      api.buildStrategyEditPayload('PM-MD-0001', old, fullValues({ [key]: '' }), user, '调整频率'),
+      null,
+      key
+    );
+  });
+});
+
+test('RBM 缺条件必填字段返回 null', () => {
+  const old = fullOld();
+  ['RBM保养间隔时间', 'RBM保养提醒间隔时间', '强制保养频率/ Month'].forEach((key) => {
+    assert.equal(
+      api.buildStrategyEditPayload('PM-MD-0001', old, fullValues({ [key]: '' }), user, '调整频率'),
+      null,
+      key
+    );
+  });
+});
+
+test('是否创工单 = Y 时工单类型必填；N 时规范化为 NA', () => {
+  const old = fullOld();
+  assert.equal(
+    api.buildStrategyEditPayload('PM-MD-0001', old, fullValues({ '工单类型': '' }), user, '调整频率'),
+    null
+  );
+  const p = api.buildStrategyEditPayload(
+    'PM-MD-0001', old, fullValues({ '是否创工单': 'N', '工单类型': '' }), user, '调整频率'
+  );
+  assert.notEqual(p, null);
+  assert.equal(p.fields['工单类型'], 'NA');
+});
+
+test('非 RBM 规范化三个 RBM 字段为 NA 且不要求必填', () => {
+  const values = fullValues({
+    '策略 / Strategy': 'CBM',
+    'RBM保养间隔时间': '',
+    'RBM保养提醒间隔时间': '',
+    '强制保养频率/ Month': ''
+  });
+  const p = api.buildStrategyEditPayload('PM-MD-0001', fullOld(), values, user, '调整频率');
+  assert.notEqual(p, null);
+  assert.equal(p.fields['RBM保养间隔时间'], 'NA');
+  assert.equal(p.fields['RBM保养提醒间隔时间'], 'NA');
+  assert.equal(p.fields['强制保养频率/ Month'], 'NA');
+  assert.equal(values['RBM保养间隔时间'], '', 'builder 不应修改入参');
 });
 
 test('工序与 Machine Type 强制取自 old，篡改 values 无效', () => {
-  const old = { '工序':'IM','Machine Type':'FCS','版本号':'00' };
-  const user = { jobNumber:'10001', name:'林飞' };
-  const tampered = {
-    '工序':'TF',
-    'Machine Type':'HACK',
-    'PM Frequency':'季',
-    'PM Description':'季度保养',
-    '策略 / Strategy':'RBM'
-  };
+  const old = fullOld();
+  const tampered = fullValues({ '工序': 'TF', 'Machine Type': 'HACK' });
   const p = api.buildStrategyEditPayload('PM-MD-0001', old, tampered, user, '调整频率');
   assert.equal(p.fields['工序'], 'IM');
   assert.equal(p.fields['Machine Type'], 'FCS');
+});
+
+test('载入主表行后按条件应用禁用/NA 状态', () => {
+  const initial = {};
+  api.STRATEGY_FIELDS.forEach((field) => {
+    initial[`[data-strategy-field="${field.key}"]`] = '';
+  });
+  const jq = makeJQueryStub(initial);
+  api.fillStrategyEditForm(jq, fullOld({
+    '策略 / Strategy': 'TBM',
+    '是否创工单': 'N',
+    'RBM保养间隔时间': '',
+    'RBM保养提醒间隔时间': '',
+    '强制保养频率/ Month': '',
+    '工单类型': ''
+  }));
+  ['RBM保养间隔时间', 'RBM保养提醒间隔时间', '强制保养频率/ Month', '工单类型'].forEach((key) => {
+    assert.equal(jq(`[data-strategy-field="${key}"]`).prop('disabled'), true, key);
+    assert.equal(jq(`[data-strategy-field="${key}"]`).val(), 'NA', key);
+  });
+
+  api.fillStrategyEditForm(jq, fullOld({
+    '策略 / Strategy': 'RBM',
+    '是否创工单': 'Y',
+    'RBM保养间隔时间': '6',
+    'RBM保养提醒间隔时间': '1',
+    '强制保养频率/ Month': '3',
+    '工单类型': 'PM10'
+  }));
+  ['RBM保养间隔时间', 'RBM保养提醒间隔时间', '强制保养频率/ Month', '工单类型'].forEach((key) => {
+    assert.equal(jq(`[data-strategy-field="${key}"]`).prop('disabled'), false, key);
+  });
+  assert.equal(jq('[data-strategy-field="RBM保养间隔时间"]').val(), '6');
+});
+
+test('条件字段渲染带动态必填标记', () => {
+  const html = api.strategyModifyFieldHtml_(
+    api.STRATEGY_FIELDS.find((field) => field.key === 'RBM保养间隔时间'),
+    5
+  );
+  assert.match(html, /data-strategy-required="RBM保养间隔时间"/);
 });
 
 /* 安全回归：URL 参数注入到 <script> 前必须转义 <，防止构造 </script> 逃逸 */

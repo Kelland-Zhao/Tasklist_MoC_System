@@ -58,7 +58,7 @@ function resetSheets(options) {
  * @returns {Object<string,string>}
  */
 function baseFields() {
-  return { '工序':'IM','Machine Type':'FCS','PM Frequency':'季','单次停机时间/ h':'8','PM Description':'季度保养','RBM保养间隔时间':'','RBM保养提醒间隔时间':'','强制保养频率/ Month':'3','策略 / Strategy':'RBM','TasklistName':'[FCS]','是否创工单':'Y','工单类型':'PM10','是否计入AEM':'Y','备注':'' };
+  return { '工序':'IM','Machine Type':'FCS','PM Frequency':'季','单次停机时间/ h':'8','PM Description':'季度保养','RBM保养间隔时间':'6','RBM保养提醒间隔时间':'1','强制保养频率/ Month':'3','策略 / Strategy':'RBM','TasklistName':'[FCS]','是否创工单':'Y','工单类型':'PM10','是否计入AEM':'Y','备注':'' };
 }
 
 const fields = baseFields();
@@ -270,4 +270,128 @@ test('缺少文控时提交被拦下', () => {
   assert.match(res.message, /审批人未配置/);
   assert.equal(history.values.length, 1);
   assert.equal(sent.length, 0);
+});
+
+/**
+ * 以 baseFields 为基础构造新建申请。
+ * @param {Object<string,string>} overrides
+ * @returns {{ok:boolean,message?:string,operator?:string}}
+ */
+function submitNewWith(overrides) {
+  return g.submitStrategyNew({
+    jobNumber:'10001', name:'申请人',
+    fields: { ...fields, ...(overrides || {}) },
+    reason:'新增策略'
+  });
+}
+
+test('缺少单次停机时间时新建被拦下', () => {
+  resetSheets();
+  const res = submitNewWith({ '单次停机时间/ h': '' });
+  assert.equal(res.ok, false);
+  assert.match(res.message, /单次停机时间/);
+  assert.equal(history.values.length, 1);
+  assert.equal(sent.length, 0);
+});
+
+test('缺少 TasklistName 时新建被拦下', () => {
+  resetSheets();
+  const res = submitNewWith({ 'TasklistName': '' });
+  assert.equal(res.ok, false);
+  assert.match(res.message, /TasklistName/);
+});
+
+test('缺少是否创工单时新建被拦下', () => {
+  resetSheets();
+  const res = submitNewWith({ '是否创工单': '' });
+  assert.equal(res.ok, false);
+  assert.match(res.message, /是否创工单/);
+});
+
+test('缺少是否计入AEM时新建被拦下', () => {
+  resetSheets();
+  const res = submitNewWith({ '是否计入AEM': '' });
+  assert.equal(res.ok, false);
+  assert.match(res.message, /是否计入AEM/);
+});
+
+test('RBM 缺少保养间隔时间时新建被拦下', () => {
+  resetSheets();
+  const res = submitNewWith({ 'RBM保养间隔时间': '' });
+  assert.equal(res.ok, false);
+  assert.match(res.message, /RBM保养间隔时间/);
+});
+
+test('RBM 缺少保养提醒间隔时间时新建被拦下', () => {
+  resetSheets();
+  const res = submitNewWith({ 'RBM保养提醒间隔时间': '' });
+  assert.equal(res.ok, false);
+  assert.match(res.message, /RBM保养提醒间隔时间/);
+});
+
+test('RBM 缺少强制保养频率时新建被拦下', () => {
+  resetSheets();
+  const res = submitNewWith({ '强制保养频率/ Month': '' });
+  assert.equal(res.ok, false);
+  assert.match(res.message, /强制保养频率/);
+});
+
+test('非 RBM 留空三个 RBM 字段时提交成功并写入 NA 快照', () => {
+  resetSheets();
+  const input = {
+    ...fields,
+    '策略 / Strategy': 'TBM',
+    'RBM保养间隔时间': '',
+    'RBM保养提醒间隔时间': '',
+    '强制保养频率/ Month': ''
+  };
+  const res = g.submitStrategyNew({ jobNumber:'10001', name:'申请人', fields: input, reason:'改为TBM' });
+  assert.equal(res.ok, true);
+  const content = JSON.parse(history.values.at(-1)[1]);
+  assert.equal(content.new['RBM保养间隔时间'], 'NA');
+  assert.equal(content.new['RBM保养提醒间隔时间'], 'NA');
+  assert.equal(content.new['强制保养频率/ Month'], 'NA');
+  assert.equal(input['RBM保养间隔时间'], '', '后端不应修改调用方对象');
+});
+
+test('是否创工单 = Y 且缺少工单类型时新建被拦下', () => {
+  resetSheets();
+  const res = submitNewWith({ '是否创工单': 'Y', '工单类型': '' });
+  assert.equal(res.ok, false);
+  assert.match(res.message, /工单类型/);
+});
+
+test('是否创工单 = N 且工单类型为空时提交成功并写入 NA', () => {
+  resetSheets();
+  const res = submitNewWith({ '是否创工单': 'N', '工单类型': '' });
+  assert.equal(res.ok, true);
+  const content = JSON.parse(history.values.at(-1)[1]);
+  assert.equal(content.new['工单类型'], 'NA');
+});
+
+test('非 RBM 条件字段的 NA 快照在发放时写入 MasterData', () => {
+  const env = resetSheets();
+  const input = {
+    ...fields,
+    '策略 / Strategy': 'TBM',
+    'RBM保养间隔时间': '',
+    'RBM保养提醒间隔时间': '',
+    '强制保养频率/ Month': ''
+  };
+  const submit = g.submitStrategyNew({ jobNumber:'10001', name:'申请人', fields: input, reason:'改为TBM' });
+  assert.equal(submit.ok, true);
+  const processApprove = g.saveStrategyApproval({
+    jobNumber:'10001', name:'工序甲', operator: submit.operator, level:1, decision:'approve', comment:''
+  });
+  assert.equal(processApprove.ok, true);
+  const deptApprove = g.saveStrategyApproval({
+    jobNumber:'10002', name:'部门乙', operator: submit.operator, level:2, decision:'approve', comment:''
+  });
+  assert.equal(deptApprove.ok, true);
+  const release = g.releaseStrategy({ jobNumber:'10003', name:'文控丙', operator: submit.operator });
+  assert.equal(release.ok, true);
+  const row = env.master.values[1];
+  ['RBM保养间隔时间', 'RBM保养提醒间隔时间', '强制保养频率/ Month'].forEach(function (key) {
+    assert.equal(row[g.STRATEGY_MASTER_HEADERS.indexOf(key)], 'NA', key);
+  });
 });

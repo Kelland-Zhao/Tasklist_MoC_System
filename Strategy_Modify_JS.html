@@ -3,9 +3,6 @@
   const swalTitle = (cn, en) => cn + '<span style="display:block;font-size:0.65em;color:#888;font-weight:400;line-height:1.3;margin-top:4px;">' + en + '</span>';
   const swalHtml  = (cn, en) => '<div>' + cn + '<div style="font-size:0.85em;color:#888;margin-top:6px;line-height:1.4;">' + en + '</div></div>';
 
-  /* 修改申请的必填业务字段（与后端 strategyMissingRequiredField_ 一致） */
-  var STRATEGY_EDIT_REQUIRED_KEYS = ['工序', 'Machine Type', 'PM Frequency', 'PM Description', '策略 / Strategy'];
-
   /* 主表行中不属于 14 个业务字段的元数据列 */
   var STRATEGY_EDIT_ROW_META_KEYS = ['策略ID', '版本号', '生效时间', '最后修改人', '最后修改时间'];
 
@@ -99,8 +96,17 @@
   function strategyModifyMissingRequiredField_(values, old) {
     var fields = values || {};
     var baseline = old || {};
-    for (var i = 0; i < STRATEGY_EDIT_REQUIRED_KEYS.length; i++) {
-      var key = STRATEGY_EDIT_REQUIRED_KEYS[i];
+    var view = {};
+    var key;
+    for (key in baseline) {
+      if (Object.prototype.hasOwnProperty.call(baseline, key)) view[key] = baseline[key];
+    }
+    for (key in fields) {
+      if (Object.prototype.hasOwnProperty.call(fields, key)) view[key] = fields[key];
+    }
+    var requiredKeys = strategyRequiredKeysFor(view);
+    for (var i = 0; i < requiredKeys.length; i++) {
+      key = requiredKeys[i];
       var inFields = Object.prototype.hasOwnProperty.call(fields, key);
       var inOld = Object.prototype.hasOwnProperty.call(baseline, key);
       if (!inFields && !inOld) continue;
@@ -127,9 +133,10 @@
     var name = strategyModifyText_(account.name);
     var reasonText = strategyModifyText_(reason);
     if (jobNumber === '' || reasonText === '') return null;
-    if (strategyModifyMissingRequiredField_(values, old) !== '') return null;
+    var normalizedValues = strategyNormalizeConditionalFields(values || {});
+    if (strategyModifyMissingRequiredField_(normalizedValues, old) !== '') return null;
     var fieldKeys = strategyModifyFieldKeys_(old);
-    var fields = strategyModifySnapshot_(values || {}, fieldKeys);
+    var fields = strategyModifySnapshot_(normalizedValues, fieldKeys);
     /* 工序/机型锁定：无论表单值如何，一律以主表基线为准 */
     var lockedValues = strategyModifySnapshot_(old, STRATEGY_EDIT_LOCKED_KEYS);
     fields['工序'] = lockedValues['工序'];
@@ -149,8 +156,15 @@
     return 'strategyField' + index;
   }
 
-  function strategyModifyIsRequired_(key) {
-    return STRATEGY_EDIT_REQUIRED_KEYS.indexOf(key) !== -1;
+  /* 条件字段的 * 标记先全部渲染，再由 applyStrategyModifyConditionalState 按值显隐 */
+  function strategyModifyRequiredMarkHtml_(key) {
+    var initiallyRequired = strategyRequiredKeysFor({}).indexOf(key) !== -1;
+    return '<span class="req" data-strategy-required="' + key + '"' +
+      (initiallyRequired ? '' : ' style="display:none;"') + '>*</span>';
+  }
+
+  function strategyModifyRequiredMarkerSelector_(key) {
+    return '[data-strategy-required="' + String(key) + '"]';
   }
 
   function strategyModifyIsLocked_(key) {
@@ -160,7 +174,7 @@
   /* 单个字段的 label + 控件 HTML；工序 / 机型只读 */
   function strategyModifyFieldHtml_(field, index) {
     var id = strategyModifyFieldId_(index);
-    var requiredMark = strategyModifyIsRequired_(field.key) ? '<span class="req">*</span>' : '';
+    var requiredMark = strategyModifyRequiredMarkHtml_(field.key);
     var locked = strategyModifyIsLocked_(field.key);
     var html = '<div class="col-md-6 col-xl-4 mb-3">';
     html += '<label class="field-label" for="' + id + '">' + field.label + requiredMark;
@@ -229,19 +243,59 @@
     }
     $('#strategyIdDisplay').val(row ? strategyModifyText_(row['策略ID']) : '');
     $(strategyModifyFieldSelector_('强制保养频率/ Month')).removeClass('bg-warning');
+    /* 载入主表行后按 策略/是否创工单 重新应用条件字段状态 */
+    applyStrategyModifyConditionalState($);
   }
 
-  /* PM Frequency 变化：可识别则回填强制保养频率，无法识别则清空并加黄色提醒 */
+  /* PM Frequency 变化：仅 RBM 回填强制保养频率，可识别则填入，否则清空并加黄色提醒 */
   function updateStrategyEditMandatoryFrequency($) {
+    var strategy = strategyModifyText_($(strategyModifyFieldSelector_('策略 / Strategy')).val());
+    var $target = $(strategyModifyFieldSelector_('强制保养频率/ Month'));
+    if (strategy !== 'RBM') {
+      $target.val('NA');
+      $target.removeClass('bg-warning');
+      return;
+    }
     var text = $(strategyModifyFieldSelector_('PM Frequency')).val();
     var months = typeof convertFrequencyToMonths === 'function' ? convertFrequencyToMonths(text) : null;
-    var $target = $(strategyModifyFieldSelector_('强制保养频率/ Month'));
     if (months === null) {
       $target.val('');
       $target.addClass('bg-warning');
     } else {
       $target.val(String(months));
       $target.removeClass('bg-warning');
+    }
+  }
+
+  /* 条件字段启用/禁用 + NA 规范化 + * 标记显隐 */
+  function applyStrategyModifyConditionalGroup_($, keys, required) {
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      var $input = $(strategyModifyFieldSelector_(key));
+      var $marker = $(strategyModifyRequiredMarkerSelector_(key));
+      if (required) {
+        $marker.show();
+      } else {
+        $marker.hide();
+      }
+      $input.prop('disabled', !required);
+      if (required) {
+        if (strategyModifyText_($input.val()) === 'NA') $input.val('');
+      } else {
+        $input.val('NA');
+      }
+    }
+  }
+
+  /* 根据当前 策略/是否创工单 重新应用条件字段状态（不主动回填频率） */
+  function applyStrategyModifyConditionalState($) {
+    var values = collectStrategyEditFormValues($);
+    var isRbm = strategyModifyText_(values['策略 / Strategy']) === 'RBM';
+    var isWorkOrder = strategyModifyText_(values['是否创工单']) === 'Y';
+    applyStrategyModifyConditionalGroup_($, STRATEGY_RBM_CONDITIONAL_KEYS, isRbm);
+    applyStrategyModifyConditionalGroup_($, [STRATEGY_WORK_ORDER_KEY], isWorkOrder);
+    if (!isRbm) {
+      $(strategyModifyFieldSelector_('强制保养频率/ Month')).removeClass('bg-warning');
     }
   }
 
@@ -255,6 +309,7 @@
     $('#strategyIdDisplay').val('');
     $(strategyModifyFieldSelector_('强制保养频率/ Month')).removeClass('bg-warning');
     $('#changeReason').val('');
+    applyStrategyModifyConditionalState($);
     $('#strategyEditSection').hide();
     $('#strategyTableBody tr').removeClass('table-active');
   }
@@ -422,6 +477,13 @@
     });
     $('#strategyForm').on('input change', strategyModifyFieldSelector_('PM Frequency'), function () {
       updateStrategyEditMandatoryFrequency($);
+    });
+    $('#strategyForm').on('change', strategyModifyFieldSelector_('策略 / Strategy'), function () {
+      applyStrategyModifyConditionalState($);
+      updateStrategyEditMandatoryFrequency($);
+    });
+    $('#strategyForm').on('change', strategyModifyFieldSelector_('是否创工单'), function () {
+      applyStrategyModifyConditionalState($);
     });
     $('#strategyTableBody').on('click', '.strategy-select-btn', function () {
       var index = parseInt($(this).attr('data-strategy-index'), 10);

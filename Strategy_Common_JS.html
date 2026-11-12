@@ -24,12 +24,56 @@
     { key: '备注', label: '备注', labelEn: 'Remarks', type: 'text' }
   ];
 
+  /* 新建/修改始终必填的 9 个业务字段（顺序与后端 STRATEGY_ALWAYS_REQUIRED_FIELDS 一致） */
+  var STRATEGY_ALWAYS_REQUIRED_KEYS = [
+    '工序', 'Machine Type', 'PM Frequency', 'PM Description', '策略 / Strategy',
+    '单次停机时间/ h', 'TasklistName', '是否创工单', '是否计入AEM'
+  ];
+
+  /* 策略为 RBM 时追加必填的三个字段 */
+  var STRATEGY_RBM_CONDITIONAL_KEYS = [
+    'RBM保养间隔时间', 'RBM保养提醒间隔时间', '强制保养频率/ Month'
+  ];
+
+  /* 是否创工单为 Y 时追加必填的字段 */
+  var STRATEGY_WORK_ORDER_KEY = '工单类型';
+
   /* 取字段文本：null/undefined → ''，其余转字符串（不 trim，保留原样展示） */
   function strategyFieldText_(fields, key) {
     if (fields === null || fields === undefined) return '';
     var value = fields[key];
     if (value === null || value === undefined) return '';
     return String(value);
+  }
+
+  /* 按条件返回必填字段键数组（不含变更原因，页面单独校验） */
+  function strategyRequiredKeysFor(fields) {
+    var keys = STRATEGY_ALWAYS_REQUIRED_KEYS.slice();
+    if (strategyFieldText_(fields, '策略 / Strategy').trim() === 'RBM') {
+      keys = keys.concat(STRATEGY_RBM_CONDITIONAL_KEYS);
+    }
+    if (strategyFieldText_(fields, '是否创工单').trim() === 'Y') {
+      keys.push(STRATEGY_WORK_ORDER_KEY);
+    }
+    return keys;
+  }
+
+  /* 不适用条件字段规范化为 NA；返回浅拷贝，不修改入参 */
+  function strategyNormalizeConditionalFields(fields) {
+    var source = fields || {};
+    var result = {};
+    for (var key in source) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) result[key] = source[key];
+    }
+    if (strategyFieldText_(source, '策略 / Strategy').trim() !== 'RBM') {
+      for (var i = 0; i < STRATEGY_RBM_CONDITIONAL_KEYS.length; i++) {
+        result[STRATEGY_RBM_CONDITIONAL_KEYS[i]] = 'NA';
+      }
+    }
+    if (strategyFieldText_(source, '是否创工单').trim() !== 'Y') {
+      result[STRATEGY_WORK_ORDER_KEY] = 'NA';
+    }
+    return result;
   }
 
   /* 按工序 + 机型过滤主表行；空过滤条件表示不过滤 */
