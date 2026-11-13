@@ -58,6 +58,28 @@ test('打印文档包含标题、双语表头和全部行', () => {
   assert.ok(html.includes('第120行'));
 });
 
+test('第一页显示表格名称', () => {
+  const html = api.buildPrintHtml({
+    title: '保养任务清单_6AX_20261113',
+    heading: '保养任务清单',
+    headers: HEADERS,
+    rows: [['a', 'b']],
+  });
+
+  assert.ok(html.includes('<h1 class="doc-title">保养任务清单</h1>'));
+  assert.ok(html.indexOf('保养任务清单</h1>') < html.indexOf('<table>'));
+});
+
+test('表格名称做 HTML 转义', () => {
+  const html = api.buildPrintHtml({
+    title: 't',
+    heading: 'A & B',
+    headers: HEADERS,
+    rows: [],
+  });
+  assert.ok(html.includes('<h1 class="doc-title">A &amp; B</h1>'));
+});
+
 test('单元格内容做 HTML 转义', () => {
   const html = api.buildPrintHtml({
     title: 'A & B',
@@ -176,11 +198,13 @@ test('两个查阅页接入打印导出', () => {
 
   assert.ok(pmJs.includes('导出 PDF / Export PDF'));
   assert.ok(pmJs.includes("buildPrintFileName('保养'"));
+  assert.ok(pmJs.includes("heading: '保养任务清单'"));
   assert.ok(pmJs.includes('openPrintWindow({'));
   assert.ok(pmJs.includes('打印窗口被拦截'));
 
   assert.ok(inJs.includes('导出 PDF / Export PDF'));
   assert.ok(inJs.includes("buildPrintFileName('点检'"));
+  assert.ok(inJs.includes("heading: '点检任务清单'"));
   assert.ok(inJs.includes('openPrintWindow({'));
   assert.ok(inJs.includes('打印窗口被拦截'));
 

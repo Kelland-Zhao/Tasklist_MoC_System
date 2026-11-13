@@ -126,6 +126,7 @@
             const rows = tasklist.map((t) => PM_PRINT_KEYS.map((k) => t[k]));
             const ok = openPrintWindow({
               title: buildPrintFileName('保养', rowData['MachineType'], new Date()),
+              heading: '保养任务清单',
               headers: PM_PRINT_HEADERS,
               rows: rows
             });

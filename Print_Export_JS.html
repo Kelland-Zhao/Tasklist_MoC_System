@@ -21,6 +21,7 @@
 
   function buildPrintHtml(options) {
     const title = options.title || '';
+    const heading = options.heading || '';
     const headers = options.headers || [];
     const rows = options.rows || [];
 
@@ -58,6 +59,7 @@
       '  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }',
       '  body { margin: 0; font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Segoe UI", sans-serif; color: #212529; }',
       '  .toolbar { text-align: right; padding: 10px 12px; }',
+      '  .doc-title { font-size: 16px; font-weight: 700; text-align: center; margin: 4px 0 8px; }',
       '  .toolbar button { background: #E60012; border: 0; color: #fff; font-size: 14px; padding: 7px 16px; border-radius: 4px; cursor: pointer; }',
       '  table { width: 100%; border-collapse: collapse; table-layout: fixed; }',
       '  thead { display: table-header-group; }',
@@ -72,6 +74,7 @@
       '</head>',
       '<body>',
       '<div class="toolbar"><button type="button" onclick="window.print()">打印 / Print</button></div>',
+      heading ? '<h1 class="doc-title">' + escapePrintHtml(heading) + '</h1>' : '',
       '<table>',
       '<colgroup>' + cols + '</colgroup>',
       '<thead><tr>' + headerCells + '</tr></thead>',

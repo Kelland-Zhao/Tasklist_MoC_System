@@ -446,6 +446,7 @@ table.dataTable thead > tr > th.sorting_desc { background-image:none !important;
 
 **打印窗口规范**：
 - 独立 HTML 文档，内容仅任务清单表格，不含变更抬头信息
+- 第一页居中显示表格名称：保养 `保养任务清单`、点检 `点检任务清单`（`heading`，只在第一页出现，不随表头重复）
 - `@page { size: A4 landscape; margin: 8mm; }`
 - 表头红底白字（`#E60012`）、双语中上英下、斑马纹、细边框
 - `thead { display: table-header-group; }` 表头每页重复；`tbody tr { page-break-inside: avoid; }` 行不跨页断开

@@ -114,6 +114,7 @@
             const rows = tasklist.map((t) => IN_PRINT_KEYS.map((k) => t[k]));
             const ok = openPrintWindow({
               title: buildPrintFileName('点检', rowData['MachineType'], new Date()),
+              heading: '点检任务清单',
               headers: IN_PRINT_HEADERS,
               rows: rows
             });
