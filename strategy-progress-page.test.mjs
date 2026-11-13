@@ -11,7 +11,7 @@ const PENDING_STATUSES = [...statusMatch[1].matchAll(/'([^']+)'/g)].map((m) => m
 const src = extractScript(fs.readFileSync('Strategy_Progress_JS.html', 'utf8'));
 const api = new Function(
   'TASKLIST_PENDING_STATUSES',
-  `${src}; return { strategyProgressInFlight_, buildStrategyProgressSteps_, strategyProgressCurrentIdx_, strategyProgressFlowHtml_, strategyProgressStatusBorderColor_, strategyProgressIsMine_, setMail: function (m) { strategyProgressUserMail = m; } };`
+  `${src}; return { strategyProgressInFlight_, buildStrategyProgressSteps_, strategyProgressCurrentIdx_, strategyProgressFlowHtml_, strategyProgressStatusBorderColor_, strategyProgressStatusTip_, strategyProgressIsMine_, setMail: function (m) { strategyProgressUserMail = m; } };`
 )(PENDING_STATUSES);
 
 test('进度页只把三种状态视为在途', () => {
@@ -60,6 +60,24 @@ test('流程 HTML 标出当前节点和当前审批人', () => {
   assert.ok(html.includes('flow-dot done'));
   assert.ok(html.includes('flow-dot current'));
   assert.ok(html.includes('部门乙'));
+  assert.ok(html.includes('待审批 · 待 部门乙'));
+});
+
+test('状态徽章气泡显示当前审批人', () => {
+  const row = {
+    Status: '待审批/ Pending',
+    CurrentApproverNames: ['工序甲'],
+    CurrentApproverEmails: ['pm.im@colpal.com'],
+  };
+  assert.ok(api.strategyProgressStatusTip_(row).includes('当前审批人：工序甲'));
+
+  const release = {
+    Status: '待发放/ Wait for Dissminater',
+    CurrentApproverNames: ['文控丙'],
+    CurrentApproverEmails: ['doc@colpal.com'],
+  };
+  assert.ok(api.strategyProgressStatusTip_(release).includes('待文控发放：文控丙'));
+  assert.equal(api.strategyProgressStatusTip_({ Status: '生效/ Effective' }), '');
 });
 
 test('只看待我审批支持同一角色多人', () => {

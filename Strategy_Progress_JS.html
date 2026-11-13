@@ -149,6 +149,7 @@
     var escape = strategyProgressEscape_;
     var steps = buildStrategyProgressSteps_(row);
     var currentIdx = strategyProgressCurrentIdx_(steps);
+    var currentWho = currentIdx === -1 ? '' : strategyProgressCurrentApproverLabel_(row);
     var html = '<div class="flow">';
     for (var i = 0; i < steps.length; i++) {
       var step = steps[i];
@@ -162,7 +163,7 @@
       } else if (i === currentIdx) {
         cls = 'current';
         inner = String(i + 1);
-        tip += '：待审批';
+        tip += '：待审批' + (currentWho ? ' · 待 ' + currentWho : '');
       } else {
         cls = 'wait';
         tip += '：待';
@@ -179,11 +180,27 @@
     if (currentIdx === -1) {
       html += '<div class="flow-caption released">已全部审批 / Approved</div>';
     } else {
-      var who = strategyProgressCurrentApproverLabel_(row);
+      var who = currentWho;
       html += '<div class="flow-caption">当前：' + steps[currentIdx].label
         + (who === '' ? '' : ' · 待 <span class="who">' + escape(who) + '</span>') + '</div>';
     }
     return html;
+  }
+
+  /* 状态徽章气泡：待审批/待发放显示当前审批人 */
+  function strategyProgressStatusTip_(row) {
+    var status = strategyProgressText_(row ? row.Status : '');
+    var who = strategyProgressCurrentApproverLabel_(row);
+    if (status === '待审批/ Pending') {
+      return '待审批 / Pending' + (who ? ' · 当前审批人：' + who : '');
+    }
+    if (status === '作废待审批/ Void Pending') {
+      return '作废待审批 / Void Pending' + (who ? ' · 当前审批人：' + who : '');
+    }
+    if (status === '待发放/ Wait for Dissminater') {
+      return '待发放 / Wait for Dissminater' + (who ? ' · 待文控发放：' + who : '');
+    }
+    return '';
   }
 
   /* 行左侧状态色边框 */
@@ -275,9 +292,11 @@
           }
         },
         {
-          targets: 6, render: function (data, type) {
+          targets: 6, render: function (data, type, row) {
             if (type !== 'display') return data;
-            return strategyProgressStatusBadge_(data);
+            var badge = strategyProgressStatusBadge_(data);
+            var tip = strategyProgressStatusTip_(row || {});
+            return tip ? '<span title="' + strategyProgressEscape_(tip) + '">' + badge + '</span>' : badge;
           }
         },
         {

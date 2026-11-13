@@ -33,26 +33,27 @@ test('策略待办徽章在 total=0 / 请求失败时清零并隐藏', () => {
   assert.ok(m, '未找到 getStrategyPendingCounts 的 success handler');
   const run = new Function('$', 'r', m[1]);
   const badges = {
-    '#badge_strategy': { text: '', shown: null },
-    '#tabBadgeStrategy': { text: '', shown: null }
+    '#badge_strategy': { text: '', shown: null, title: '' },
+    '#tabBadgeStrategy': { text: '', shown: null, title: '' }
   };
   const $ = (sel) => {
-    const badge = badges[sel];
+    const targets = String(sel).split(',').map((s) => badges[s.trim()]).filter(Boolean);
     return {
-      text(v) { badge.text = String(v); return this; },
-      toggle(v) { badge.shown = !!v; return this; }
+      text(v) { targets.forEach((badge) => { badge.text = String(v); }); return this; },
+      toggle(v) { targets.forEach((badge) => { badge.shown = !!v; }); return this; },
+      attr(name, v) { if (name === 'title') targets.forEach((badge) => { badge.title = v; }); return this; }
     };
   };
 
   run($, { total: 3 });
-  assert.deepEqual(badges['#badge_strategy'], { text: '3', shown: true });
-  assert.deepEqual(badges['#tabBadgeStrategy'], { text: '3', shown: true });
+  assert.deepEqual(badges['#badge_strategy'], { text: '3', shown: true, title: '待我审批 3 条 / Pending on me' });
+  assert.deepEqual(badges['#tabBadgeStrategy'], { text: '3', shown: true, title: '待我审批 3 条 / Pending on me' });
 
   run($, { total: 0 });
-  assert.deepEqual(badges['#badge_strategy'], { text: '0', shown: false });
-  assert.deepEqual(badges['#tabBadgeStrategy'], { text: '0', shown: false });
+  assert.deepEqual(badges['#badge_strategy'], { text: '0', shown: false, title: '待我审批 0 条 / Pending on me' });
+  assert.deepEqual(badges['#tabBadgeStrategy'], { text: '0', shown: false, title: '待我审批 0 条 / Pending on me' });
 
   run($, null); // 请求失败也要清零隐藏
-  assert.deepEqual(badges['#badge_strategy'], { text: '0', shown: false });
-  assert.deepEqual(badges['#tabBadgeStrategy'], { text: '0', shown: false });
+  assert.deepEqual(badges['#badge_strategy'], { text: '0', shown: false, title: '待我审批 0 条 / Pending on me' });
+  assert.deepEqual(badges['#tabBadgeStrategy'], { text: '0', shown: false, title: '待我审批 0 条 / Pending on me' });
 });

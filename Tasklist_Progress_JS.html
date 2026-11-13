@@ -95,6 +95,25 @@
       return '#adb5bd';
     }
 
+    // 状态徽章气泡：待审批/待发放显示当前审批人
+    function statusTip(row) {
+      var status = row['Status'] || '';
+      var steps = buildSteps(row);
+      var idx = findCurrentIdx(steps);
+      var who = idx === -1 ? '' : getPendingApprover(row['MachineType'], steps[idx].key);
+      if (status === '待审批/ Pending') {
+        return '待审批 / Pending' + (who ? ' · 当前审批人：' + who : '');
+      }
+      if (status === '作废待审批/ Void Pending') {
+        return '作废待审批 / Void Pending' + (who ? ' · 当前审批人：' + who : '');
+      }
+      if (status === '待发放/ Wait for Dissminater') {
+        return '待发放 / Wait for Dissminater' + (who ? ' · 待文控发放：' + who : '');
+      }
+      if (status === '拒绝/ Rejected') return '拒绝 / Rejected';
+      return '';
+    }
+
     var userMail = '';        // 当前用户邮箱（小写，r[2]）
     var onlyMineFlag = false; // 只看待我审批
 
@@ -182,13 +201,14 @@
               if (steps[i].parsed && steps[i].parsed.action.includes('拒绝')) hasReject = true;
             }
             var currentIdx = findCurrentIdx(steps);
+            var currentWho = currentIdx === -1 ? '' : getPendingApprover(row['MachineType'], steps[currentIdx].key);
             var html = '<div class="flow">';
             for (var i = 0; i < steps.length; i++) {
               var s = steps[i], cls = '', inner = '', tip = s.label;
               if (s.skip) { cls = 'na'; inner = '<i class="bi bi-dash"></i>'; tip += '：N/A'; }
               else if (s.parsed && s.parsed.action.includes('拒绝')) { cls = 'reject'; inner = '<i class="bi bi-x"></i>'; tip += '：拒绝 ' + s.parsed.name + ' ' + s.parsed.date; }
               else if (s.parsed) { cls = 'done'; inner = '<i class="bi bi-check"></i>'; tip += '：' + s.parsed.action + ' ' + s.parsed.name + ' ' + s.parsed.date; }
-              else if (i === currentIdx) { cls = 'current'; inner = (i + 1); tip += '：待审批'; }
+              else if (i === currentIdx) { cls = 'current'; inner = (i + 1); tip += '：待审批' + (currentWho ? ' · 待 ' + currentWho : ''); }
               else { cls = 'wait'; inner = ''; tip += '：待'; }
               var nodeCls = (i === currentIdx) ? 'flow-node is-current' : 'flow-node';
               html += '<div class="' + nodeCls + '" title="' + escapeHtml(tip) + '">' +
@@ -206,7 +226,7 @@
             } else if (currentIdx === -1) {
               html += '<div class="flow-caption released">已发布 / Released</div>';
             } else {
-              var who = getPendingApprover(row['MachineType'], steps[currentIdx].key);
+              var who = currentWho;
               html += '<div class="flow-caption">当前：' + steps[currentIdx].label +
                 (who ? ' · 待 <span class="who">' + escapeHtml(who) + '</span>' : '') + '</div>';
             }
@@ -215,7 +235,7 @@
         },
         // 状态徽章 §4.8 / §5
         {
-          targets: 5, render: function (data, type) {
+          targets: 5, render: function (data, type, row) {
             if (type !== 'display') return data;
             var map = {
               '待审批/ Pending': 'st-pending',
@@ -229,8 +249,10 @@
             var parts = (data || '').split('/ ');
             var cn = parts[0] || data || '';
             var en = parts.slice(1).join('/ ') || '';
-            return '<span class="st-badge ' + cls + '"><span>' + escapeHtml(cn) + '</span>' +
+            var badge = '<span class="st-badge ' + cls + '"><span>' + escapeHtml(cn) + '</span>' +
               (en ? '<small>' + escapeHtml(en) + '</small>' : '') + '</span>';
+            var tip = statusTip(row || {});
+            return tip ? '<span title="' + escapeHtml(tip) + '">' + badge + '</span>' : badge;
           }
         },
         // 变更原因：主因 + 详情按钮（专属 class，避免与状态 bg-warning 冲突）

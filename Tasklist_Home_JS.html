@@ -36,8 +36,12 @@
 
     // 并行：待办数量 Badge（审批进度）
     google.script.run.withSuccessHandler((r) => {
-      if (r && r.pmCount > 0) { $('#badge_pm').text(r.pmCount).show(); $('#tabBadgePm').text(r.pmCount).show(); }
-      if (r && r.inCount > 0) { $('#badge_in').text(r.inCount).show(); $('#tabBadgeIn').text(r.inCount).show(); }
+      const pmCount = (r && r.pmCount) || 0;
+      const inCount = (r && r.inCount) || 0;
+      if (pmCount > 0) { $('#badge_pm').text(pmCount).show(); $('#tabBadgePm').text(pmCount).show(); }
+      if (inCount > 0) { $('#badge_in').text(inCount).show(); $('#tabBadgeIn').text(inCount).show(); }
+      $('#badge_pm, #tabBadgePm, #progress').attr('title', '审批中 ' + pmCount + ' 条 / In progress');
+      $('#badge_in, #tabBadgeIn, #progress_IN').attr('title', '审批中 ' + inCount + ' 条 / In progress');
     }).getPendingCountsForUser();
 
     // 账号表（登录校验用）
@@ -160,6 +164,7 @@
       const n = (r && r.total) || 0;
       $('#badge_strategy').text(n).toggle(n > 0);
       $('#tabBadgeStrategy').text(n).toggle(n > 0);
+      $('#badge_strategy, #tabBadgeStrategy, #strategy_progress').attr('title', '待我审批 ' + n + ' 条 / Pending on me');
     }).getStrategyPendingCounts(currentUser.jobNumber);
   }
 </script>
