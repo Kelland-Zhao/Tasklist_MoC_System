@@ -82,7 +82,11 @@
 
         $("#Name").text(mail);
 
-        let tableHTML = '<table id="diffTable" class="display" style="width:100%">';
+        let tableHTML = '<div style="text-align:right;margin-bottom:10px;">'
+          + '<button type="button" id="exportPdfBtn" class="btn btn-sm" style="background:#E60012;border-color:#E60012;color:#fff;" title="打印或另存为 PDF / Print or Save as PDF">'
+          + '<i class="bi bi-printer"></i> 导出 PDF / Export PDF'
+          + '</button></div>'
+          + '<table id="diffTable" class="display" style="width:100%">';
         tableHTML += "<thead>"
         tableHTML += "<tr>"
         tableHTML += "<th>机型<br><small>Machine Type</small></th>"
@@ -117,6 +121,23 @@
           let item = r[0].filter((r) => { return r.Operator == editor });
           let tasklist = JSON.parse(item[0].Tasklist);
           // console.log(tasklist);
+
+          $('#exportPdfBtn').off('click').on('click', function () {
+            const rows = tasklist.map((t) => PM_PRINT_KEYS.map((k) => t[k]));
+            const ok = openPrintWindow({
+              title: buildPrintFileName('保养', rowData['MachineType'], new Date()),
+              headers: PM_PRINT_HEADERS,
+              rows: rows
+            });
+            if (!ok) {
+              Swal.fire({
+                icon: 'warning',
+                title: swalTitle('打印窗口被拦截', 'Popup Blocked'),
+                html: swalHtml('请允许本网站弹出窗口后重试。', 'Please allow popups for this site and retry.'),
+                confirmButtonText: '确定 / OK'
+              });
+            }
+          });
 
           let diffTable = $('#diffTable').DataTable({
             destroy: true,
@@ -156,6 +177,31 @@
     }).getEffectiveData()
   })
 
+
+  /* 打印 / 导出 PDF：任务清单列定义 */
+  const PM_PRINT_HEADERS = [
+    { cn: '机型', en: 'Machine Type', width: '16mm' },
+    { cn: '任务编号', en: 'Task No.', width: '16mm' },
+    { cn: '单元', en: 'Section', width: '24mm', align: 'left' },
+    { cn: '功能', en: 'Function', width: '22mm', align: 'left' },
+    { cn: '失效模式', en: 'Failure Mode', width: '24mm', align: 'left' },
+    { cn: '任务类型', en: 'Task Type', width: '20mm' },
+    { cn: '任务描述', en: 'Task Description', width: '34mm', align: 'left' },
+    { cn: '频率', en: 'Frecuency', width: '14mm' },
+    { cn: '设备状态', en: 'Line Status', width: '14mm' },
+    { cn: '保养策略', en: 'Strategy', width: '20mm', align: 'left' },
+    { cn: '执行人', en: 'Resource', width: '14mm' },
+    { cn: '人数', en: 'No. Resources', width: '10mm' },
+    { cn: '技能等级', en: 'Skill Level', width: '12mm' },
+    { cn: '技能', en: 'Tools & Equip', width: '20mm', align: 'left' },
+    { cn: '预估时间', en: 'Estimated Time', width: '17mm' }
+  ];
+
+  const PM_PRINT_KEYS = [
+    'MachineType', 'Task No', 'Section', 'Function', 'Failure Mode', 'Task Type',
+    'Task Description', 'Frecuency', 'Line Status', 'Strategy', 'Resource',
+    'No Resources', 'Skill Level', 'Tools & Equip', 'Estimated Time'
+  ];
 
   function formatText(text) {
     // 定义固定字段

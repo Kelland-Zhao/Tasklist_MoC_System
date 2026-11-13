@@ -438,6 +438,25 @@ table.dataTable thead > tr > th.sorting_desc { background-image:none !important;
 
 用于二次确认/聚合子功能。标题用 `中文 / English`（例外，横线分隔）；危险操作（作废）必须配 SweetAlert 二次确认。
 
+### 4.11 打印 / 导出 PDF（查阅页任务清单）
+
+查阅页的任务清单明细需要「打印查阅 / 存档 / 审核」时，用浏览器原生打印生成文字版 PDF，**不用 html2canvas / html2pdf 等图片式方案**（文字不可选中、不可搜索）。
+
+**交互**：弹窗 `任务清单` 顶部右侧放红色 `导出 PDF / Export PDF` 按钮（`bi-printer`）。点击后必须在同一次用户手势内 `window.open('', '_blank')`，否则会被弹窗拦截；窗口被拦截时按 §8.2 弹 `warning` + `确定 / OK`。
+
+**打印窗口规范**：
+- 独立 HTML 文档，内容仅任务清单表格，不含变更抬头信息
+- `@page { size: A4 landscape; margin: 8mm; }`
+- 表头红底白字（`#E60012`）、双语中上英下、斑马纹、细边框
+- `thead { display: table-header-group; }` 表头每页重复；`tbody tr { page-break-inside: avoid; }` 行不跨页断开
+- 长文本列左对齐（`align:'left'`），其余居中；`table-layout:fixed` + `<colgroup>` 控列宽
+- `print-color-adjust: exact` 保证红底和斑马纹打印
+- 另存 PDF 时提醒用户在打印对话框取消「页眉和页脚 / Headers and footers」，否则浏览器会在页边距区域加日期、标题和页码
+- 窗口加载后自动 `window.print()`；窗口内保留 `打印 / Print` 按钮兜底（`@media print` 隐藏）
+- `document.title` = 文件名：`保养任务清单_<机型>_<YYYYMMDD>` / `点检任务清单_<机型>_<YYYYMMDD>`（另存 PDF 时预填）
+
+**实现**：`Print_Export_JS.html` 提供 `escapePrintHtml` / `buildPrintFileName` / `buildPrintHtml` / `openPrintWindow`；页面只需定义 `*_PRINT_HEADERS`（列名/宽度/对齐）和 `*_PRINT_KEYS`（数据字段），并 `<?!=include("Print_Export_JS") ?>`。导出包含全部明细，不受弹窗 DataTables 分页限制。
+
 ---
 
 ## 5. 审批流与状态颜色映射
@@ -599,6 +618,7 @@ Swal.fire({ title:swalTitle('加载中...','Loading...'),
 - ❌ 无权限功能用灰按钮堆叠占屏（应隐藏）
 - ❌ 表头/卡片标题用 `/` 横向分隔双语（用 `<br>`）
 - ❌ 用 `alert()` / `confirm()`（用 SweetAlert）
+- ❌ 用 html2canvas / html2pdf 等图片式方案导出 PDF（用 §4.11 浏览器打印，保证文字可选中/搜索）
 - ❌ 在 HTML 里直接写后端逻辑（走 `google.script.run`）
 - ❌ 状态只用颜色不写文字
 - ❌ 装饰性动画抢首屏

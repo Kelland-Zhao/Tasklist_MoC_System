@@ -75,7 +75,11 @@
 
         $("#Name").text(mail);
 
-        let tableHTML = '<table id="diffTable" class="display" style="width:100%">';
+        let tableHTML = '<div style="text-align:right;margin-bottom:10px;">'
+          + '<button type="button" id="exportPdfBtn" class="btn btn-sm" style="background:#E60012;border-color:#E60012;color:#fff;" title="打印或另存为 PDF / Print or Save as PDF">'
+          + '<i class="bi bi-printer"></i> 导出 PDF / Export PDF'
+          + '</button></div>'
+          + '<table id="diffTable" class="display" style="width:100%">';
         tableHTML += "<thead>"
         tableHTML += "<tr>"
         tableHTML += "<th>单元<br><small>Unit</small></th>"
@@ -105,6 +109,23 @@
           let item = r[0].filter((r) => { return r.Operator == editor });
           let tasklist = JSON.parse(item[0].Tasklist);
           // console.log(tasklist);
+
+          $('#exportPdfBtn').off('click').on('click', function () {
+            const rows = tasklist.map((t) => IN_PRINT_KEYS.map((k) => t[k]));
+            const ok = openPrintWindow({
+              title: buildPrintFileName('点检', rowData['MachineType'], new Date()),
+              headers: IN_PRINT_HEADERS,
+              rows: rows
+            });
+            if (!ok) {
+              Swal.fire({
+                icon: 'warning',
+                title: swalTitle('打印窗口被拦截', 'Popup Blocked'),
+                html: swalHtml('请允许本网站弹出窗口后重试。', 'Please allow popups for this site and retry.'),
+                confirmButtonText: '确定 / OK'
+              });
+            }
+          });
 
           let diffTable = $('#diffTable').DataTable({
             destroy: true,
@@ -141,6 +162,25 @@
   })
 
 
+
+  /* 打印 / 导出 PDF：任务清单列定义 */
+  const IN_PRINT_HEADERS = [
+    { cn: '单元', en: 'Unit', width: '30mm', align: 'left' },
+    { cn: '部位及内容', en: 'Parts', width: '40mm', align: 'left' },
+    { cn: '检查标准', en: 'Inspection Std', width: '58mm', align: 'left' },
+    { cn: '使用工具', en: 'Tool', width: '24mm' },
+    { cn: '方法', en: 'Method', width: '26mm' },
+    { cn: '设备状态', en: 'Status', width: '22mm' },
+    { cn: '检查频率', en: 'Frequency', width: '20mm' },
+    { cn: '适用机型', en: 'Machine Type', width: '22mm' },
+    { cn: '执行人', en: 'Resource', width: '20mm' },
+    { cn: '工序', en: 'Process', width: '17mm' }
+  ];
+
+  const IN_PRINT_KEYS = [
+    'Unit', 'Parts', 'Inspection Std', 'Tool', 'Method', 'Status', 'Frequency',
+    'Machine Type', 'Resource', 'Process'
+  ];
 
   function formatText(text) {
     // 定义固定字段
