@@ -3,6 +3,17 @@
   const swalTitle = (cn, en) => `${cn}<span style="display:block;font-size:0.65em;color:#888;font-weight:400;line-height:1.3;margin-top:4px;">${en}</span>`;
   const swalHtml = (cn, en) => `<div>${cn}<div style="font-size:0.85em;color:#888;margin-top:6px;line-height:1.4;">${en}</div></div>`;
 
+  /* HTML 转义：避免表格/弹窗内的用户输入被当成 HTML 执行 */
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   $(document).ready(() => {
     Swal.fire({
       title: swalTitle('加载中...', 'Loading...'),
@@ -130,7 +141,7 @@
         $(rowEl).children('td:first-child').css('border-left', '4px solid ' + statusBorderColor(data['Status']));
       },
       columnDefs: [
-        { targets: 0, width: '100px' },
+        { targets: 0, width: '100px', render: function (data, type) { if (type !== 'display') return data; return escapeHtml(data); } },
         { targets: 2, width: '120px' },
         { targets: 4, width: 'auto', createdCell: function (td) { $(td).css('background-color', '#f4f9ff'); } },
         { targets: 5, width: '100px' },
@@ -141,14 +152,14 @@
             if (type !== 'display') return data;
             var o = parseOperator(data);
             return '<div style="font-size:0.8em;line-height:1.35;">' +
-              '<div style="color:#6c757d;">' + (o.job || '') + '</div>' +
-              '<div style="font-weight:600;color:#333;">' + (o.name || '') + '</div></div>';
+              '<div style="color:#6c757d;">' + escapeHtml(o.job || '') + '</div>' +
+              '<div style="font-weight:600;color:#333;">' + escapeHtml(o.name || '') + '</div></div>';
           }
         },
         // 提交邮箱：缩小字号
         {
           targets: 6, render: function (data, type) {
-            if (type === 'display') return '<span style="font-size:0.75em;">' + (data || '') + '</span>';
+            if (type === 'display') return '<span style="font-size:0.75em;">' + escapeHtml(data || '') + '</span>';
             return data;
           }
         },
@@ -180,7 +191,7 @@
               else if (i === currentIdx) { cls = 'current'; inner = (i + 1); tip += '：待审批'; }
               else { cls = 'wait'; inner = ''; tip += '：待'; }
               var nodeCls = (i === currentIdx) ? 'flow-node is-current' : 'flow-node';
-              html += '<div class="' + nodeCls + '" title="' + tip + '">' +
+              html += '<div class="' + nodeCls + '" title="' + escapeHtml(tip) + '">' +
                 '<div class="flow-dot ' + cls + '">' + inner + '</div>' +
                 '<div class="flow-label">' + s.label + '</div></div>';
               if (i < steps.length - 1) {
@@ -197,7 +208,7 @@
             } else {
               var who = getPendingApprover(row['MachineType'], steps[currentIdx].key);
               html += '<div class="flow-caption">当前：' + steps[currentIdx].label +
-                (who ? ' · 待 <span class="who">' + who + '</span>' : '') + '</div>';
+                (who ? ' · 待 <span class="who">' + escapeHtml(who) + '</span>' : '') + '</div>';
             }
             return html;
           }
@@ -218,8 +229,8 @@
             var parts = (data || '').split('/ ');
             var cn = parts[0] || data || '';
             var en = parts.slice(1).join('/ ') || '';
-            return '<span class="st-badge ' + cls + '"><span>' + cn + '</span>' +
-              (en ? '<small>' + en + '</small>' : '') + '</span>';
+            return '<span class="st-badge ' + cls + '"><span>' + escapeHtml(cn) + '</span>' +
+              (en ? '<small>' + escapeHtml(en) + '</small>' : '') + '</span>';
           }
         },
         // 变更原因：主因 + 详情按钮（专属 class，避免与状态 bg-warning 冲突）
@@ -227,7 +238,7 @@
           targets: 2, render: function (data, type) {
             if (type !== 'display') return data;
             var mainReason = extractMainReason(data);
-            return '<span class="reason-main">' + (mainReason || '-') + '</span>' +
+            return '<span class="reason-main">' + escapeHtml(mainReason || '-') + '</span>' +
               '<button type="button" class="btn btn-outline-secondary btn-sm btn-reason-detail d-block mx-auto">详情 / Details</button>';
           }
         },
@@ -334,7 +345,7 @@
 
         var html = '<table class="table table-bordered table-striped reason-detail-table">' +
           '<thead><tr><th>项目 / Item</th><th>内容 / Content</th></tr></thead><tbody>' +
-          '<tr><td>主要变更原因 / Main Reason</td><td>' + (parts['mainReason'] || '') + '</td></tr>';
+          '<tr><td>主要变更原因 / Main Reason</td><td>' + escapeHtml(parts['mainReason'] || '') + '</td></tr>';
         if (parts['addCount']) html += '<tr><td>新增条目数 / Number of Add</td><td>' + parts['addCount'] + '</td></tr>';
         if (parts['deleteCount']) html += '<tr><td>删除条目数 / Number of Delete</td><td>' + parts['deleteCount'] + '</td></tr>';
         if (parts['editCount']) html += '<tr><td>修改条目数 / Number of Edit</td><td>' + parts['editCount'] + '</td></tr>';

@@ -49,21 +49,50 @@
       border-color: #E60012; box-shadow: 0 0 0 0.15rem rgba(230,0,18,0.15);
     }
 
-    #strategyProgressTable thead th {
+    #strategyProgressTable thead th,
+    .dataTables_scrollHead thead th {
       background-color: #E60012 !important; color: white !important;
       position: sticky; top: 0; z-index: 10; text-align: center !important;
     }
-    #strategyProgressTable thead th small { font-size: 0.8em; font-weight: 400; opacity: 0.85; }
-    #strategyProgressTable th, #strategyProgressTable td { padding: 5px 6px; font-size: 12px; vertical-align: middle; text-align: center; }
-    #strategyProgressTable td:nth-child(3) { text-align: left; max-width: 240px; word-wrap: break-word; overflow-wrap: break-word; }
-    #strategyProgressTable tbody tr:nth-child(odd) > td { background: #f5f5f5; }
-    #strategyProgressTable tbody tr:nth-child(even) > td { background: #fff; }
+    #strategyProgressTable thead th small, .dataTables_scrollHead thead th small { font-size: 0.8em; font-weight: 400; opacity: 0.85; }
+    #strategyProgressTable th, #strategyProgressTable td, .dataTables_scrollHead th { padding: 5px 6px; font-size: 12px; vertical-align: middle; text-align: center; }
+    #strategyProgressTable td:nth-child(4) { text-align: left; max-width: 180px; word-wrap: break-word; overflow-wrap: break-word; }
+    #strategyProgressTable tbody tr.odd > td { background: #f5f5f5; }
+    #strategyProgressTable tbody tr.even > td { background: #fff; }
+    #strategyProgressTable tbody td:first-child { border-left: 4px solid transparent; }
     .strategy-progress-action-btn { white-space: nowrap; }
 
-    /* 「只看我的申请」开关 */
+    /* 「只看待我审批」开关 */
     .sb-toggle label { font-size: 12px; color: #333; cursor: pointer; }
     .sb-toggle .form-check-input { cursor: pointer; }
     .sb-toggle .form-check-input:checked { background-color: #E60012; border-color: #E60012; }
+
+    /* 待我审批汇总条 §4.9 */
+    .summary-bar { background:#fff; border-left:4px solid #E60012; border-radius:4px;
+      box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:10px 16px; margin:0 0 14px;
+      display:flex; align-items:center; gap:24px; flex-wrap:wrap; }
+    .sb-item { display:flex; align-items:center; gap:10px; }
+    .sb-num { font-size:26px; font-weight:700; color:#6c757d; line-height:1; min-width:28px; text-align:center; }
+    .sb-mine .sb-num { color:#E60012; }
+    .sb-label { font-size:12px; color:#333; line-height:1.2; }
+    .sb-label small { color:#888; font-size:0.8em; }
+    .sb-spacer { flex:1; }
+
+    /* 审批流程 stepper（与清单进度页一致） */
+    .flow { display:flex; align-items:flex-start; justify-content:center; }
+    .flow-node { display:flex; flex-direction:column; align-items:center; flex:0 0 auto; width:42px; }
+    .flow-dot { width:24px; height:24px; border-radius:50%; display:flex; align-items:center;
+      justify-content:center; font-size:13px; font-weight:700; line-height:1; }
+    .flow-dot.done    { background:#198754; color:#fff; }
+    .flow-dot.current { background:#ffc107; color:#333; box-shadow:0 0 0 3px rgba(255,193,7,0.25); }
+    .flow-dot.wait    { background:#fff; border:2px solid #dee2e6; color:#adb5bd; }
+    .flow-label { font-size:10px; color:#888; margin-top:3px; line-height:1.1; }
+    .flow-node.is-current .flow-label { color:#b8860b; font-weight:700; }
+    .flow-conn { flex:1 1 auto; height:2px; background:#dee2e6; min-width:6px; margin-top:11px; }
+    .flow-conn.done { background:#198754; }
+    .flow-caption { font-size:11px; text-align:center; margin-top:6px; color:#555; }
+    .flow-caption .who { color:#b8860b; font-weight:600; }
+    .flow-caption.released { color:#155724; font-weight:600; }
 
     /* 详情弹窗：基础信息 + 审批链 / 差异表 */
     .strategy-progress-info { text-align: left; font-size: 13px; line-height: 1.7; margin-bottom: 12px; }
@@ -125,63 +154,39 @@
       <span id="Code" style="display:none;">工号/ JobNumber: <span id="JobNumber"></span></span>
     </div>
 
-    <div class="section-title" id="strategyProgressSectionTitle">申请进度 / REQUEST PROGRESS</div>
-    <div class="form-card">
-      <div class="row">
-        <div class="col-md-6 col-xl-3 mb-3">
-          <label class="field-label" for="processFilter">工序<span class="en">Process</span></label>
-          <select class="form-select" id="processFilter">
-            <option value="">全部 / All</option>
-            <option value="FA">FA</option>
-            <option value="IM">IM</option>
-            <option value="PK">PK</option>
-            <option value="TF">TF</option>
-            <option value="WH">WH</option>
-          </select>
-        </div>
-        <div class="col-md-6 col-xl-3 mb-3">
-          <label class="field-label" for="machineTypeFilter">机型<span class="en">Machine Type</span></label>
-          <input type="text" class="form-control" id="machineTypeFilter" placeholder="请输入机型 / Enter machine type">
-        </div>
-        <div class="col-md-6 col-xl-3 mb-3">
-          <label class="field-label" for="statusFilter">状态<span class="en">Status</span></label>
-          <select class="form-select" id="statusFilter">
-            <option value="">全部 / All</option>
-            <option value="待审批/ Pending">待审批 / Pending</option>
-            <option value="作废待审批/ Void Pending">作废待审批 / Void Pending</option>
-            <option value="待发放/ Wait for Dissminater">待发放 / Wait for Dissminater</option>
-            <option value="拒绝/ Rejected">拒绝 / Rejected</option>
-            <option value="生效/ Effective">生效 / Effective</option>
-            <option value="取代/ Replace">取代 / Replace</option>
-            <option value="作废/ Void">作废 / Void</option>
-          </select>
-        </div>
-        <div class="col-md-6 col-xl-3 mb-3 d-flex align-items-end">
-          <div class="form-check form-switch sb-toggle">
-            <input class="form-check-input" type="checkbox" id="onlyMine">
-            <label class="form-check-label" for="onlyMine">只看我的申请 / Only mine</label>
-          </div>
-        </div>
+    <div class="section-title" id="strategyProgressSectionTitle">审批进度 / APPROVAL PROGRESS</div>
+    <div class="summary-bar" id="summaryBar" style="display:none;">
+      <div class="sb-item sb-mine">
+        <span class="sb-num" id="sbMine">0</span>
+        <span class="sb-label">待我审批<br><small>Pending on me</small></span>
       </div>
-      <div class="table-responsive">
-        <table id="strategyProgressTable" class="table table-sm table-bordered align-middle mb-0">
-          <thead>
-            <tr>
-              <th>工序<br><small>Process</small></th>
-              <th>机型<br><small>Machine Type</small></th>
-              <th>策略描述<br><small>PM Description</small></th>
-              <th>申请类型<br><small>Request Type</small></th>
-              <th>申请人<br><small>Applicant</small></th>
-              <th>提交时间<br><small>Submitted At</small></th>
-              <th>状态<br><small>Status</small></th>
-              <th>操作<br><small>Action</small></th>
-            </tr>
-          </thead>
-          <tbody id="strategyProgressTableBody">
-            <tr><td colspan="8" class="text-muted">加载中 / Loading...</td></tr>
-          </tbody>
-        </table>
+      <div class="sb-item">
+        <span class="sb-num" id="sbTotal">0</span>
+        <span class="sb-label">审批中总计<br><small>In progress</small></span>
       </div>
+      <span class="sb-spacer"></span>
+      <div class="form-check form-switch sb-toggle">
+        <input class="form-check-input" type="checkbox" id="onlyMine">
+        <label class="form-check-label" for="onlyMine">只看待我审批 / Only mine</label>
+      </div>
+    </div>
+    <div class="form-card" style="padding:0; overflow:hidden;">
+      <table id="strategyProgressTable" class="display" style="width:100%;">
+        <thead>
+          <tr>
+            <th>工序<br><small>Process</small></th>
+            <th>机型<br><small>Machine Type</small></th>
+            <th>申请人<br><small>Applicant</small></th>
+            <th>变更原因<br><small>Reason</small></th>
+            <th>申请类型<br><small>Request Type</small></th>
+            <th>审批流程<br><small>Approval Flow</small></th>
+            <th>状态<br><small>Status</small></th>
+            <th>提交邮箱<br><small>Submit Mail</small></th>
+            <th>操作<br><small>Action</small></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
 
   </div>
@@ -192,6 +197,7 @@
   <script>var STRATEGY_JOB_NUMBER=<?!=JSON.stringify(String(jobNumber == null ? '' : jobNumber)).replace(/</g,'\\u003c')?>;var STRATEGY_USER_NAME=<?!=JSON.stringify(String(name == null ? '' : name)).replace(/</g,'\\u003c')?>;</script>
   <?!=include("Sweetalert2_js") ?>
   <?!=include("Strategy_Common_JS") ?>
+  <?!=include("Pending_Lock_JS") ?>
   <?!=include("Strategy_Progress_JS") ?>
 
 </body>

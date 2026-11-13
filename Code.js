@@ -2369,7 +2369,12 @@ function nextStrategyId_(existingIds) {
 function strategyRowToObject_(headers, row) {
   var result = {};
   (headers || []).forEach(function (header, index) {
-    result[header] = row && index < row.length ? row[index] : "";
+    var value = row && index < row.length ? row[index] : "";
+    // getSheetValues 会把日期格式单元格读成 Date 对象，无法经 google.script.run 序列化
+    if (Object.prototype.toString.call(value) === "[object Date]") {
+      value = Utilities.formatDate(value, "Asia/Shanghai", "yyyy-MM-dd HH:mm:ss");
+    }
+    result[header] = value;
   });
   return result;
 }
@@ -3485,13 +3490,77 @@ function getStrategyMasterData() {
 }
 
 /**
- * 读取审批历史（含表头）
+ * 当前待审批人集合：按状态和已填审批列返回工序经理 / 部门经理 / 文控的全部合格审批人。
+ * @param {Object} row History 行
+ * @param {{processManagers:Array,deptManagers:Array,docControls:Array}} sets
+ * @returns {Array<{name:string,email:string}>}
+ */
+function strategyCurrentApproverSet_(row, sets) {
+  function text(value) {
+    return value === null || value === undefined ? "" : String(value).trim();
+  }
+  var status = text(row.Status);
+  if (status === STRATEGY_STATUS.waitRelease) return sets.docControls || [];
+  if (status !== STRATEGY_STATUS.pending && status !== STRATEGY_STATUS.voidPending) return [];
+  if (text(row.Approver1) === "") return sets.processManagers || [];
+  if (text(row.Approver2) === "") return sets.deptManagers || [];
+  return sets.docControls || [];
+}
+
+/**
+ * 从已读取的用户列表按工序解析审批人集合（用户表只读一次）。
+ * @param {Array<Object>} users
+ * @param {string} process
+ * @returns {{processManagers:Array,deptManagers:Array,docControls:Array}}
+ */
+function strategyApproverSetsFromUsers_(users, process) {
+  var sets = { processManagers: [], deptManagers: [], docControls: [] };
+  for (var i = 0; i < (users || []).length; i++) {
+    var user = users[i];
+    if (strategyHasPermission_(user, "策略工序经理") && strategyProcessMatches_(user, process)) {
+      var processManager = strategyApproverInfo_(user);
+      if (processManager) sets.processManagers.push(processManager);
+    }
+    if (strategyHasPermission_(user, "策略部门经理")) {
+      var deptManager = strategyApproverInfo_(user);
+      if (deptManager) sets.deptManagers.push(deptManager);
+    }
+    if (strategyHasPermission_(user, "发放")) {
+      var docControl = strategyApproverInfo_(user);
+      if (docControl) sets.docControls.push(docControl);
+    }
+  }
+  return sets;
+}
+
+/**
+ * 读取审批历史（含表头），并为在途行补充当前待审批人集合
+ * `CurrentApproverEmails` / `CurrentApproverNames`。
  * @returns {{headers:Array<string>,rows:Array<Object>}}
  */
 function getStrategyHistoryData() {
+  var rows = readStrategyHistoryRows_();
+  var users = getStrategyUsers_();
+  var setsCache = {};
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i] || {};
+    var status = row.Status === null || row.Status === undefined ? "" : String(row.Status).trim();
+    if (TASKLIST_PENDING_STATUSES.indexOf(status) === -1) {
+      row.CurrentApproverEmails = [];
+      row.CurrentApproverNames = [];
+      continue;
+    }
+    var process = row.Process === null || row.Process === undefined ? "" : String(row.Process).trim();
+    if (!setsCache[process]) {
+      setsCache[process] = strategyApproverSetsFromUsers_(users, process);
+    }
+    var approvers = strategyCurrentApproverSet_(row, setsCache[process]);
+    row.CurrentApproverEmails = approvers.map(function (item) { return item.email; });
+    row.CurrentApproverNames = approvers.map(function (item) { return item.name; });
+  }
   return {
     headers: STRATEGY_HISTORY_HEADERS.slice(),
-    rows: readStrategyHistoryRows_()
+    rows: rows
   };
 }
 

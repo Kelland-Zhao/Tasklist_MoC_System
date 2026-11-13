@@ -5,12 +5,11 @@
 
   /* 页面标题 / 分组标题 */
   var STRATEGY_PROGRESS_TITLE = '保养变更管理 - 保养策略进度 / Tasklist MoC - PM Strategy Progress';
-  var STRATEGY_PROGRESS_SECTION_TITLE = '申请进度 / REQUEST PROGRESS';
+  var STRATEGY_PROGRESS_SECTION_TITLE = '审批进度 / APPROVAL PROGRESS';
 
   /* 全部 History 行 / 当前筛选结果（与表格 data-index 对应） / 当前用户上下文 */
   var strategyProgressRows = [];
   var strategyProgressVisibleRows = [];
-  var strategyProgressUser = null;
 
   /* null/undefined → ''，其余转字符串并 trim */
   function strategyProgressText_(value) {
@@ -110,91 +109,217 @@
     return '新增 / Create';
   }
 
-  /**
-   * 过滤 History 行：工序 / 机型 / 状态（trim 后精确匹配，空值表示不过滤），
-   * 「只看我的申请」按 submitMail 与当前用户邮箱比对。返回新数组，不修改入参。
-   * @param {Array<Object>} rows
-   * @param {{process?:string,machineType?:string,status?:string}} filters
-   * @param {boolean} onlyMine
-   * @param {string} userEmail
-   * @returns {Array<Object>}
-   */
-  function filterStrategyHistoryRows(rows, filters, onlyMine, userEmail) {
-    var list = Array.isArray(rows) ? rows : [];
-    var criteria = filters || {};
-    var processFilter = strategyProgressText_(criteria.process);
-    var machineFilter = strategyProgressText_(criteria.machineType);
-    var statusFilter = strategyProgressText_(criteria.status);
-    var emailFilter = strategyProgressText_(userEmail);
-    return list.filter(function (row) {
-      if (!row) return false;
-      if (processFilter !== '' && strategyProgressText_(row.Process) !== processFilter) return false;
-      if (machineFilter !== '' && strategyProgressText_(row.MachineType) !== machineFilter) return false;
-      if (statusFilter !== '' && strategyProgressText_(row.Status) !== statusFilter) return false;
-      if (onlyMine && strategyProgressText_(row.submitMail) !== emailFilter) return false;
-      return true;
-    });
+  /* 在途状态：与清单进度页一致，只显示待审批 / 作废待审批 / 待发放 */
+  function strategyProgressInFlight_(status) {
+    return TASKLIST_PENDING_STATUSES.indexOf(strategyProgressText_(status)) !== -1;
   }
 
-  /* 当前用户邮箱（来自 getStrategyUserContext） */
-  function strategyProgressUserEmail_() {
-    if (!strategyProgressUser) return '';
-    return strategyProgressText_(strategyProgressUser.email);
+  /* 审批步骤：工序经理 / 部门经理 / 文控发放 */
+  function parseStrategyProgressApprover_(value) {
+    var text = strategyProgressText_(value);
+    return text === '' ? null : { text: text };
   }
 
-  /* 读取筛选控件当前值 */
-  function readStrategyProgressFilters_($) {
-    return {
-      process: $('#processFilter').val(),
-      machineType: $('#machineTypeFilter').val(),
-      status: $('#statusFilter').val()
-    };
+  function buildStrategyProgressSteps_(row) {
+    var data = row || {};
+    return [
+      { key: 'mgr1', label: '工序经理', parsed: parseStrategyProgressApprover_(data.Approver1) },
+      { key: 'mgr2', label: '部门经理', parsed: parseStrategyProgressApprover_(data.Approver2) },
+      { key: 'doc', label: '文控', parsed: parseStrategyProgressApprover_(data.Dissminater) }
+    ];
   }
 
-  /* 读取「只看我的申请」开关 */
-  function strategyProgressOnlyMine_($) {
-    var $toggle = $('#onlyMine');
-    if (!$toggle || !$toggle.length) return false;
-    return $toggle.prop('checked') === true;
+  function strategyProgressCurrentIdx_(steps) {
+    for (var i = 0; i < steps.length; i++) {
+      if (!steps[i].parsed) return i;
+    }
+    return -1;
   }
 
-  /* 行内操作按钮（图标 + 文字，符合 UI 规范 §4.7 按钮图标化） */
-  function strategyProgressActionButtonsHtml_(index) {
+  /* 当前待审批人显示名：优先姓名，其次邮箱前缀（支持同一角色多人） */
+  function strategyProgressCurrentApproverLabel_(row) {
+    var names = row && Array.isArray(row.CurrentApproverNames) ? row.CurrentApproverNames : [];
+    var emails = row && Array.isArray(row.CurrentApproverEmails) ? row.CurrentApproverEmails : [];
+    if (names.length > 0) return names.join(' / ');
+    return emails.map(function (email) { return String(email).split('@')[0]; }).join(' / ');
+  }
+
+  /* 审批流程步进条（紧凑，明细走 title 悬浮） */
+  function strategyProgressFlowHtml_(row) {
+    var escape = strategyProgressEscape_;
+    var steps = buildStrategyProgressSteps_(row);
+    var currentIdx = strategyProgressCurrentIdx_(steps);
+    var html = '<div class="flow">';
+    for (var i = 0; i < steps.length; i++) {
+      var step = steps[i];
+      var cls = '';
+      var inner = '';
+      var tip = step.label;
+      if (step.parsed) {
+        cls = 'done';
+        inner = '<i class="bi bi-check"></i>';
+        tip += '：' + step.parsed.text;
+      } else if (i === currentIdx) {
+        cls = 'current';
+        inner = String(i + 1);
+        tip += '：待审批';
+      } else {
+        cls = 'wait';
+        tip += '：待';
+      }
+      var nodeCls = i === currentIdx ? 'flow-node is-current' : 'flow-node';
+      html += '<div class="' + nodeCls + '" title="' + escape(tip) + '">';
+      html += '<div class="flow-dot ' + cls + '">' + inner + '</div>';
+      html += '<div class="flow-label">' + step.label + '</div></div>';
+      if (i < steps.length - 1) {
+        html += '<div class="flow-conn' + (step.parsed ? ' done' : '') + '"></div>';
+      }
+    }
+    html += '</div>';
+    if (currentIdx === -1) {
+      html += '<div class="flow-caption released">已全部审批 / Approved</div>';
+    } else {
+      var who = strategyProgressCurrentApproverLabel_(row);
+      html += '<div class="flow-caption">当前：' + steps[currentIdx].label
+        + (who === '' ? '' : ' · 待 <span class="who">' + escape(who) + '</span>') + '</div>';
+    }
+    return html;
+  }
+
+  /* 行左侧状态色边框 */
+  function strategyProgressStatusBorderColor_(status) {
+    var text = strategyProgressText_(status);
+    if (text === '待审批/ Pending' || text === '待发放/ Wait for Dissminater') return '#ffc107';
+    if (text === '作废待审批/ Void Pending') return '#dc3545';
+    return '#adb5bd';
+  }
+
+  /* 申请人：工号 / 姓名 两行 */
+  function strategyProgressApplicantHtml_(operator) {
+    var applicant = parseStrategyProgressOperator_(operator);
+    var escape = strategyProgressEscape_;
+    return '<div style="font-size:0.8em;line-height:1.35;">'
+      + '<div style="color:#6c757d;">' + escape(applicant.jobNumber || '') + '</div>'
+      + '<div style="font-weight:600;color:#333;">' + escape(applicant.name || '') + '</div></div>';
+  }
+
+  /* 详情按钮 */
+  function strategyProgressDetailBtnHtml_(index) {
     return '<button type="button" class="btn btn-sm btn-info strategy-progress-detail-btn strategy-progress-action-btn" data-strategy-progress-index="' + index + '" title="详情 / Detail"><i class="bi bi-list-ul"></i> 详情 / Detail</button>';
   }
 
-  /* 渲染进度表格：工序 / 机型 / 策略描述 / 申请类型 / 申请人 / 提交时间 / 状态 / 操作 */
-  function renderStrategyProgressTable($) {
-    var rows = filterStrategyHistoryRows(
-      strategyProgressRows,
-      readStrategyProgressFilters_($),
-      strategyProgressOnlyMine_($),
-      strategyProgressUserEmail_()
-    );
-    strategyProgressVisibleRows = rows;
-    var escape = strategyProgressEscape_;
-    var html = '';
-    if (rows.length === 0) {
-      html = '<tr><td colspan="8" class="text-muted">暂无申请记录 / No application records</td></tr>';
-    } else {
-      for (var i = 0; i < rows.length; i++) {
-        var row = rows[i] || {};
-        var content = strategyProgressContent_(row);
-        var fields = strategyProgressFields_(content);
-        var applicant = parseStrategyProgressOperator_(row.Operator);
-        html += '<tr>';
-        html += '<td>' + escape(row.Process) + '</td>';
-        html += '<td>' + escape(row.MachineType) + '</td>';
-        html += '<td class="text-start">' + escape(fields['PM Description']) + '</td>';
-        html += '<td>' + escape(strategyProgressActionLabel_(content)) + '</td>';
-        html += '<td>' + escape(applicant.name) + '</td>';
-        html += '<td>' + escape(applicant.timestamp) + '</td>';
-        html += '<td>' + strategyProgressStatusBadge_(row.Status) + '</td>';
-        html += '<td>' + strategyProgressActionButtonsHtml_(i) + '</td>';
-        html += '</tr>';
-      }
+  /* DataTables 纯文本列：display 转义，排序/搜索返回原值 */
+  function strategyProgressTextRender_(data, type) {
+    if (type !== 'display') return data;
+    return strategyProgressEscape_(data);
+  }
+
+  /* 该行当前是否轮到我审批（同一角色可能有多个合格审批人） */
+  function strategyProgressIsMine_(row) {
+    if (strategyProgressUserMail === '') return false;
+    var emails = row && Array.isArray(row.CurrentApproverEmails) ? row.CurrentApproverEmails : [];
+    for (var i = 0; i < emails.length; i++) {
+      if (strategyProgressText_(emails[i]).toLowerCase() === strategyProgressUserMail) return true;
     }
-    $('#strategyProgressTableBody').html(html);
+    return false;
+  }
+
+  var strategyProgressTable = null;
+  var strategyProgressOnlyMineFlag = false;
+  var strategyProgressUserMail = '';
+
+  /* 初始化 DataTable（与清单位进度页一致的列结构与交互） */
+  function initStrategyProgressTable_($) {
+    strategyProgressTable = $('#strategyProgressTable').DataTable({
+      columns: [
+        { data: 'Process', render: strategyProgressTextRender_ },
+        { data: 'MachineType', render: strategyProgressTextRender_ },
+        { data: null, defaultContent: '' },
+        { data: 'Reason', render: strategyProgressTextRender_ },
+        { data: null, defaultContent: '' },
+        { data: null, defaultContent: '' },
+        { data: 'Status' },
+        { data: 'submitMail' },
+        { data: null, defaultContent: '' }
+      ],
+      autoWidth: false,
+      scrollX: true,
+      pageLength: 25,
+      language: {
+        emptyTable: '<div style="padding:24px 0;color:#6c757d;font-size:13px;">暂无正在审批的策略<br><span style="font-size:11px;">No strategies under approval</span></div>'
+      },
+      rowCallback: function (rowEl, data) {
+        $(rowEl).children('td:first-child').css('border-left', '4px solid ' + strategyProgressStatusBorderColor_(data.Status));
+      },
+      columnDefs: [
+        { targets: 0, width: '70px' },
+        { targets: 3, width: '160px' },
+        { targets: 5, width: 'auto', createdCell: function (td) { $(td).css('background-color', '#f4f9ff'); } },
+        { targets: 8, width: '90px' },
+        {
+          targets: 2, render: function (data, type, row) {
+            if (type !== 'display') return row.Operator;
+            return strategyProgressApplicantHtml_(row.Operator);
+          }
+        },
+        {
+          targets: 4, render: function (data, type, row) {
+            if (type !== 'display') return '';
+            return strategyProgressEscape_(strategyProgressActionLabel_(strategyProgressContent_(row)));
+          }
+        },
+        {
+          targets: 5, render: function (data, type, row) {
+            if (type !== 'display') return '';
+            return strategyProgressFlowHtml_(row);
+          }
+        },
+        {
+          targets: 6, render: function (data, type) {
+            if (type !== 'display') return data;
+            return strategyProgressStatusBadge_(data);
+          }
+        },
+        {
+          targets: 7, render: function (data, type) {
+            if (type !== 'display') return data;
+            return '<span style="font-size:0.75em;">' + strategyProgressEscape_(data || '') + '</span>';
+          }
+        },        {
+          targets: 8, render: function (data, type, row) {
+            if (type !== 'display') return '';
+            return strategyProgressDetailBtnHtml_(row._progressIndex);
+          }
+        }
+      ]
+    });
+  }
+
+  /* 仅保留在途申请 */
+  function strategyProgressPendingRows_() {
+    return (strategyProgressRows || []).filter(function (row) {
+      if (!row) return false;
+      var status = strategyProgressText_(row.Status);
+      return status !== '' && strategyProgressInFlight_(status);
+    });
+  }
+
+  /* 渲染表格与汇总条 */
+  function renderStrategyProgressTable($) {
+    var rows = strategyProgressPendingRows_();
+    for (var i = 0; i < rows.length; i++) {
+      rows[i]._progressIndex = i;
+    }
+    strategyProgressVisibleRows = rows;
+    strategyProgressTable.clear();
+    if (rows.length > 0) strategyProgressTable.rows.add(rows);
+    strategyProgressTable.draw();
+
+    var userMail = strategyProgressUserMail;
+    var mineCount = userMail === '' ? 0 : rows.filter(strategyProgressIsMine_).length;
+    $('#sbMine').text(mineCount);
+    $('#sbTotal').text(rows.length);
+    $('#summaryBar').css('display', 'flex');
   }
 
   /* 审批链表格：工序经理 / 部门经理 / 文控发放 + 审批意见 */
@@ -332,7 +457,6 @@
 
   /* 并行读取 History 与当前用户上下文，两者返回后统一渲染 */
   function loadStrategyProgressData($) {
-    $('#strategyProgressTableBody').html('<tr><td colspan="8" class="text-muted">加载中 / Loading...</td></tr>');
     var pendingCalls = 2;
     var hadError = false;
 
@@ -358,12 +482,12 @@
 
     google.script.run
       .withSuccessHandler(function (user) {
-        strategyProgressUser = user || null;
+        strategyProgressUserMail = user ? strategyProgressText_(user.email).toLowerCase() : '';
         renderStrategyProgressUser_($, user);
         callFinished();
       })
       .withFailureHandler(function () {
-        strategyProgressUser = null;
+        strategyProgressUserMail = '';
         renderStrategyProgressUser_($, null);
         callFinished();
       })
@@ -384,11 +508,20 @@
       didOpen: () => Swal.showLoading()
     });
 
-    $('#processFilter').on('change', function () { renderStrategyProgressTable($); });
-    $('#machineTypeFilter').on('input change', function () { renderStrategyProgressTable($); });
-    $('#statusFilter').on('change', function () { renderStrategyProgressTable($); });
-    $('#onlyMine').on('change', function () { renderStrategyProgressTable($); });
-    $('#strategyProgressTableBody').on('click', '.strategy-progress-detail-btn', function () {
+    initStrategyProgressTable_($);
+
+    // 「只看待我审批」：按当前待审批人邮箱过滤
+    $.fn.dataTable.ext.search.push(function (settings, dataArr, dataIndex) {
+      if (settings.nTable.id !== 'strategyProgressTable') return true;
+      if (!strategyProgressOnlyMineFlag) return true;
+      var row = strategyProgressTable.row(dataIndex).data();
+      return strategyProgressIsMine_(row);
+    });
+    $('#onlyMine').on('change', function () {
+      strategyProgressOnlyMineFlag = this.checked;
+      strategyProgressTable.draw();
+    });
+    $('#strategyProgressTable tbody').on('click', '.strategy-progress-detail-btn', function () {
       var index = parseInt($(this).attr('data-strategy-progress-index'), 10);
       if (isNaN(index)) return;
       showStrategyProgressDetail_(index);
