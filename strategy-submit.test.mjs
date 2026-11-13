@@ -95,12 +95,11 @@ function seedPending(options) {
     '',
     '',
     '',
-    isVoid ? g.STRATEGY_STATUS.voidPending : g.STRATEGY_STATUS.pending,
+    opts.status || (isVoid ? g.STRATEGY_STATUS.voidPending : g.STRATEGY_STATUS.pending),
     opts.submitMail || 'applicant@colpal.com',
     opts.process || 'IM',
   ]);
 }
-
 resetSheets();
 
 test('新建追加 History 并邮件通知工序经理', () => {
@@ -394,4 +393,55 @@ test('非 RBM 条件字段的 NA 快照在发放时写入 MasterData', () => {
   ['RBM保养间隔时间', 'RBM保养提醒间隔时间', '强制保养频率/ Month'].forEach(function (key) {
     assert.equal(row[g.STRATEGY_MASTER_HEADERS.indexOf(key)], 'NA', key);
   });
+});
+
+test('同工序+机型+描述已有在途新建时再次新建被拦下', () => {
+  resetSheets();
+  seedPending({
+    operator: 'OP-NEW-1',
+    process: 'IM',
+    content: { strategyId: '', version: '00', new: baseFields() },
+  });
+  const res = g.submitStrategyNew({ jobNumber:'10001', name:'申请人', fields, reason:'新增策略' });
+  assert.equal(res.ok, false);
+  assert.match(res.message, /审批中/);
+  assert.equal(history.values.length, 2);
+});
+
+test('在途新建的描述不同则允许再次新建', () => {
+  resetSheets();
+  seedPending({
+    operator: 'OP-NEW-2',
+    process: 'IM',
+    content: { strategyId: '', version: '00', new: { ...baseFields(), 'PM Description':'其它描述' } },
+  });
+  const res = g.submitStrategyNew({ jobNumber:'10001', name:'申请人', fields, reason:'新增策略' });
+  assert.equal(res.ok, true);
+  assert.equal(history.values.length, 3);
+});
+
+test('在途新建为待发放或作废待审批时同样拦截', () => {
+  ['待发放/ Wait for Dissminater', '作废待审批/ Void Pending'].forEach(function (status) {
+    resetSheets();
+    seedPending({
+      operator: 'OP-' + status,
+      process: 'IM',
+      status: status,
+      content: { strategyId: '', version: '00', new: baseFields() },
+    });
+    const res = g.submitStrategyNew({ jobNumber:'10001', name:'申请人', fields, reason:'新增策略' });
+    assert.equal(res.ok, false, status);
+  });
+});
+
+test('在途修改不影响同工序+机型+描述的新建', () => {
+  resetSheets();
+  seedPending({
+    operator: 'OP-EDIT',
+    process: 'IM',
+    strategyId: 'PM-MD-0001',
+    content: { strategyId:'PM-MD-0001', version:'01', old:{ ...baseFields(), version:'00' }, new: baseFields() },
+  });
+  const res = g.submitStrategyNew({ jobNumber:'10001', name:'申请人', fields, reason:'新增策略' });
+  assert.equal(res.ok, true);
 });

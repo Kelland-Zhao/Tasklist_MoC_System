@@ -97,6 +97,16 @@
 
           let MachineType = $("#MachineType").val();
 
+          if (tasklistHasPendingForMachine_(data, MachineType)) {
+            Swal.fire({
+              icon: 'warning',
+              title: swalTitle('无法作废','Cannot Void'),
+              html: swalHtml('该机型已有未完成的审批申请（待审批/待发放/作废待审批），无法再次提交作废申请。请先完成上一次的审批流程。','This machine type already has a pending approval. Please complete the previous flow before submitting again.'),
+              confirmButtonText: '确定 / OK'
+            });
+            return;
+          }
+
           let Tasklist = [];
 
           data.forEach((r) => {
@@ -218,6 +228,16 @@
                       icon: 'error',
                       title: swalTitle('操作失败','Failed'),
                       html: swalHtml('该机型未配置审批邮件链，请联系系统管理员。','Approval mail chain is not configured for this machine type. Please contact the system administrator.'),
+                      confirmButtonText: '确定 / OK'
+                    });
+                  } else if (r === 'pending_exists') {
+
+                    Swal.close();
+
+                    Swal.fire({
+                      icon: 'warning',
+                      title: swalTitle('无法提交','Cannot Submit'),
+                      html: swalHtml('该机型已有未完成的审批申请，请先完成上一次审批流程。','This machine type already has a pending approval. Please complete the previous flow first.'),
                       confirmButtonText: '确定 / OK'
                     });
                   } else {

@@ -396,28 +396,51 @@
       didOpen: () => Swal.showLoading()
     });
 
-    google.script.run
-      .withSuccessHandler(function (r) {
-        Swal.close();
-        var rows = r && r.rows ? r.rows : [];
-        var duplicate = strategyCreateHasDuplicateDescription_(
-          rows,
-          values['工序'],
-          values['Machine Type'],
-          values['PM Description']
-        );
-        if (duplicate) {
-          confirmStrategyCreateDuplicate_($, payload);
-        } else {
+    function checkMasterDuplicate_() {
+      google.script.run
+        .withSuccessHandler(function (r) {
+          Swal.close();
+          var rows = r && r.rows ? r.rows : [];
+          var duplicate = strategyCreateHasDuplicateDescription_(
+            rows,
+            values['工序'],
+            values['Machine Type'],
+            values['PM Description']
+          );
+          if (duplicate) {
+            confirmStrategyCreateDuplicate_($, payload);
+          } else {
+            submitStrategyCreatePayload_($, payload);
+          }
+        })
+        .withFailureHandler(function () {
+          // 主数据读取失败不阻塞新建提交
+          Swal.close();
           submitStrategyCreatePayload_($, payload);
+        })
+        .getStrategyMasterData();
+    }
+
+    google.script.run
+      .withSuccessHandler(function (h) {
+        var historyRows = h && h.rows ? h.rows : [];
+        if (strategyHasPendingNew_(historyRows, values['工序'], values['Machine Type'], values['PM Description'])) {
+          Swal.close();
+          Swal.fire({
+            icon: 'warning',
+            title: swalTitle('无法提交', 'Cannot Submit'),
+            html: swalHtml('该机型已有相同描述的保养策略正在审批中，请先完成上一次审批流程。', 'A strategy with the same PM Description is already under approval for this machine type. Please complete the previous flow first.'),
+            confirmButtonText: '确定 / OK'
+          });
+          return;
         }
+        checkMasterDuplicate_();
       })
       .withFailureHandler(function () {
-        // 主数据读取失败不阻塞新建提交
-        Swal.close();
-        submitStrategyCreatePayload_($, payload);
+        // 历史读取失败不阻塞，提交时由后端兜底校验
+        checkMasterDuplicate_();
       })
-      .getStrategyMasterData();
+      .getStrategyHistoryData();
   }
 
   /* 页面初始化 */

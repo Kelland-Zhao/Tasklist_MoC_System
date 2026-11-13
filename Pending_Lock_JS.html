@@ -1,0 +1,59 @@
+<script>
+  /* 在途申请校验 — 保养/点检清单、策略新建共用 */
+
+  var TASKLIST_PENDING_STATUSES = [
+    '待审批/ Pending',
+    '待发放/ Wait for Dissminater',
+    '作废待审批/ Void Pending'
+  ];
+
+  var STRATEGY_PENDING_STATUSES = [
+    '待审批/ Pending',
+    '待发放/ Wait for Dissminater',
+    '作废待审批/ Void Pending'
+  ];
+
+  function pendingNorm_(value) {
+    return value === null || value === undefined ? '' : String(value).trim();
+  }
+
+  /* 指定机型在清单历史中是否已有在途申请（待审批 / 待发放 / 作废待审批） */
+  function tasklistHasPendingForMachine_(rows, machineType) {
+    var target = pendingNorm_(machineType);
+    if (target === '' || !Array.isArray(rows)) return false;
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i] || {};
+      if (pendingNorm_(row.MachineType) !== target) continue;
+      var status = pendingNorm_(row.Status);
+      if (TASKLIST_PENDING_STATUSES.indexOf(status) !== -1) return true;
+    }
+    return false;
+  }
+
+  /* 同工序 + 机型 + PM Description 是否已有在途的「新建策略」申请 */
+  function strategyHasPendingNew_(rows, process, machineType, description) {
+    var targetProcess = pendingNorm_(process);
+    var targetMachine = pendingNorm_(machineType);
+    var targetDesc = pendingNorm_(description);
+    if (targetProcess === '' || targetMachine === '' || targetDesc === '' || !Array.isArray(rows)) {
+      return false;
+    }
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i] || {};
+      var status = pendingNorm_(row.Status);
+      if (STRATEGY_PENDING_STATUSES.indexOf(status) === -1) continue;
+      var content = null;
+      try {
+        content = JSON.parse(row['Strategy Content']);
+      } catch (e) {
+        content = null;
+      }
+      if (!content || !content.new || content.old) continue;
+      if (pendingNorm_(content.new['工序']) !== targetProcess) continue;
+      if (pendingNorm_(content.new['Machine Type']) !== targetMachine) continue;
+      if (pendingNorm_(content.new['PM Description']) !== targetDesc) continue;
+      return true;
+    }
+    return false;
+  }
+</script>

@@ -170,6 +170,7 @@
   <script>var STRATEGY_JOB_NUMBER=<?!=JSON.stringify(String(jobNumber == null ? '' : jobNumber)).replace(/</g,'\\u003c')?>;var STRATEGY_USER_NAME=<?!=JSON.stringify(String(name == null ? '' : name)).replace(/</g,'\\u003c')?>;</script>
   <?!=include("Sweetalert2_js") ?>
   <?!=include("Strategy_Common_JS") ?>
+  <?!=include("Pending_Lock_JS") ?>
   <?!=include("Strategy_Create_JS") ?>
 
 </body>

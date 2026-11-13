@@ -36,6 +36,7 @@
           let jobNumber = jobNumberParts[1].trim();
           console.log(jobNumber);
           let authorizationData = r[3];
+          let historyRows = r[0] || [];
           console.log(authorizationData);
           let correctData = authorizationData.filter((r) => {
             return r.ID == jobNumber;
@@ -125,6 +126,16 @@
               .join(",");
 
             let machineType = $("#machineType").val();
+
+            if (tasklistHasPendingForMachine_(historyRows, machineType)) {
+              Swal.fire({
+                icon: 'warning',
+                title: swalTitle('无法新建','Cannot Create'),
+                html: swalHtml('该机型已有未完成的审批申请（待审批/待发放/作废待审批），无法再次提交。请先完成上一次的审批流程。','This machine type already has a pending approval. Please complete the previous flow before submitting again.'),
+                confirmButtonText: '确定 / OK'
+              });
+              return;
+            }
 
             let process = $("#process").val();
 
@@ -795,6 +806,14 @@
                                 title: swalTitle('操作成功','Success'),
                                 timer: 1500,
                                 showConfirmButton: false
+                              });
+                            } else if (r === 'pending_exists') {
+                              Swal.close();
+                              Swal.fire({
+                                icon: 'warning',
+                                title: swalTitle('无法提交','Cannot Submit'),
+                                html: swalHtml('该机型已有未完成的审批申请，请先完成上一次审批流程。','This machine type already has a pending approval. Please complete the previous flow first.'),
+                                confirmButtonText: '确定 / OK'
                               });
                             } else {
                               Swal.close();

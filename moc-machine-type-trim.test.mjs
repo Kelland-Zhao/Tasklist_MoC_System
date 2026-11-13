@@ -49,6 +49,8 @@ let sentMails = [];
 
 const historySheet = {
   appendRow: (row) => historyRows.push(row),
+  getLastRow: () => 1,
+  getRange: () => ({ getValues: () => [] }),
 };
 const mailSheet = {
   getLastRow: () => 2,

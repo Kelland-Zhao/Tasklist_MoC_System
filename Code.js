@@ -266,6 +266,38 @@ function getData() {
   // console.log(arrays)
 }
 
+// 清单在途状态：同一机型同时只允许一条在途申请
+var TASKLIST_PENDING_STATUSES = [
+  "待审批/ Pending",
+  "待发放/ Wait for Dissminater",
+  "作废待审批/ Void Pending"
+];
+
+/**
+ * 指定机型是否已有在途申请（待审批 / 待发放 / 作废待审批）。
+ * @param {Object} ss Tasklist 数据库 Spreadsheet
+ * @param {string} machineType
+ * @returns {boolean}
+ */
+function tasklistMachineHasPending_(ss, machineType) {
+  var target = machineType === null || machineType === undefined ? "" : String(machineType).trim();
+  if (target === "") return false;
+  var ws = ss.getSheetByName("Tasklist_history");
+  if (!ws) return false;
+  var lastRow = ws.getLastRow();
+  if (lastRow < 2) return false;
+  // 只读机型列和状态列，避免把 B 列的完整 Tasklist JSON 一并读入
+  var machines = ws.getRange(2, 1, lastRow - 1, 1).getValues();
+  var statuses = ws.getRange(2, 13, lastRow - 1, 1).getValues();
+  for (var i = 0; i < machines.length; i++) {
+    var machine = machines[i][0] === null || machines[i][0] === undefined ? "" : String(machines[i][0]).trim();
+    if (machine !== target) continue;
+    var status = statuses[i][0] === null || statuses[i][0] === undefined ? "" : String(statuses[i][0]).trim();
+    if (TASKLIST_PENDING_STATUSES.indexOf(status) !== -1) return true;
+  }
+  return false;
+}
+
 function dataSave(
   obj,
   loginInfo,
@@ -291,6 +323,11 @@ function dataSave(
 
     // 机型可能来自 Tasklist JSON，历史数据中存在前导/尾随空格，写入前统一清理
     let machineType = (JSON.parse(obj)[0].MachineType || '').toString().trim();
+
+    // 在途校验优先于 Database for Web 配置校验
+    if (tasklistMachineHasPending_(ss, machineType)) {
+      return "pending_exists";
+    }
 
     console.log("machineType", machineType);
 
@@ -373,6 +410,11 @@ function dataSave_IN(
     var ws = ss.getSheetByName("Tasklist_history");
 
     let machineType = JSON.parse(obj)[0]["Machine Type"];
+
+    // 在途校验优先于 Database for Web 配置校验
+    if (tasklistMachineHasPending_(ss, machineType)) {
+      return "pending_exists";
+    }
 
     let production_Approval_words = "";
 
@@ -1518,6 +1560,10 @@ function submitRequest(r) {
   let submitEmail = Session.getActiveUser().getEmail();
   let process = r[2];
 
+  if (tasklistMachineHasPending_(ss, machineType)) {
+    return "pending_exists";
+  }
+
   // console.log(objBasicInfo.Mail_CC);
   ws_Tasklisthistory.appendRow([
     machineType,
@@ -1588,6 +1634,10 @@ function submitRequest_IN(r) {
   let status = dataforHistory[4];
   let process = dataforHistory[5];
   let submitEmail = Session.getActiveUser().getEmail();
+
+  if (tasklistMachineHasPending_(ss, machineType)) {
+    return "pending_exists";
+  }
 
   // console.log(objBasicInfo.Mail_CC);
   ws_Tasklisthistory.appendRow([
@@ -2653,6 +2703,46 @@ function sendStrategySubmitMail_(action, fields, reason, submitMail, processMana
 }
 
 /**
+ * 同工序 + 机型 + PM Description 是否已有在途的「新建策略」申请。
+ * @param {Array<Object>} historyRows
+ * @param {string} process
+ * @param {string} machineType
+ * @param {string} description
+ * @returns {boolean}
+ */
+function strategyPendingNewDuplicate_(historyRows, process, machineType, description) {
+  function text(value) {
+    return value === null || value === undefined ? "" : String(value).trim();
+  }
+  var targetProcess = text(process);
+  var targetMachine = text(machineType);
+  var targetDesc = text(description);
+  if (targetProcess === "" || targetMachine === "" || targetDesc === "") return false;
+  var pendingStatuses = [
+    STRATEGY_STATUS.pending,
+    STRATEGY_STATUS.voidPending,
+    STRATEGY_STATUS.waitRelease
+  ];
+  for (var i = 0; i < (historyRows || []).length; i++) {
+    var row = historyRows[i] || {};
+    var status = text(row.Status);
+    if (pendingStatuses.indexOf(status) === -1) continue;
+    var content = null;
+    try {
+      content = JSON.parse(row["Strategy Content"]);
+    } catch (e) {
+      content = null;
+    }
+    if (!content || !content.new || content.old) continue;
+    if (text(content.new["工序"]) !== targetProcess) continue;
+    if (text(content.new["Machine Type"]) !== targetMachine) continue;
+    if (text(content.new["PM Description"]) !== targetDesc) continue;
+    return true;
+  }
+  return false;
+}
+
+/**
  * 新建/修改/作废的统一提交逻辑
  * @param {Object} payload 新建 `{jobNumber,name,fields,reason}`；修改 `{jobNumber,name,strategyId,old,fields,reason}`；作废 `{jobNumber,name,strategyId,old,reason}`
  * @param {string} action `new` | `edit` | `void`
@@ -2695,6 +2785,17 @@ function createStrategyRequest_(payload, action) {
 
   var content;
   if (action === "new") {
+    if (strategyPendingNewDuplicate_(
+      readStrategyHistoryRows_(),
+      fields["工序"],
+      fields["Machine Type"],
+      fields["PM Description"]
+    )) {
+      return {
+        ok: false,
+        message: "该机型已有相同描述的保养策略正在审批中 / A strategy with the same PM Description is under approval for this machine type"
+      };
+    }
     content = {
       strategyId: "",
       version: "00",

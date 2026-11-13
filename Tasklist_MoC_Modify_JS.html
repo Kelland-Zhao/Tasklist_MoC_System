@@ -272,16 +272,14 @@
 
             let MachineType = $("#MachineType").val();
 
-            // 使用已有的 data 数据检查待审批状态
-            let hasPendingApproval = data.some((r) => {
-              return r.MachineType === MachineType && r.Status === "待审批/ Pending";
-            });
+            // 使用已有的 data 数据检查在途状态（待审批 / 待发放 / 作废待审批）
+            let hasPendingApproval = tasklistHasPendingForMachine_(data, MachineType);
 
             if (hasPendingApproval) {
               Swal.fire({
                 icon: 'warning',
                 title: swalTitle('无法编辑', 'Cannot Edit'),
-                html: swalHtml('该机型已有未完成的审批申请，无法再次提交修改申请。如需提交新的修改申请，请先完成上一次的审批流程。', 'This machine type already has a pending approval. Please complete the previous flow before submitting again.'),
+                html: swalHtml('该机型已有未完成的审批申请（待审批/待发放/作废待审批），无法再次提交修改申请。请先完成上一次的审批流程。', 'This machine type already has a pending approval. Please complete the previous flow before submitting again.'),
                 confirmButtonText: '确定 / OK'
               });
               return;
@@ -576,6 +574,14 @@
                             title: swalTitle('操作成功', 'Success'),
                             timer: 1500,
                             showConfirmButton: false
+                          });
+                        } else if (r === 'pending_exists') {
+                          Swal.close();
+                          Swal.fire({
+                            icon: 'warning',
+                            title: swalTitle('无法提交', 'Cannot Submit'),
+                            html: swalHtml('该机型已有未完成的审批申请，请先完成上一次审批流程。', 'This machine type already has a pending approval. Please complete the previous flow first.'),
+                            confirmButtonText: '确定 / OK'
                           });
                         } else {
                           Swal.close();
