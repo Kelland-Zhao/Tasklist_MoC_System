@@ -343,7 +343,7 @@
   }
 
   /* 失败提示：把后端「中文 / English」消息拆成双语 swalHtml */
-  function showStrategyViewerError_(message) {
+  function showStrategyViewerError_(message, titleCn, titleEn) {
     var text = strategyViewerText_(message);
     var cn = '后端返回异常，请重试。';
     var en = 'Backend error, please retry.';
@@ -359,7 +359,7 @@
     Swal.close();
     Swal.fire({
       icon: 'error',
-      title: swalTitle('加载失败', 'Load Failed'),
+      title: swalTitle(titleCn || '加载失败', titleEn || 'Load Failed'),
       html: swalHtml(cn, en),
       confirmButtonText: '确定 / OK'
     });
@@ -413,6 +413,25 @@
       .getStrategyHistoryData();
   }
 
+  /* 打印 / 导出 PDF：保养策略记录表 14 列（顺序与后端 STRATEGY_BUSINESS_FIELDS 一致） */
+  var STRATEGY_RECORD_PRINT_WIDTHS = [
+    '12mm', '18mm', '16mm', '18mm', '34mm', '22mm', '26mm',
+    '22mm', '14mm', '24mm', '16mm', '16mm', '16mm', '22mm'
+  ];
+
+  function strategyRecordPrintHeaders_() {
+    var list = typeof STRATEGY_FIELDS !== 'undefined' && STRATEGY_FIELDS ? STRATEGY_FIELDS : [];
+    return list.map(function (field, index) {
+      var header = {
+        cn: field.label,
+        en: field.labelEn,
+        width: STRATEGY_RECORD_PRINT_WIDTHS[index] || 'auto'
+      };
+      if (index === 4 || index === 9 || index === 13) header.align = 'left';
+      return header;
+    });
+  }
+
   /* 查阅页初始化（只读，无提交/修改入口） */
   function initStrategyViewerPage($) {
     if (!$) return;
@@ -439,6 +458,85 @@
       var index = parseInt($(this).attr('data-strategy-viewer-index'), 10);
       if (isNaN(index)) return;
       showStrategyViewerVersionHistory_(index);
+    });
+
+    $('#strategyExportPdf').on('click', function () {
+      var $btn = $(this);
+      if ($btn.prop('disabled')) return;
+
+      var headers = strategyRecordPrintHeaders_();
+      if (headers.length !== 14) {
+        Swal.fire({
+          icon: 'error',
+          title: swalTitle('导出失败', 'Export Failed'),
+          html: swalHtml('列定义加载异常，请刷新页面重试。', 'Column definitions failed to load. Please refresh and retry.'),
+          confirmButtonText: '确定 / OK'
+        });
+        return;
+      }
+
+      var fileName = buildDatedFileName('保养策略记录表', new Date());
+      var win = openBlankPrintWindow(fileName);
+      if (!win) {
+        Swal.fire({
+          icon: 'warning',
+          title: swalTitle('打印窗口被拦截', 'Popup Blocked'),
+          html: swalHtml('请允许本网站弹出窗口后重试。', 'Please allow popups for this site and retry.'),
+          confirmButtonText: '确定 / OK'
+        });
+        return;
+      }
+
+      $btn.prop('disabled', true);
+      var finish = function () { $btn.prop('disabled', false); };
+
+      Swal.fire({
+        title: swalTitle('生成中...', 'Preparing...'),
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: function () { Swal.showLoading(); }
+      });
+      google.script.run
+        .withSuccessHandler(function (r) {
+          Swal.close();
+          finish();
+          if (!r || r.ok !== true) {
+            try { win.close(); } catch (e) {}
+            showStrategyViewerError_(
+              (r && r.message) || '读取保养策略记录表失败。',
+              '导出失败',
+              'Export Failed'
+            );
+            return;
+          }
+          var ok = writePrintWindow(win, {
+            title: fileName,
+            heading: r.title || '保养策略记录表',
+            subheading: r.docNo || '',
+            headers: headers,
+            rows: r.rows || []
+          });
+          if (!ok) {
+            try { win.close(); } catch (e2) {}
+            Swal.fire({
+              icon: 'warning',
+              title: swalTitle('打印窗口不可用', 'Print Window Unavailable'),
+              html: swalHtml('打印窗口已关闭或不可写，请重试。', 'The print window was closed or is not writable. Please retry.'),
+              confirmButtonText: '确定 / OK'
+            });
+          }
+        })
+        .withFailureHandler(function (err) {
+          Swal.close();
+          finish();
+          try { win.close(); } catch (e) {}
+          showStrategyViewerError_(
+            (err && String(err)) || '后端读取异常，请重试。',
+            '导出失败',
+            'Export Failed'
+          );
+        })
+        .getStrategyRecordData();
     });
 
     loadStrategyViewerData($);

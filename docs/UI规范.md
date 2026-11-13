@@ -442,11 +442,12 @@ table.dataTable thead > tr > th.sorting_desc { background-image:none !important;
 
 查阅页的任务清单明细需要「打印查阅 / 存档 / 审核」时，用浏览器原生打印生成文字版 PDF，**不用 html2canvas / html2pdf 等图片式方案**（文字不可选中、不可搜索）。
 
-**交互**：弹窗 `任务清单` 顶部右侧放红色 `导出 PDF / Export PDF` 按钮（`bi-printer`）。点击后必须在同一次用户手势内 `window.open('', '_blank')`，否则会被弹窗拦截；窗口被拦截时按 §8.2 弹 `warning` + `确定 / OK`。
+**交互**：红色 `导出 PDF / Export PDF` 按钮（`bi-printer`）——保养/点检放在弹窗 `任务清单` 顶部右侧，策略查阅页放在页面表格上方右侧。点击后必须在同一次用户手势内 `window.open('', '_blank')`，否则会被弹窗拦截；窗口被拦截时按 §8.2 弹 `warning` + `确定 / OK`。
 
 **打印窗口规范**：
 - 独立 HTML 文档，内容仅任务清单表格，不含变更抬头信息
 - 第一页居中显示表格名称：保养 `保养任务清单`、点检 `点检任务清单`（`heading`，只在第一页出现，不随表头重复）
+- 策略查阅页导出后端「保养策略记录表」：`heading` = 表标题（第 1 行）、`subheading` = 文件编号（第 2 行第一个非空单元格，右对齐小字），数据从第 4 行起
 - `@page { size: A4 landscape; margin: 8mm; }`
 - 表头红底白字（`#E60012`）、双语中上英下、斑马纹、细边框
 - `thead { display: table-header-group; }` 表头每页重复；`tbody tr { page-break-inside: avoid; }` 行不跨页断开
@@ -456,7 +457,9 @@ table.dataTable thead > tr > th.sorting_desc { background-image:none !important;
 - 窗口加载后自动 `window.print()`；窗口内保留 `打印 / Print` 按钮兜底（`@media print` 隐藏）
 - `document.title` = 文件名：`保养任务清单_<机型>_<YYYYMMDD>` / `点检任务清单_<机型>_<YYYYMMDD>`（另存 PDF 时预填）
 
-**实现**：`Print_Export_JS.html` 提供 `escapePrintHtml` / `buildPrintFileName` / `buildPrintHtml` / `openPrintWindow`；页面只需定义 `*_PRINT_HEADERS`（列名/宽度/对齐）和 `*_PRINT_KEYS`（数据字段），并 `<?!=include("Print_Export_JS") ?>`。导出包含全部明细，不受弹窗 DataTables 分页限制。
+**实现**：`Print_Export_JS.html` 提供 `escapePrintHtml` / `buildPrintFileName` / `buildDatedFileName` / `buildPrintHtml` / `openPrintWindow` / `openBlankPrintWindow` / `writePrintWindow`；保养/点检页定义 `*_PRINT_HEADERS`（列名/宽度/对齐）和 `*_PRINT_KEYS`（数据字段），策略查阅页直接由 `STRATEGY_FIELDS` 派生表头，均需 `<?!=include("Print_Export_JS") ?>`。导出包含全部明细，不受弹窗 DataTables 分页限制。
+
+**需要先请求后端的数据**（如策略记录表）：必须在点击时同步 `openBlankPrintWindow()` 占位，数据返回后再 `writePrintWindow()` 写入；等异步回来再 `window.open` 会被浏览器拦截。
 
 ---
 

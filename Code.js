@@ -3395,6 +3395,53 @@ function getStrategyHistoryData() {
 }
 
 /**
+ * 读取「保养策略记录表」第 1 行起的全部内容，供策略查阅页导出 PDF。
+ * 第 1 行为标题，第 2 行含文件编号，第 3 行为表头，第 4 行起为数据（跳过全空行）。
+ * @returns {{ok:boolean,title?:string,docNo?:string,rows?:Array<Array<string>>,message?:string}}
+ */
+function getStrategyRecordData() {
+  try {
+    var ss = SpreadsheetApp.openById(STRATEGY_SS_ID);
+    var ws = ss.getSheetByName(STRATEGY_RECORD_SHEET_NAME);
+    if (!ws) {
+      return { ok: false, message: "保养策略记录表 sheet 未找到 / Strategy record sheet not found" };
+    }
+    var width = STRATEGY_BUSINESS_FIELDS.length;
+    var lastRow = ws.getLastRow();
+    if (lastRow < 1) {
+      return { ok: true, title: STRATEGY_RECORD_SHEET_NAME, docNo: "", rows: [] };
+    }
+    var values = ws.getRange(1, 1, lastRow, width).getDisplayValues();
+    var title = String(values[0][0] || "").trim() || STRATEGY_RECORD_SHEET_NAME;
+    var docNo = "";
+    if (values.length > 1) {
+      for (var c = 0; c < values[1].length; c++) {
+        var cell = String(values[1][c] || "").trim();
+        if (cell !== "") {
+          docNo = cell;
+          break;
+        }
+      }
+    }
+    var rows = [];
+    for (var r = 3; r < values.length; r++) {
+      var source = values[r] || [];
+      var row = [];
+      var hasValue = false;
+      for (var i = 0; i < width; i++) {
+        var value = source[i] === null || source[i] === undefined ? "" : String(source[i]);
+        row.push(value);
+        if (value.trim() !== "") hasValue = true;
+      }
+      if (hasValue) rows.push(row);
+    }
+    return { ok: true, title: title, docNo: docNo, rows: rows };
+  } catch (e) {
+    return { ok: false, message: e.toString() };
+  }
+}
+
+/**
  * 读取当前生效的 PM 任务清单（PM Tasklist_history）。
  * A 列 MachineType 为清单名，M 列 Status 需含「生效」或「Effective」，O 列 Process 为工序。
  * 按清单名去重（trim），同一清单保留第一个非空 Process；标签为「工序 - 清单名」，

@@ -148,6 +148,11 @@
           <input type="text" class="form-control" id="keywordFilter" placeholder="PM Description / Machine Type / TasklistName">
         </div>
       </div>
+      <div class="d-flex justify-content-end mb-2">
+        <button type="button" id="strategyExportPdf" class="btn btn-sm" style="background:#E60012;border-color:#E60012;color:#fff;" title="导出后端保养策略记录表 / Export Strategy Record">
+          <i class="bi bi-printer"></i> 导出 PDF / Export PDF
+        </button>
+      </div>
       <div class="table-responsive">
         <table id="strategyViewerTable" class="table table-sm table-bordered align-middle mb-0">
           <thead>
@@ -177,6 +182,7 @@
   <script>var STRATEGY_JOB_NUMBER=<?!=JSON.stringify(String(jobNumber == null ? '' : jobNumber)).replace(/</g,'\\u003c')?>;var STRATEGY_USER_NAME=<?!=JSON.stringify(String(name == null ? '' : name)).replace(/</g,'\\u003c')?>;</script>
   <?!=include("Sweetalert2_js") ?>
   <?!=include("Strategy_Common_JS") ?>
+  <?!=include("Print_Export_JS") ?>
   <?!=include("Strategy_Viewer_JS") ?>
 
 </body>

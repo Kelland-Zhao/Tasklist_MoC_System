@@ -5,7 +5,7 @@ import { extractScript } from './strategy-test-utils.mjs';
 
 const src = extractScript(fs.readFileSync('Print_Export_JS.html', 'utf8'));
 const api = new Function(
-  `${src}; return { escapePrintHtml, buildPrintFileName, buildPrintHtml, openPrintWindow };`
+  `${src}; return { escapePrintHtml, buildPrintFileName, buildDatedFileName, buildPrintHtml, openPrintWindow, openBlankPrintWindow, writePrintWindow };`
 )();
 
 const HEADERS = [
@@ -70,14 +70,38 @@ test('第一页显示表格名称', () => {
   assert.ok(html.indexOf('保养任务清单</h1>') < html.indexOf('<table>'));
 });
 
+test('通用文件名按前缀加日期', () => {
+  assert.equal(
+    api.buildDatedFileName('保养策略记录表', new Date(2026, 10, 13)),
+    '保养策略记录表_20261113'
+  );
+});
+
+test('第一页显示表格名称和文件编号', () => {
+  const html = api.buildPrintHtml({
+    title: '保养策略记录表_20261113',
+    heading: '保养策略记录表',
+    subheading: 'EQU-R-MAC-043-00',
+    headers: HEADERS,
+    rows: [['a', 'b']],
+  });
+
+  assert.ok(html.includes('<h1 class="doc-title">保养策略记录表</h1>'));
+  assert.ok(html.includes('<div class="doc-subtitle">EQU-R-MAC-043-00</div>'));
+  assert.ok(html.indexOf('保养策略记录表</h1>') < html.indexOf('EQU-R-MAC-043-00</div>'));
+  assert.ok(html.indexOf('EQU-R-MAC-043-00</div>') < html.indexOf('<table>'));
+});
+
 test('表格名称做 HTML 转义', () => {
   const html = api.buildPrintHtml({
     title: 't',
     heading: 'A & B',
+    subheading: 'C & D',
     headers: HEADERS,
     rows: [],
   });
   assert.ok(html.includes('<h1 class="doc-title">A &amp; B</h1>'));
+  assert.ok(html.includes('<div class="doc-subtitle">C &amp; D</div>'));
 });
 
 test('单元格内容做 HTML 转义', () => {
@@ -165,6 +189,92 @@ test('打印窗口写入异常时返回 false', () => {
   }
 });
 
+test('先生成空白打印窗口，再写入内容', () => {
+  const calls = [];
+  const fakeDoc = {
+    open() { calls.push('open'); },
+    write(html) { calls.push(html); },
+    close() { calls.push('close'); },
+  };
+  const fakeWin = { document: fakeDoc, focus() { calls.push('focus'); } };
+  const prev = globalThis.window;
+  globalThis.window = {
+    open(...args) { calls.push('window.open:' + args.join(',')); return fakeWin; },
+  };
+  let win;
+  try {
+    win = api.openBlankPrintWindow('保养策略记录表_20261113');
+    assert.equal(win, fakeWin);
+    assert.ok(calls.some((c) => String(c).includes('正在生成')));
+    const ok = api.writePrintWindow(win, {
+      title: '保养策略记录表_20261113',
+      heading: '保养策略记录表',
+      subheading: 'EQU-R-MAC-043-00',
+      headers: HEADERS,
+      rows: [['a', 'b']],
+    });
+    assert.equal(ok, true);
+    assert.ok(calls.some((c) => String(c).includes('EQU-R-MAC-043-00</div>')));
+  } finally {
+    globalThis.window = prev;
+  }
+});
+
+test('空白打印窗口被拦截或写入异常时安全返回', () => {
+  const prev = globalThis.window;
+  try {
+    globalThis.window = { open() { return null; } };
+    assert.equal(api.openBlankPrintWindow('t'), null);
+
+    const brokenWin = {
+      document: {
+        open() {},
+        write() { throw new Error('closed'); },
+        close() {},
+      },
+      focus() {},
+    };
+    assert.equal(api.writePrintWindow(brokenWin, { title: 't', headers: HEADERS, rows: [] }), false);
+  } finally {
+    globalThis.window = prev;
+  }
+});
+
+test('占位写入异常时关闭已打开的窗口', () => {
+  let closed = false;
+  const brokenWin = {
+    document: {
+      open() {},
+      write() { throw new Error('blocked'); },
+      close() {},
+    },
+    close() { closed = true; },
+  };
+  const prev = globalThis.window;
+  globalThis.window = { open() { return brokenWin; } };
+  try {
+    assert.equal(api.openBlankPrintWindow('t'), null);
+  } finally {
+    globalThis.window = prev;
+  }
+  assert.equal(closed, true);
+});
+
+test('窗口已关闭时不写入', () => {
+  let wrote = false;
+  const closedWin = {
+    closed: true,
+    document: {
+      open() {},
+      write() { wrote = true; },
+      close() {},
+    },
+    focus() {},
+  };
+  assert.equal(api.writePrintWindow(closedWin, { title: 't', headers: HEADERS, rows: [] }), false);
+  assert.equal(wrote, false);
+});
+
 test('打印列定义与弹窗 DataTable 列一致', () => {
   function readArray(file, name) {
     const src = fs.readFileSync(file, 'utf8');
@@ -212,4 +322,37 @@ test('两个查阅页接入打印导出', () => {
   const inHtml = fs.readFileSync('Inspection_Viewer.html', 'utf8');
   assert.ok(pmHtml.includes('include("Print_Export_JS")'));
   assert.ok(inHtml.includes('include("Print_Export_JS")'));
+});
+
+test('策略查阅页接入记录表导出', () => {
+  const js = fs.readFileSync('Strategy_Viewer_JS.html', 'utf8');
+  const html = fs.readFileSync('Strategy_Viewer.html', 'utf8');
+
+  assert.ok(html.includes('include("Print_Export_JS")'));
+  assert.ok(html.includes('id="strategyExportPdf"'));
+  assert.ok(html.includes('导出 PDF / Export PDF'));
+  assert.ok(js.includes('.getStrategyRecordData()'));
+  assert.ok(js.includes('openBlankPrintWindow('));
+  assert.ok(js.includes('writePrintWindow('));
+  assert.ok(js.includes('保养策略记录表'));
+});
+
+test('策略记录表列定义与后端字段顺序一致、宽度适配 A4', () => {
+  const code = fs.readFileSync('Code.js', 'utf8');
+  const common = fs.readFileSync('Strategy_Common_JS.html', 'utf8');
+  const viewer = fs.readFileSync('Strategy_Viewer_JS.html', 'utf8');
+
+  const businessSrc = code.match(/var STRATEGY_BUSINESS_FIELDS = \[([\s\S]*?)\];/);
+  const fieldsSrc = common.match(/var STRATEGY_FIELDS = \[([\s\S]*?)\];/);
+  const widthsSrc = viewer.match(/var STRATEGY_RECORD_PRINT_WIDTHS = \[([\s\S]*?)\];/);
+  assert.ok(businessSrc && fieldsSrc && widthsSrc);
+
+  const businessKeys = [...businessSrc[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  const fieldKeys = [...fieldsSrc[1].matchAll(/key: '([^']+)'/g)].map((m) => m[1]);
+  const widths = [...widthsSrc[1].matchAll(/'(\d+)mm'/g)].map((m) => Number(m[1]));
+
+  assert.equal(businessKeys.length, 14);
+  assert.deepEqual(fieldKeys, businessKeys);
+  assert.equal(widths.length, 14);
+  assert.ok(widths.reduce((a, b) => a + b, 0) <= 281);
 });
