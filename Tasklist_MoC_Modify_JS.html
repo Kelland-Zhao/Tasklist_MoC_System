@@ -35,6 +35,57 @@
         .replace(/'/g, '&#39;');
     }
 
+    function openPdMConfigModal_(row, table) {
+      const source = row.data();
+      const copy = Object.assign({}, source);
+      const field = (id, label, value) => '<div style="margin-bottom:8px;text-align:left;"><label style="display:block;font-size:12px;font-weight:600;color:#333;margin-bottom:2px;">'
+        + label + '</label><input id="' + id + '" class="form-control form-control-sm" value="' + escapeModifyHtml_(value) + '"></div>';
+      const html = '<div style="font-size:13px;max-height:60vh;overflow:auto;">'
+        + field('pdmUnit', 'Unit / 测量单元', source['Unit'])
+        + field('pdmComponent', 'Component / 部件', source['Component'])
+        + field('pdmTagName', 'TagName / 标签', source['TagName'])
+        + field('pdmLogic', 'Logic / 逻辑', source['Logic'])
+        + field('pdmLL', 'LL Limited / 低限值（可空）', source['LL Limited'])
+        + field('pdmHH', 'HH Limited / 高限值（可空）', source['HH Limited'])
+        + field('pdmPoints', 'Measurement Points / 测点（如 S1,S2,S3,S4）', source['Measurement Points'])
+        + field('pdmLabels', 'Point Labels / 位置（如 S1=操作侧;S2=非操作侧）', source['Point Labels'])
+        + field('pdmUnitPhysical', 'Measurement Unit / 物理单位（kN / 吨力 / με）', source['Measurement Unit'])
+        + '</div>';
+      Swal.fire({
+        title: swalTitle('PdM 配置', 'PdM Setup'),
+        html: html,
+        width: '80%',
+        showCancelButton: true,
+        confirmButtonText: '保存 / Save',
+        cancelButtonText: '取消 / Cancel',
+        confirmButtonColor: '#E60012'
+      }).then(function (result) {
+        if (!result.isConfirmed) return;
+        const root = Swal.getHtmlContainer();
+        copy['Unit'] = root.querySelector('#pdmUnit').value.trim();
+        copy['Component'] = root.querySelector('#pdmComponent').value.trim();
+        copy['TagName'] = root.querySelector('#pdmTagName').value.trim();
+        copy['Logic'] = root.querySelector('#pdmLogic').value.trim();
+        copy['LL Limited'] = root.querySelector('#pdmLL').value.trim();
+        copy['HH Limited'] = root.querySelector('#pdmHH').value.trim();
+        copy['Measurement Points'] = root.querySelector('#pdmPoints').value.trim();
+        copy['Point Labels'] = root.querySelector('#pdmLabels').value.trim();
+        copy['Measurement Unit'] = root.querySelector('#pdmUnitPhysical').value.trim();
+        const errors = validateMeasurementConfig_(copy);
+        if (errors.length > 0) {
+          Swal.fire({
+            icon: 'warning',
+            title: swalTitle('配置不完整', 'Incomplete Config'),
+            html: '<div style="text-align:left;font-size:13px;line-height:1.7;">'
+              + errors.map(function (e) { return escapeModifyHtml_(e.message); }).join('<br>') + '</div>',
+            confirmButtonText: '确定 / OK'
+          });
+          return;
+        }
+        row.data(copy).draw(false);
+      });
+    }
+
     $(document).ready(() => {
       let addedCount = 0;
       let deletedCount = 0;
@@ -69,12 +120,14 @@
           { data: "Tools & Equip" },
           { data: "Estimated Time" },
           { data: "PdM?" },
-          { data: "Unit" },
-          { data: "Component" },
-          { data: "Logic" },
-          { data: "TagName" },
-          { data: "LL Limited" },
-          { data: "HH Limited" },
+          { data: "Unit", visible: false },
+          { data: "Component", visible: false },
+          { data: "Logic", visible: false },
+          { data: "TagName", visible: false },
+          { data: "LL Limited", visible: false },
+          { data: "HH Limited", visible: false },
+          { data: "Photo Required" },
+          { data: null, defaultContent: "" },
           { data: null, className: "col-sticky-last", defaultContent: "" },
         ],
         columnDefs: [
@@ -239,7 +292,28 @@
             }
           },
           {
-            targets: 22, // 表示最后一列（功能/ Option）
+            targets: 22, // 需要照片 / Photo Required
+            render: function (data, type) {
+              if (type !== 'display') return data;
+              const value = String(data === null || data === undefined ? 'N' : data || '').trim().toUpperCase() === 'Y' ? 'Y' : 'N';
+              const options = ['N', 'Y'].map(function (item) {
+                return '<option value="' + item + '"' + (item === value ? ' selected' : '') + '>' + item + '</option>';
+              }).join('');
+              return '<select class="form-select form-select-sm photo-required-select" style="width:100%;">' + options + '</select>';
+            },
+          },
+          {
+            targets: 23, // PdM 配置摘要 + 配置按钮
+            render: function (data, type, row) {
+              if (type !== 'display') return '';
+              const enabled = measurementConfigPdMYes_(row['PdM?']);
+              const summary = enabled ? buildPdMSummary_(row) : '—';
+              return '<div style="font-size:12px;">' + escapeModifyHtml_(summary) + '</div>'
+                + '<button type="button" class="btn btn-outline-secondary btn-sm btn-pdm-config" style="margin-top:4px;"' + (enabled ? '' : ' disabled') + '>配置 / Setup</button>';
+            },
+          },
+          {
+            targets: 24, // 表示最后一列（功能/ Option）
             render: function (data, type, row, meta) {
               return '<button class="btn btn-danger btn-sm btn-delete" title="删除 / Delete"><i class="bi bi-x-lg"></i></button>';
             },
@@ -402,6 +476,18 @@
               });
             });
 
+            $("#table tbody").on("change", ".photo-required-select", function () {
+              const row = table.row($(this).closest("tr"));
+              const rowData = row.data();
+              rowData["Photo Required"] = $(this).val() === "Y" ? "Y" : "N";
+              row.data(rowData);
+            });
+
+            $("#table tbody").on("click", ".btn-pdm-config", function () {
+              const row = table.row($(this).closest("tr"));
+              openPdMConfigModal_(row, table);
+            });
+
             // 处理PdM?单选按钮变化事件
             $("#table tbody").on("change", ".pdm-radio", function () {
               let $radio = $(this);
@@ -505,6 +591,32 @@
             }
 
             $("#Submit").click(async () => {
+
+              const pdmConfigErrors = [];
+              table.rows().every(function () {
+                const rowData = this.data();
+                const errors = validateMeasurementConfig_(rowData);
+                if (errors.length > 0) {
+                  pdmConfigErrors.push({
+                    taskNo: rowData['Task No'] || '',
+                    messages: errors.map(function (e) { return e.message; })
+                  });
+                }
+              });
+              if (pdmConfigErrors.length > 0) {
+                const lines = pdmConfigErrors.slice(0, 5).map(function (item) {
+                  return escapeModifyHtml_(item.taskNo) + '：'
+                    + item.messages.map(function (m) { return escapeModifyHtml_(m); }).join('；');
+                });
+                Swal.fire({
+                  icon: 'warning',
+                  title: swalTitle('无法提交', 'Cannot Submit'),
+                  html: '<div style="text-align:left;font-size:13px;line-height:1.7;">以下任务测量配置不完整：<br>'
+                    + lines.join('<br>') + '</div>',
+                  confirmButtonText: '确定 / OK'
+                });
+                return;
+              }
 
               const missingFields = tasklistMissingFields_(table.rows().data().toArray(), ['Line Status', 'Strategy', 'Resource'], {
                 field: 'PdM?',
@@ -870,8 +982,8 @@
         return;
       }
 
-      // 如果是功能/ Option列（索引22），不允许双击编辑（操作按钮列）
-      if (columnIndex === 22) {
+      // 照片、PdM 配置、功能列不允许双击编辑
+      if (columnIndex === 22 || columnIndex === 23 || columnIndex === 24) {
         return;
       }
 

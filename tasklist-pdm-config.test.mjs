@@ -67,3 +67,13 @@ test('缺少单位时报错', () => {
   });
   assert.ok(errors.some((e) => e.field === 'Measurement Unit'));
 });
+
+test('编辑页包含照片列与 PdM 配置按钮', () => {
+  const html = fs.readFileSync('Tasklist_MoC_Modify.html', 'utf8');
+  const js = fs.readFileSync('Tasklist_MoC_Modify_JS.html', 'utf8');
+  assert.ok(js.includes('Photo Required'));
+  assert.ok(js.includes('btn-pdm-config'));
+  assert.ok(js.includes('openPdMConfigModal_'));
+  assert.ok(html.includes('需要照片'));
+  assert.ok(html.includes('PdM 配置'));
+});
