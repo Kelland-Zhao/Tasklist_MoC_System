@@ -85,19 +85,26 @@
       .replace(/'/g, '&#39;');
   }
 
-  function buildPdMConfigField_(id, label, value) {
-    return '<div style="margin-bottom:8px;text-align:left;"><label style="display:block;font-size:12px;font-weight:600;color:#333;margin-bottom:2px;">'
-      + label + '</label><input id="' + id + '" class="form-control form-control-sm" value="' + measurementConfigEscape_(value) + '"></div>';
+  function buildPdMConfigField_(id, label, value, options) {
+    const opts = options || {};
+    const required = opts.required ? '<span style="color:#E60012;margin-left:2px;">*</span>' : '';
+    const placeholder = opts.placeholder ? ' placeholder="' + measurementConfigEscape_(opts.placeholder) + '"' : '';
+    const type = opts.type ? ' type="' + opts.type + '"' : '';
+    const step = opts.step ? ' step="' + opts.step + '"' : '';
+    return '<div class="' + (opts.col || 'col-12') + '"><label style="display:block;font-size:12px;font-weight:600;color:#333;margin-bottom:2px;">'
+      + label + required + '</label><input id="' + id + '" class="form-control form-control-sm"' + type + step + placeholder
+      + ' value="' + measurementConfigEscape_(value) + '"></div>';
   }
 
-  // Logic 保留原表格的下拉选择形式，选项与原下拉一致
-  function buildPdMConfigSelect_(id, label, value, options) {
+  // 下拉字段：Logic 保留原表格的选择形式，历史非标准值保留为选中项
+  function buildPdMConfigSelect_(id, label, value, options, extra) {
+    const opts = extra || {};
     const current = measurementConfigText_(value);
     const list = (options || []).slice();
-    // 历史数据里的非标准值保留为选中项，避免打开弹窗后被动丢失
     if (current !== '' && list.indexOf(current) === -1) list.push(current);
-    let html = '<div style="margin-bottom:8px;text-align:left;"><label style="display:block;font-size:12px;font-weight:600;color:#333;margin-bottom:2px;">'
-      + label + '</label><select id="' + id + '" class="form-select form-select-sm">'
+    const required = opts.required ? '<span style="color:#E60012;margin-left:2px;">*</span>' : '';
+    let html = '<div class="' + (opts.col || 'col-12') + '"><label style="display:block;font-size:12px;font-weight:600;color:#333;margin-bottom:2px;">'
+      + label + required + '</label><select id="' + id + '" class="form-select form-select-sm">'
       + '<option value="">请选择/ Please select</option>';
     list.forEach(function (option) {
       const selected = option === current ? ' selected' : '';
@@ -105,6 +112,36 @@
     });
     html += '</select></div>';
     return html;
+  }
+
+  function buildPdMConfigSection_(cn, en) {
+    return '<div style="font-size:13px;font-weight:700;color:#6c757d;letter-spacing:1px;margin:16px 0 8px;border-left:3px solid #E60012;padding-left:10px;">'
+      + cn + ' / ' + en + '</div>';
+  }
+
+  // 按 Measurement Points 生成每个测点的位置输入框
+  function buildPointLabelInputsHtml_(pointsValue, labelsValue) {
+    const points = parseMeasurementPoints_(pointsValue);
+    const labels = parsePointLabels_(labelsValue);
+    if (points.length === 0) {
+      return '<div style="font-size:12px;color:#888;padding:4px 0;">请先填写测点（Measurement Points），再填写各测点位置。</div>';
+    }
+    return '<div class="row g-2">' + points.map(function (point) {
+      const value = labels[point.code] === undefined ? '' : labels[point.code];
+      return '<div class="col-6"><label style="display:block;font-size:12px;font-weight:600;color:#333;margin-bottom:2px;">'
+        + measurementConfigEscape_(point.code) + ' · 位置 / Label</label>'
+        + '<input class="form-control form-control-sm pdm-point-label" data-point="' + measurementConfigEscape_(point.code)
+        + '" placeholder="如 操作侧" value="' + measurementConfigEscape_(value) + '"></div>';
+    }).join('') + '</div>';
+  }
+
+  // 把测点位置输入框拼回存储格式：S1=操作侧;S2=非操作侧
+  function composePointLabels_(pointsValue, labelsByCode) {
+    const byCode = labelsByCode || {};
+    return parseMeasurementPoints_(pointsValue).map(function (point) {
+      const value = byCode[point.code] === null || byCode[point.code] === undefined ? '' : String(byCode[point.code]).trim();
+      return point.code + '=' + value;
+    }).join(';');
   }
 
   function buildPdMConfigModalHtml_(task) {
@@ -119,16 +156,29 @@
       '°C', 'MPa', 'bar', 'N·m', 'rpm',
       'A', 'V', 'Hz', '%'
     ];
-    return '<div style="font-size:13px;max-height:60vh;overflow:auto;">'
-      + buildPdMConfigField_('pdmUnit', 'Unit / 测量单元', source['Unit'])
-      + buildPdMConfigField_('pdmComponent', 'Component / 部件', source['Component'])
-      + buildPdMConfigField_('pdmTagName', 'TagName / 标签', source['TagName'])
-      + buildPdMConfigSelect_('pdmLogic', 'Logic / 逻辑', source['Logic'], logicOptions)
-      + buildPdMConfigField_('pdmLL', 'LL Limited / 低限值（可空）', source['LL Limited'])
-      + buildPdMConfigField_('pdmHH', 'HH Limited / 高限值（可空）', source['HH Limited'])
-      + buildPdMConfigField_('pdmPoints', 'Measurement Points / 测点（如 S1,S2,S3,S4）', source['Measurement Points'])
-      + buildPdMConfigField_('pdmLabels', 'Point Labels / 位置（如 S1=操作侧;S2=非操作侧）', source['Point Labels'])
-      + buildPdMConfigSelect_('pdmUnitPhysical', 'Measurement Unit / 物理单位', source['Measurement Unit'], unitOptions)
+    return '<div style="font-size:13px;max-height:60vh;overflow:auto;padding:0 2px;">'
+      + buildPdMConfigSection_('测量对象', 'MEASUREMENT OBJECT')
+      + '<div class="row g-3">'
+      + buildPdMConfigField_('pdmUnit', 'Unit / 测量单元', source['Unit'], { required: true, placeholder: '如 哥林柱', col: 'col-md-4' })
+      + buildPdMConfigField_('pdmComponent', 'Component / 部件', source['Component'], { required: true, placeholder: '如 锁模机构', col: 'col-md-4' })
+      + buildPdMConfigField_('pdmTagName', 'TagName / 标签', source['TagName'], { required: true, placeholder: '如 S1-S4', col: 'col-md-4' })
+      + '</div>'
+      + buildPdMConfigSection_('判定规则', 'LIMIT RULES')
+      + '<div class="row g-3">'
+      + buildPdMConfigSelect_('pdmLogic', 'Logic / 逻辑', source['Logic'], logicOptions, { required: true, col: 'col-md-6' })
+      + buildPdMConfigField_('pdmLL', 'LL Limited / 低限值（可空）', source['LL Limited'], { type: 'number', step: 'any', placeholder: '可空', col: 'col-md-3' })
+      + buildPdMConfigField_('pdmHH', 'HH Limited / 高限值（可空）', source['HH Limited'], { type: 'number', step: 'any', placeholder: '可空', col: 'col-md-3' })
+      + '<div class="col-12"><div style="font-size:11px;color:#888;">留空 = 待判定；任一测点超限即不合格，超限时结束保养需填写异常措施。</div></div>'
+      + '</div>'
+      + buildPdMConfigSection_('测量要求', 'MEASUREMENT REQUIREMENT')
+      + '<div class="row g-3">'
+      + buildPdMConfigField_('pdmPoints', 'Measurement Points / 测点', source['Measurement Points'], { required: true, placeholder: '如 S1,S2,S3,S4', col: 'col-md-8' })
+      + buildPdMConfigSelect_('pdmUnitPhysical', 'Measurement Unit / 物理单位', source['Measurement Unit'], unitOptions, { required: true, col: 'col-md-4' })
+      + '<div class="col-12"><label style="display:block;font-size:12px;font-weight:600;color:#333;margin-bottom:2px;">Point Labels / 位置'
+      + '<span style="color:#E60012;margin-left:2px;">*</span></label><div id="pdmLabelsContainer">'
+      + buildPointLabelInputsHtml_(source['Measurement Points'], source['Point Labels'])
+      + '</div></div>'
+      + '</div>'
       + '</div>';
   }
 
@@ -139,11 +189,28 @@
     Swal.fire({
       title: swalTitle('PdM 配置', 'PdM Setup'),
       html: html,
-      width: '80%',
+      width: 'min(760px, 92vw)',
+      showCloseButton: true,
       showCancelButton: true,
       confirmButtonText: '保存 / Save',
       cancelButtonText: '取消 / Cancel',
-      confirmButtonColor: '#E60012'
+      confirmButtonColor: '#E60012',
+      didOpen: function () {
+        const root = Swal.getHtmlContainer();
+        const pointsInput = root.querySelector('#pdmPoints');
+        const labelsContainer = root.querySelector('#pdmLabelsContainer');
+        if (!pointsInput || !labelsContainer) return;
+        pointsInput.addEventListener('input', function () {
+          const current = {};
+          labelsContainer.querySelectorAll('.pdm-point-label').forEach(function (input) {
+            current[input.getAttribute('data-point')] = input.value;
+          });
+          labelsContainer.innerHTML = buildPointLabelInputsHtml_(
+            pointsInput.value,
+            composePointLabels_(pointsInput.value, current)
+          );
+        });
+      }
     }).then(function (result) {
       if (!result.isConfirmed) return;
       const root = Swal.getHtmlContainer();
@@ -154,7 +221,11 @@
       copy['LL Limited'] = root.querySelector('#pdmLL').value.trim();
       copy['HH Limited'] = root.querySelector('#pdmHH').value.trim();
       copy['Measurement Points'] = root.querySelector('#pdmPoints').value.trim();
-      copy['Point Labels'] = root.querySelector('#pdmLabels').value.trim();
+      const labelsByCode = {};
+      root.querySelectorAll('.pdm-point-label').forEach(function (input) {
+        labelsByCode[input.getAttribute('data-point')] = input.value.trim();
+      });
+      copy['Point Labels'] = composePointLabels_(copy['Measurement Points'], labelsByCode);
       copy['Measurement Unit'] = root.querySelector('#pdmUnitPhysical').value.trim();
       const errors = validateMeasurementConfig_(copy);
       if (errors.length > 0) {
@@ -168,6 +239,12 @@
         return;
       }
       row.data(copy).draw(false);
+      Swal.fire({
+        icon: 'success',
+        title: swalTitle('已保存', 'Saved'),
+        timer: 1500,
+        showConfirmButton: false
+      });
     });
   }
 </script>

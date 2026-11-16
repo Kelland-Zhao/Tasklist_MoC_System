@@ -18,7 +18,7 @@ function extractFunction(src, name) {
 
 let src = '';
 try { src = fs.readFileSync('Measurement_Config_JS.html', 'utf8'); } catch (e) { src = ''; }
-for (const name of ['measurementConfigText_', 'measurementConfigPdMYes_', 'parseMeasurementPoints_', 'parsePointLabels_', 'validateMeasurementConfig_', 'buildPdMSummary_', 'measurementConfigEscape_', 'buildPdMConfigField_', 'buildPdMConfigSelect_', 'buildPdMConfigModalHtml_']) {
+for (const name of ['measurementConfigText_', 'measurementConfigPdMYes_', 'parseMeasurementPoints_', 'parsePointLabels_', 'validateMeasurementConfig_', 'buildPdMSummary_', 'measurementConfigEscape_', 'buildPdMConfigField_', 'buildPdMConfigSelect_', 'buildPdMConfigSection_', 'buildPointLabelInputsHtml_', 'composePointLabels_', 'buildPdMConfigModalHtml_']) {
   const fn = (() => { try { return extractFunction(src, name); } catch (e) { return null; } })();
   (0, eval)(fn || `function ${name}(){ throw new Error("${name} not found in Measurement_Config_JS.html"); }`);
 }
@@ -129,4 +129,49 @@ test('未知单位保留为选中项', () => {
   const html = buildPdMConfigModalHtml_({ 'Measurement Unit': '自定义单位' });
   assert.ok(html.includes('自定义单位'));
   assert.ok(/value="自定义单位" selected/.test(html));
+});
+
+test('弹窗按三组分区并两列排布', () => {
+  const html = buildPdMConfigModalHtml_({});
+  assert.ok(html.includes('测量对象'));
+  assert.ok(html.includes('MEASUREMENT OBJECT'));
+  assert.ok(html.includes('判定规则'));
+  assert.ok(html.includes('LIMIT RULES'));
+  assert.ok(html.includes('测量要求'));
+  assert.ok(html.includes('MEASUREMENT REQUIREMENT'));
+  assert.ok(html.includes('row g-3'));
+  assert.ok(html.includes('col-md-4'));
+  assert.ok(html.includes('col-md-6'));
+});
+
+test('必填字段有红色星号，LL/HH 为数字输入且可空', () => {
+  const html = buildPdMConfigModalHtml_({});
+  assert.ok(html.includes('测量单元<span style="color:#E60012'));
+  assert.ok(html.includes('type="number"'));
+  assert.ok(html.includes('可空'));
+  assert.ok(html.includes('留空 = 待判定'));
+});
+
+test('测点位置按测点生成输入框', () => {
+  const html = buildPdMConfigModalHtml_({
+    'Measurement Points': 'S1,S2',
+    'Point Labels': 'S1=操作侧;S2=非操作侧',
+  });
+  assert.ok(html.includes('id="pdmLabelsContainer"'));
+  assert.ok(html.includes('class="form-control form-control-sm pdm-point-label"'));
+  assert.ok(html.includes('data-point="S1"'));
+  assert.ok(html.includes('value="操作侧"'));
+  assert.ok(html.includes('data-point="S2"'));
+  assert.ok(html.includes('value="非操作侧"'));
+});
+
+test('测点为空时显示提示', () => {
+  const html = buildPdMConfigModalHtml_({});
+  assert.ok(html.includes('先填写测点'));
+});
+
+test('拼接回 Point Labels 字符串', () => {
+  assert.equal(composePointLabels_('S1,S2', { S1: '操作侧', S2: '非操作侧' }), 'S1=操作侧;S2=非操作侧');
+  assert.equal(composePointLabels_('S1,S2', { S1: '操作侧', S2: '' }), 'S1=操作侧;S2=');
+  assert.equal(composePointLabels_('', {}), '');
 });
