@@ -668,7 +668,10 @@
                       }
                       return copy;
                     });
-                    const missingFields = tasklistMissingFields_(rowsForValidation, ['Line Status', 'Strategy', 'Resource']);
+                    const missingFields = tasklistMissingFields_(rowsForValidation, ['Line Status', 'Strategy', 'Resource'], {
+                      field: 'PdM?',
+                      fields: ['Unit', 'Component', 'Logic', 'TagName', 'LL Limited', 'HH Limited']
+                    });
                     if (missingFields.length > 0) {
                       Swal.fire({
                         icon: 'warning',
@@ -676,7 +679,13 @@
                         html: tasklistMissingFieldsHtml_(missingFields, {
                           'Line Status': '设备状态 / Line Status',
                           'Strategy': '保养策略 / Strategy',
-                          'Resource': '执行人 / Resource'
+                          'Resource': '执行人 / Resource',
+                          'Unit': '单位 / Unit',
+                          'Component': '部件 / Component',
+                          'Logic': '逻辑 / Logic',
+                          'TagName': '标签 / TagName',
+                          'LL Limited': '低限值 / LL Limited',
+                          'HH Limited': '高限值 / HH Limited'
                         }),
                         confirmButtonText: '确定 / OK'
                       });

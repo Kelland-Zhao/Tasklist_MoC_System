@@ -20,14 +20,24 @@
    * 找出必填列为空/占位的行。
    * @param {Array<Object>} rows
    * @param {Array<string>} fields
+   * @param {{field:string, fields:Array<string>, yesValues?:Array<string>}} [pdmConfig]
    * @returns {Array<{index:number, taskNo:string, missing:Array<string>}>}
    */
-  function tasklistMissingFields_(rows, fields) {
+  function tasklistMissingFields_(rows, fields, pdmConfig) {
     var result = [];
+    var config = pdmConfig || null;
+    var yesValues = config && config.yesValues ? config.yesValues : ['是/ Yes', '是', 'Yes'];
     (rows || []).forEach(function (row, index) {
       if (!row) return;
+      var checkFields = (fields || []).slice();
+      if (config) {
+        var pdmValue = tasklistValidationText_(row[config.field]);
+        if (yesValues.indexOf(pdmValue) !== -1) {
+          checkFields = checkFields.concat(config.fields || []);
+        }
+      }
       var missing = [];
-      (fields || []).forEach(function (field) {
+      checkFields.forEach(function (field) {
         var value = tasklistValidationText_(row[field]);
         if (TASKLIST_INVALID_VALUES_.indexOf(value) !== -1) missing.push(field);
       });

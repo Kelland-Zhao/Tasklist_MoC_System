@@ -64,3 +64,31 @@ test('四个入口都接入必填校验', () => {
     assert.ok(js.includes('tasklistMissingFieldsHtml_('), jsFile);
   });
 });
+
+test('预测性=否 时 PdM 字段为空不拦截', () => {
+  const rows = [{
+    'Task No': 'T1', 'Line Status': '运行', Strategy: 'RBM', Resource: '技术员/ Technician',
+    'PdM?': '否/ No', Unit: '', Component: '', Logic: '', TagName: '', 'LL Limited': '', 'HH Limited': '',
+  }];
+  assert.deepEqual(
+    api.tasklistMissingFields_(rows, ['Line Status', 'Strategy', 'Resource'], {
+      field: 'PdM?',
+      fields: ['Unit', 'Component', 'Logic', 'TagName', 'LL Limited', 'HH Limited'],
+    }),
+    []
+  );
+});
+
+test('预测性=是 时 PdM 字段为空拦截，填齐则通过', () => {
+  const rows = [
+    { 'Task No': 'T1', 'Line Status': '运行', Strategy: 'RBM', Resource: '技术员/ Technician', 'PdM?': '是/ Yes', Unit: '', Component: '', Logic: '', TagName: '', 'LL Limited': '', 'HH Limited': '' },
+    { 'Task No': 'T2', 'Line Status': '运行', Strategy: 'RBM', Resource: '技术员/ Technician', 'PdM?': '是', Unit: 'mm', Component: 'A', Logic: 'HighAlarm_Max', TagName: 'TAG1', 'LL Limited': '0', 'HH Limited': '10' },
+  ];
+  const missing = api.tasklistMissingFields_(rows, ['Line Status', 'Strategy', 'Resource'], {
+    field: 'PdM?',
+    fields: ['Unit', 'Component', 'Logic', 'TagName', 'LL Limited', 'HH Limited'],
+  });
+  assert.equal(missing.length, 1);
+  assert.equal(missing[0].taskNo, 'T1');
+  assert.deepEqual(missing[0].missing, ['Unit', 'Component', 'Logic', 'TagName', 'LL Limited', 'HH Limited']);
+});
