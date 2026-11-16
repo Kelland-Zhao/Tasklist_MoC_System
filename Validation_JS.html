@@ -17,6 +17,35 @@
   }
 
   /**
+   * 补齐旧版任务清单缺失的 PdM / 测量 / 照片字段（就地修改并返回该行）。
+   * DataTables 列直接引用这些字段，缺键会报 unknown parameter。
+   * @param {Object} row
+   * @returns {Object}
+   */
+  function tasklistFillMeasurementDefaults_(row) {
+    var source = row || {};
+    var defaults = {
+      'PdM?': '否/ No',
+      'Unit': '',
+      'Component': '',
+      'Logic': '',
+      'TagName': '',
+      'LL Limited': '',
+      'HH Limited': '',
+      'Measurement Points': '',
+      'Point Labels': '',
+      'Measurement Unit': '',
+      'Photo Required': 'N'
+    };
+    Object.keys(defaults).forEach(function (field) {
+      if (!Object.prototype.hasOwnProperty.call(source, field)) {
+        source[field] = defaults[field];
+      }
+    });
+    return source;
+  }
+
+  /**
    * 找出必填列为空/占位的行。
    * @param {Array<Object>} rows
    * @param {Array<string>} fields

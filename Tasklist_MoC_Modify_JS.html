@@ -360,28 +360,7 @@
             // 确保所有行都包含新添加的字段
             if (Tasklist[0] && Tasklist[0].length > 0) {
               Tasklist[0].forEach(function(row) {
-                // 如果字段不存在，添加默认值
-                if (!row.hasOwnProperty("PdM?")) {
-                  row["PdM?"] = "否/ No";
-                }
-                if (!row.hasOwnProperty("Unit")) {
-                  row["Unit"] = "";
-                }
-                if (!row.hasOwnProperty("Component")) {
-                  row["Component"] = "";
-                }
-                if (!row.hasOwnProperty("Logic")) {
-                  row["Logic"] = "";
-                }
-                if (!row.hasOwnProperty("TagName")) {
-                  row["TagName"] = "";
-                }
-                if (!row.hasOwnProperty("LL Limited")) {
-                  row["LL Limited"] = "";
-                }
-                if (!row.hasOwnProperty("HH Limited")) {
-                  row["HH Limited"] = "";
-                }
+                tasklistFillMeasurementDefaults_(row);
               });
             }
 

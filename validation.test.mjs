@@ -5,7 +5,7 @@ import { extractScript } from './strategy-test-utils.mjs';
 
 const src = extractScript(fs.readFileSync('Validation_JS.html', 'utf8'));
 const api = new Function(
-  `${src}; return { tasklistMissingFields_, tasklistMissingFieldsHtml_ };`
+  `${src}; return { tasklistMissingFields_, tasklistMissingFieldsHtml_, tasklistFillMeasurementDefaults_ };`
 )();
 
 test('找出空值和「请选择」占位的行', () => {
@@ -113,4 +113,31 @@ test('两页 PdM 必填字段不包含 LL/HH', () => {
     const js = fs.readFileSync(jsFile, 'utf8');
     assert.ok(!js.includes("'LL Limited', 'HH Limited']"), jsFile);
   }
+});
+
+test('旧清单行补齐测量字段默认值', () => {
+  const row = { 'Task No': 'FCS-43', MachineType: '6AX' };
+  api.tasklistFillMeasurementDefaults_(row);
+  assert.equal(row['Photo Required'], 'N');
+  assert.equal(row['Measurement Points'], '');
+  assert.equal(row['Point Labels'], '');
+  assert.equal(row['Measurement Unit'], '');
+  assert.equal(row['PdM?'], '否/ No');
+  assert.equal(row['Task No'], 'FCS-43');
+});
+
+test('已有字段不被覆盖', () => {
+  const row = { 'PdM?': '是/ Yes', 'Measurement Points': 'S1', 'Photo Required': 'Y' };
+  api.tasklistFillMeasurementDefaults_(row);
+  assert.equal(row['PdM?'], '是/ Yes');
+  assert.equal(row['Measurement Points'], 'S1');
+  assert.equal(row['Photo Required'], 'Y');
+});
+
+test('修改页加载时补齐新字段再渲染表格', () => {
+  const js = fs.readFileSync('Tasklist_MoC_Modify_JS.html', 'utf8');
+  const fillIdx = js.indexOf('tasklistFillMeasurementDefaults_(row)');
+  const addIdx = js.indexOf('table.rows.add(Tasklist[0]).draw()');
+  assert.ok(fillIdx >= 0, 'modify page must call normalizer');
+  assert.ok(addIdx > fillIdx, 'normalizer must run before rows.add');
 });
