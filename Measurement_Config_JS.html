@@ -80,6 +80,34 @@
     return label + (unit === '' ? '' : ' · ' + unit);
   }
 
+  /**
+   * 配置列三态：未启用 / 未启用（已保存配置）/ 待配置 / 已完成。
+   * @param {Object} task
+   * @returns {{enabled:boolean, hasConfig:boolean, complete:boolean, summary:string}}
+   */
+  function measurementConfigState_(task) {
+    const source = task || {};
+    const enabled = measurementConfigPdMYes_(source['PdM?']);
+    const hasConfig = parseMeasurementPoints_(source['Measurement Points']).length > 0
+      || measurementConfigText_(source['Point Labels']) !== ''
+      || measurementConfigText_(source['Measurement Unit']) !== '';
+    if (!enabled) {
+      return {
+        enabled: false,
+        hasConfig: hasConfig,
+        complete: false,
+        summary: hasConfig ? '未启用（已保存配置）/ Inactive (saved)' : '未启用 / Inactive'
+      };
+    }
+    const complete = validateMeasurementConfig_(source).length === 0;
+    return {
+      enabled: true,
+      hasConfig: hasConfig,
+      complete: complete,
+      summary: complete ? buildPdMSummary_(source) : '待配置 / Incomplete'
+    };
+  }
+
   function measurementConfigEscape_(value) {
     return String(value === null || value === undefined ? '' : value)
       .replace(/&/g, '&amp;')
@@ -187,7 +215,8 @@
       + '</div>';
   }
 
-  function openPdMConfigModal_(row, table) {
+  function openPdMConfigModal_(row, table, options) {
+    const opts = options || {};
     const source = row.data();
     const copy = Object.assign({}, source);
     const html = buildPdMConfigModalHtml_(source);
@@ -217,7 +246,13 @@
         });
       }
     }).then(function (result) {
-      if (!result.isConfirmed) return;
+      if (!result.isConfirmed) {
+        // 由「否→是」触发的配置：取消则整体回滚，避免留下「是 + 空配置」
+        if (opts.revertOnCancel && opts.original) {
+          row.data(Object.assign({}, opts.original)).draw(false);
+        }
+        return;
+      }
       const root = Swal.getHtmlContainer();
       copy['Unit'] = root.querySelector('#pdmUnit').value.trim();
       copy['Component'] = root.querySelector('#pdmComponent').value.trim();

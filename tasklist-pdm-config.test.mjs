@@ -18,7 +18,7 @@ function extractFunction(src, name) {
 
 let src = '';
 try { src = fs.readFileSync('Measurement_Config_JS.html', 'utf8'); } catch (e) { src = ''; }
-for (const name of ['measurementConfigText_', 'measurementConfigPdMYes_', 'normalizeMeasurementPointsText_', 'parseMeasurementPoints_', 'parsePointLabels_', 'validateMeasurementConfig_', 'buildPdMSummary_', 'measurementConfigEscape_', 'buildPdMConfigField_', 'buildPdMConfigSelect_', 'buildPdMConfigSection_', 'buildPointLabelInputsHtml_', 'composePointLabels_', 'buildPdMConfigModalHtml_']) {
+for (const name of ['measurementConfigText_', 'measurementConfigPdMYes_', 'normalizeMeasurementPointsText_', 'parseMeasurementPoints_', 'parsePointLabels_', 'validateMeasurementConfig_', 'buildPdMSummary_', 'measurementConfigEscape_', 'buildPdMConfigField_', 'buildPdMConfigSelect_', 'buildPdMConfigSection_', 'buildPointLabelInputsHtml_', 'composePointLabels_', 'buildPdMConfigModalHtml_', 'measurementConfigState_']) {
   const fn = (() => { try { return extractFunction(src, name); } catch (e) { return null; } })();
   (0, eval)(fn || `function ${name}(){ throw new Error("${name} not found in Measurement_Config_JS.html"); }`);
 }
@@ -197,4 +197,37 @@ test('中文逗号自动按英文逗号解析测点', () => {
   });
   assert.ok(html.includes('data-point="S1"'));
   assert.ok(html.includes('data-point="S2"'));
+});
+
+test('配置状态三态：未启用 / 已保存未启用 / 待配置 / 已完成', () => {
+  const inactive = measurementConfigState_({ 'PdM?': '否/ No' });
+  assert.equal(inactive.enabled, false);
+  assert.equal(inactive.hasConfig, false);
+  assert.equal(inactive.complete, false);
+  assert.equal(inactive.summary, '未启用 / Inactive');
+
+  const dormant = measurementConfigState_({ 'PdM?': '否/ No', 'Measurement Points': 'S1' });
+  assert.equal(dormant.hasConfig, true);
+  assert.ok(dormant.summary.includes('未启用（已保存配置）'));
+
+  const complete = measurementConfigState_({
+    'PdM?': '是/ Yes', 'Measurement Points': 'S1', 'Point Labels': 'S1=操作侧', 'Measurement Unit': 'kN',
+  });
+  assert.equal(complete.enabled, true);
+  assert.equal(complete.complete, true);
+  assert.equal(complete.summary, 'S1 · kN');
+
+  const incomplete = measurementConfigState_({ 'PdM?': '是/ Yes' });
+  assert.equal(incomplete.complete, false);
+  assert.equal(incomplete.summary, '待配置 / Incomplete');
+});
+
+test('两页配置列使用三态且按钮始终可点，取消配置会回滚', () => {
+  for (const f of ['Tasklist_MoC_Modify_JS.html', 'Tasklist_Create_JS.html']) {
+    const js = fs.readFileSync(f, 'utf8');
+    assert.ok(js.includes('measurementConfigState_(row)'), f);
+    assert.ok(!js.includes("(enabled ? '' : ' disabled')"), f);
+    assert.ok(js.includes('revertOnCancel'), f);
+    assert.ok(js.includes('改为是并配置'), f);
+  }
 });

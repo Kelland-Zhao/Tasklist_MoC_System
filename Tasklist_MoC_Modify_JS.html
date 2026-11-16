@@ -252,13 +252,15 @@
             },
           },
           {
-            targets: 23, // PdM 配置摘要 + 配置按钮
+            targets: 23, // PdM 配置摘要 + 配置按钮（三态：未启用 / 待配置 / 已完成）
             render: function (data, type, row) {
               if (type !== 'display') return '';
-              const enabled = measurementConfigPdMYes_(row['PdM?']);
-              const summary = enabled ? buildPdMSummary_(row) : '—';
-              return '<div style="font-size:12px;">' + escapeModifyHtml_(summary) + '</div>'
-                + '<button type="button" class="btn btn-outline-secondary btn-sm btn-pdm-config" style="margin-top:4px;"' + (enabled ? '' : ' disabled') + '>配置 / Setup</button>';
+              const state = measurementConfigState_(row);
+              const badge = state.enabled && state.complete ? '<span style="color:#198754;font-weight:700;">✓ </span>' : '';
+              const summaryStyle = state.enabled && !state.complete ? 'color:#dc3545;font-weight:600;' : '';
+              const buttonClass = state.enabled && !state.complete ? 'btn btn-danger btn-sm' : 'btn btn-outline-secondary btn-sm';
+              return '<div style="font-size:12px;' + summaryStyle + '">' + badge + escapeModifyHtml_(state.summary) + '</div>'
+                + '<button type="button" class="' + buttonClass + ' btn-pdm-config" style="margin-top:4px;">配置 / Setup</button>';
             },
           },
           {
@@ -414,7 +416,29 @@
 
             $("#table tbody").on("click", ".btn-pdm-config", function () {
               const row = table.row($(this).closest("tr"));
-              openPdMConfigModal_(row, table);
+              const rowData = row.data() || {};
+              if (measurementConfigPdMYes_(rowData['PdM?'])) {
+                openPdMConfigModal_(row, table);
+                return;
+              }
+              const original = JSON.parse(JSON.stringify(rowData));
+              Swal.fire({
+                icon: 'question',
+                title: swalTitle('启用 PdM 配置？', 'Enable PdM Setup?'),
+                html: swalHtml('该任务当前预测性为「否」。是否改为「是」并配置测量要求？', 'This task is not predictive. Switch to "Yes" and configure measurement requirements?'),
+                showCancelButton: true,
+                confirmButtonText: '改为是并配置 / Enable',
+                cancelButtonText: '取消 / Cancel',
+                confirmButtonColor: '#E60012'
+              }).then(function (result) {
+                if (!result.isConfirmed) return;
+                const copy = Object.assign({}, row.data());
+                const taskNo = copy['Task No'] === null || copy['Task No'] === undefined ? '' : String(copy['Task No']);
+                copy['PdM?'] = '是/ Yes';
+                if (taskNo && !taskNo.endsWith(' - PdM')) copy['Task No'] = taskNo + ' - PdM';
+                row.data(copy).draw(false);
+                openPdMConfigModal_(row, table, { revertOnCancel: true, original: original });
+              });
             });
 
             // 处理PdM?单选按钮变化事件
