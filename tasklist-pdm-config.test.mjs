@@ -1,0 +1,69 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+function extractFunction(src, name) {
+  const start = src.indexOf(`function ${name}(`);
+  if (start < 0) throw new Error(`${name} not found`);
+  let depth = 0;
+  for (let i = src.indexOf('{', start); i < src.length; i++) {
+    if (src[i] === '{') depth++;
+    else if (src[i] === '}') {
+      depth--;
+      if (depth === 0) return src.slice(start, i + 1);
+    }
+  }
+  throw new Error(`${name} braces not balanced`);
+}
+
+let src = '';
+try { src = fs.readFileSync('Measurement_Config_JS.html', 'utf8'); } catch (e) { src = ''; }
+for (const name of ['measurementConfigText_', 'measurementConfigPdMYes_', 'parseMeasurementPoints_', 'parsePointLabels_', 'validateMeasurementConfig_', 'buildPdMSummary_']) {
+  const fn = (() => { try { return extractFunction(src, name); } catch (e) { return null; } })();
+  (0, eval)(fn || `function ${name}(){ throw new Error("${name} not found in Measurement_Config_JS.html"); }`);
+}
+
+test('解析测点：去空、去重、保留顺序', () => {
+  assert.deepEqual(parseMeasurementPoints_(' S1, S2,,S1,S4 '), [{ code: 'S1' }, { code: 'S2' }, { code: 'S4' }]);
+});
+
+test('解析测点位置：分号分隔 code=label', () => {
+  assert.deepEqual(parsePointLabels_('S1=操作侧;S2=非操作侧;S3=天侧;S4=地侧'), {
+    S1: '操作侧', S2: '非操作侧', S3: '天侧', S4: '地侧',
+  });
+});
+
+test('测点与位置不匹配时报配置错误', () => {
+  const errors = validateMeasurementConfig_({
+    'PdM?': '是/ Yes',
+    'Measurement Points': 'S1,S2,S3,S4',
+    'Point Labels': 'S1=操作侧;S2=非操作侧;S3=天侧',
+    'Measurement Unit': 'kN',
+  });
+  assert.ok(errors.some((e) => e.field === 'Point Labels'));
+});
+
+test('完整配置通过并生成摘要', () => {
+  const task = {
+    'PdM?': '是/ Yes',
+    'Measurement Points': 'S1,S2,S3,S4',
+    'Point Labels': 'S1=操作侧;S2=非操作侧;S3=天侧;S4=地侧',
+    'Measurement Unit': 'kN',
+  };
+  assert.deepEqual(validateMeasurementConfig_(task), []);
+  assert.equal(buildPdMSummary_(task), 'S1-S4 · kN');
+});
+
+test('预测性=否 时不校验并返回占位摘要', () => {
+  assert.deepEqual(validateMeasurementConfig_({ 'PdM?': '否/ No' }), []);
+  assert.equal(buildPdMSummary_({ 'PdM?': '否/ No' }), '—');
+});
+
+test('缺少单位时报错', () => {
+  const errors = validateMeasurementConfig_({
+    'PdM?': '是/ Yes',
+    'Measurement Points': 'S1',
+    'Point Labels': 'S1=操作侧',
+  });
+  assert.ok(errors.some((e) => e.field === 'Measurement Unit'));
+});

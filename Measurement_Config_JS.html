@@ -1,0 +1,78 @@
+<script>
+  /* 保养清单测量配置 — 编辑/新建页共用纯函数 */
+
+  function measurementConfigText_(value) {
+    return value === null || value === undefined ? '' : String(value).trim();
+  }
+
+  function measurementConfigPdMYes_(value) {
+    const text = measurementConfigText_(value);
+    return text === '是/ Yes' || text === '是' || text === 'Yes';
+  }
+
+  function parseMeasurementPoints_(value) {
+    const text = measurementConfigText_(value);
+    const result = [];
+    if (text === '') return result;
+    const seen = new Set();
+    text.split(',').forEach((part) => {
+      const code = part.trim();
+      if (code === '' || seen.has(code)) return;
+      seen.add(code);
+      result.push({ code: code });
+    });
+    return result;
+  }
+
+  function parsePointLabels_(value) {
+    const text = measurementConfigText_(value);
+    const result = {};
+    if (text === '') return result;
+    text.split(';').forEach((part) => {
+      const index = part.indexOf('=');
+      if (index <= 0) return;
+      const code = part.slice(0, index).trim();
+      const label = part.slice(index + 1).trim();
+      if (code !== '') result[code] = label;
+    });
+    return result;
+  }
+
+  function validateMeasurementConfig_(task) {
+    const source = task || {};
+    const errors = [];
+    if (!measurementConfigPdMYes_(source['PdM?'])) return errors;
+
+    const points = parseMeasurementPoints_(source['Measurement Points']);
+    const labels = parsePointLabels_(source['Point Labels']);
+    const unit = measurementConfigText_(source['Measurement Unit']);
+
+    if (points.length === 0) {
+      errors.push({ field: 'Measurement Points', message: '至少填写一个测点 / At least one point required' });
+    }
+    if (unit === '') {
+      errors.push({ field: 'Measurement Unit', message: '测量单位必填 / Measurement unit required' });
+    }
+    if (points.length > 0 && Object.keys(labels).length === 0) {
+      errors.push({ field: 'Point Labels', message: '测点位置必填 / Point labels required' });
+    }
+    points.forEach((point) => {
+      if (!labels[point.code]) {
+        errors.push({ field: 'Point Labels', message: '缺少测点位置: ' + point.code });
+      }
+    });
+    return errors;
+  }
+
+  function buildPdMSummary_(task) {
+    const source = task || {};
+    if (!measurementConfigPdMYes_(source['PdM?'])) return '—';
+    const points = parseMeasurementPoints_(source['Measurement Points']);
+    if (points.length === 0) return '—';
+    const unit = measurementConfigText_(source['Measurement Unit']);
+    const label = points.length === 1
+      ? points[0].code
+      : points[0].code + '-' + points[points.length - 1].code;
+    return label + (unit === '' ? '' : ' · ' + unit);
+  }
+</script>
