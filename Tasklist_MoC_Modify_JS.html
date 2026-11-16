@@ -940,6 +940,26 @@
         originalValue = "";
       }
 
+      // 长文本列（单元/功能/失效模式/任务类型/任务描述/技能）：弹窗多行编辑，避免单元格内看不全
+      if ([2, 3, 4, 5, 6, 13].indexOf(columnIndex) !== -1) {
+        Swal.fire({
+          title: swalTitle('编辑内容', 'Edit Content'),
+          input: 'textarea',
+          inputValue: originalValue,
+          inputAttributes: { rows: 6, style: 'font-size:13px;line-height:1.5;' },
+          showCancelButton: true,
+          confirmButtonText: '保存 / Save',
+          cancelButtonText: '取消 / Cancel',
+          confirmButtonColor: '#E60012',
+          width: '70%'
+        }).then(function (result) {
+          if (result.isConfirmed) {
+            cell.data(result.value || '').draw();
+          }
+        });
+        return;
+      }
+
       // 检查是否是LL Limited或HH Limited列（索引20, 21），使用数字输入框
       var isNumberColumn = (columnIndex === 20 || columnIndex === 21);
       var inputType = isNumberColumn ? 'number' : 'text';
