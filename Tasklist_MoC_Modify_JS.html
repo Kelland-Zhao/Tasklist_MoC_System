@@ -465,6 +465,21 @@
 
             $("#Submit").click(async () => {
 
+              const missingFields = tasklistMissingFields_(table.rows().data().toArray(), ['Line Status', 'Strategy', 'Resource']);
+              if (missingFields.length > 0) {
+                Swal.fire({
+                  icon: 'warning',
+                  title: swalTitle('无法提交', 'Cannot Submit'),
+                  html: tasklistMissingFieldsHtml_(missingFields, {
+                    'Line Status': '设备状态 / Line Status',
+                    'Strategy': '保养策略 / Strategy',
+                    'Resource': '执行人 / Resource'
+                  }),
+                  confirmButtonText: '确定 / OK'
+                });
+                return;
+              }
+
               // --- "班组确认" 检查是否有非"技术员"or"IDL"字段，自动判断是否提交班组审批 --- //
               let production_Approval = false;
 

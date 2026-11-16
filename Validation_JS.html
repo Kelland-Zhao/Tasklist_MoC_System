@@ -1,0 +1,65 @@
+<script>
+  /* 提交前必填校验 — 保养/点检 新建与编辑共用 */
+
+  var TASKLIST_INVALID_VALUES_ = ['', '请选择/ Please select', '请选择', '请输入'];
+
+  function tasklistValidationText_(value) {
+    return value === null || value === undefined ? '' : String(value).trim();
+  }
+
+  function tasklistValidationEscape_(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /**
+   * 找出必填列为空/占位的行。
+   * @param {Array<Object>} rows
+   * @param {Array<string>} fields
+   * @returns {Array<{index:number, taskNo:string, missing:Array<string>}>}
+   */
+  function tasklistMissingFields_(rows, fields) {
+    var result = [];
+    (rows || []).forEach(function (row, index) {
+      if (!row) return;
+      var missing = [];
+      (fields || []).forEach(function (field) {
+        var value = tasklistValidationText_(row[field]);
+        if (TASKLIST_INVALID_VALUES_.indexOf(value) !== -1) missing.push(field);
+      });
+      if (missing.length > 0) {
+        result.push({
+          index: index + 1,
+          taskNo: tasklistValidationText_(row['Task No'] || row['Parts'] || row['Unit']),
+          missing: missing
+        });
+      }
+    });
+    return result;
+  }
+
+  /**
+   * 生成必填校验提示 HTML（最多列出 5 行）。
+   * @param {Array} missing
+   * @param {Object<string,string>} labels
+   * @returns {string}
+   */
+  function tasklistMissingFieldsHtml_(missing, labels) {
+    var list = missing || [];
+    var map = labels || {};
+    var lines = list.slice(0, 5).map(function (item) {
+      var fields = (item.missing || []).map(function (field) {
+        return map[field] || field;
+      }).join('、');
+      var taskNo = item.taskNo ? '（' + tasklistValidationEscape_(item.taskNo) + '）' : '';
+      return '第 ' + item.index + ' 行' + taskNo + '：' + tasklistValidationEscape_(fields);
+    });
+    var more = list.length > 5 ? '<div>… 另有 ' + (list.length - 5) + ' 行</div>' : '';
+    return '<div style="text-align:left;font-size:13px;line-height:1.7;">以下行未填写完整，请补全后再提交：<br>'
+      + lines.join('<br>') + more + '</div>';
+  }
+</script>

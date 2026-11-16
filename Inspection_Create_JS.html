@@ -309,6 +309,21 @@
 
 
                   $('#submitTasklist').click(() => {
+                    const missingFields = tasklistMissingFields_(table.rows().data().toArray(), ['Status', 'Frequency', 'Resource']);
+                    if (missingFields.length > 0) {
+                      Swal.fire({
+                        icon: 'warning',
+                        title: swalTitle('无法提交', 'Cannot Submit'),
+                        html: tasklistMissingFieldsHtml_(missingFields, {
+                          'Status': '设备状态 / Status',
+                          'Frequency': '检查频率 / Frequency',
+                          'Resource': '执行人 / Resource'
+                        }),
+                        confirmButtonText: '确定 / OK'
+                      });
+                      return;
+                    }
+
                     Swal.fire({
                       icon: 'warning',
                       title: swalTitle('确认？','Confirm?'),

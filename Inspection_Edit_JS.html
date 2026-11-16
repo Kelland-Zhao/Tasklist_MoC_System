@@ -150,6 +150,21 @@
 
           $("#Submit").click(async () => {
 
+            const missingFields = tasklistMissingFields_(table.rows().data().toArray(), ['Status', 'Frequency', 'Resource']);
+            if (missingFields.length > 0) {
+              swal.fire({
+                icon: 'warning',
+                title: swalTitle('无法提交', 'Cannot Submit'),
+                html: tasklistMissingFieldsHtml_(missingFields, {
+                  'Status': '设备状态 / Status',
+                  'Frequency': '检查频率 / Frequency',
+                  'Resource': '执行人 / Resource'
+                }),
+                confirmButtonText: '确定 / OK'
+              });
+              return;
+            }
+
             // --- "班组确认" 检查是否有非"技术员"or"IDL"字段，自动判断是否提交班组审批 --- //
             let production_Approval = false;
 

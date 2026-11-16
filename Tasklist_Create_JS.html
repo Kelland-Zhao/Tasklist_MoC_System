@@ -661,6 +661,28 @@
                   });
 
                   $("#submitTasklist").click(() => {
+                    const rowsForValidation = table.rows().data().toArray().map(function (row) {
+                      const copy = Object.assign({}, row);
+                      if (!copy.Strategy || copy.Strategy === '请选择/ Please select') {
+                        copy.Strategy = $("#Strategy").val();
+                      }
+                      return copy;
+                    });
+                    const missingFields = tasklistMissingFields_(rowsForValidation, ['Line Status', 'Strategy', 'Resource']);
+                    if (missingFields.length > 0) {
+                      Swal.fire({
+                        icon: 'warning',
+                        title: swalTitle('无法提交', 'Cannot Submit'),
+                        html: tasklistMissingFieldsHtml_(missingFields, {
+                          'Line Status': '设备状态 / Line Status',
+                          'Strategy': '保养策略 / Strategy',
+                          'Resource': '执行人 / Resource'
+                        }),
+                        confirmButtonText: '确定 / OK'
+                      });
+                      return;
+                    }
+
                     Swal.fire({
                       icon: 'warning',
                       title: swalTitle('确认？','Confirm?'),
