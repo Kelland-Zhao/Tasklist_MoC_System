@@ -25,6 +25,36 @@
       return html + '</select>';
     }
 
+    /* 保养策略下拉：数据为空/占位时显示「请选择」，不得伪造默认选中值（否则界面与行数据不一致） */
+    function buildStrategySelectHtml_(data) {
+      const options = ['预防性/ Preventive', '预测性/ Predictive'];
+      const dataValue = data === null || data === undefined ? '' : String(data).trim();
+      let matchedOption = null;
+      if (dataValue) {
+        options.forEach(function (option) {
+          if (dataValue === option) {
+            matchedOption = option;
+          } else if (!matchedOption) {
+            if ((dataValue.includes('预防性') || dataValue.includes('Preventive')) &&
+                (option.includes('预防性') || option.includes('Preventive'))) {
+              matchedOption = option;
+            } else if ((dataValue.includes('预测性') || dataValue.includes('Predictive')) &&
+                       (option.includes('预测性') || option.includes('Predictive'))) {
+              matchedOption = option;
+            }
+          }
+        });
+      }
+      let selectHtml = '<select class="form-select form-select-sm strategy-select" style="width: 100%;">';
+      selectHtml += '<option value=""' + (matchedOption ? '' : ' selected') + '>请选择/ Please select</option>';
+      options.forEach(function (option) {
+        const selected = option === matchedOption ? ' selected' : '';
+        selectHtml += '<option value="' + option + '"' + selected + '>' + option + '</option>';
+      });
+      selectHtml += '</select>';
+      return selectHtml;
+    }
+
     function escapeModifyHtml_(value) {
       if (value === null || value === undefined) return '';
       return String(value)
@@ -110,48 +140,7 @@
           {
             targets: 9, // 保养策略/ Strategy列
             render: function (data, type, row, meta) {
-              let options = [
-                "预防性/ Preventive",
-                "预测性/ Predictive"
-              ];
-              // 清理数据值，去除首尾空格
-              let dataValue = (data || "").toString().trim();
-              let matchedOption = null;
-
-              // 如果数据有值，尝试匹配选项
-              if (dataValue) {
-                options.forEach(function(option) {
-                  // 精确匹配
-                  if (dataValue === option) {
-                    matchedOption = option;
-                  }
-                  // 部分匹配：检查是否包含中文或英文部分
-                  else if (!matchedOption) {
-                    if ((dataValue.includes("预防性") || dataValue.includes("Preventive")) &&
-                        (option.includes("预防性") || option.includes("Preventive"))) {
-                      matchedOption = option;
-                    } else if ((dataValue.includes("预测性") || dataValue.includes("Predictive")) &&
-                               (option.includes("预测性") || option.includes("Predictive"))) {
-                      matchedOption = option;
-                    }
-                  }
-                });
-              }
-
-              // 如果没有匹配到，默认使用第一个选项
-              if (!matchedOption) {
-                matchedOption = options[0];
-              }
-
-              // 生成下拉框HTML
-              let selectHtml = '<select class="form-select form-select-sm strategy-select" style="width: 100%;">';
-              options.forEach(function(option) {
-                let selected = (option === matchedOption) ? 'selected' : '';
-                selectHtml += '<option value="' + option + '" ' + selected + '>' + option + '</option>';
-              });
-              selectHtml += '</select>';
-
-              return selectHtml;
+              return buildStrategySelectHtml_(data);
             },
           },
           {
