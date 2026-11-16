@@ -150,6 +150,7 @@ test('必填字段有红色星号，LL/HH 为数字输入且可空', () => {
   assert.ok(html.includes('type="number"'));
   assert.ok(html.includes('可空'));
   assert.ok(html.includes('留空 = 待判定'));
+  assert.ok(html.includes('placeholder="如 哥林柱拉伸变形量"'));
 });
 
 test('测点位置按测点生成输入框', () => {
