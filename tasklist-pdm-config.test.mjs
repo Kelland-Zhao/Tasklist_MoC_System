@@ -18,7 +18,7 @@ function extractFunction(src, name) {
 
 let src = '';
 try { src = fs.readFileSync('Measurement_Config_JS.html', 'utf8'); } catch (e) { src = ''; }
-for (const name of ['measurementConfigText_', 'measurementConfigPdMYes_', 'parseMeasurementPoints_', 'parsePointLabels_', 'validateMeasurementConfig_', 'buildPdMSummary_', 'measurementConfigEscape_', 'buildPdMConfigField_', 'buildPdMConfigSelect_', 'buildPdMConfigSection_', 'buildPointLabelInputsHtml_', 'composePointLabels_', 'buildPdMConfigModalHtml_']) {
+for (const name of ['measurementConfigText_', 'measurementConfigPdMYes_', 'normalizeMeasurementPointsText_', 'parseMeasurementPoints_', 'parsePointLabels_', 'validateMeasurementConfig_', 'buildPdMSummary_', 'measurementConfigEscape_', 'buildPdMConfigField_', 'buildPdMConfigSelect_', 'buildPdMConfigSection_', 'buildPointLabelInputsHtml_', 'composePointLabels_', 'buildPdMConfigModalHtml_']) {
   const fn = (() => { try { return extractFunction(src, name); } catch (e) { return null; } })();
   (0, eval)(fn || `function ${name}(){ throw new Error("${name} not found in Measurement_Config_JS.html"); }`);
 }
@@ -186,4 +186,15 @@ test('弹窗内容左对齐且不产生横向滚动', () => {
 test('测点字段提示使用英文逗号分隔', () => {
   const html = buildPdMConfigModalHtml_({});
   assert.ok(html.includes('多个测点请用英文逗号'));
+});
+
+test('中文逗号自动按英文逗号解析测点', () => {
+  assert.equal(normalizeMeasurementPointsText_('S1，S2'), 'S1,S2');
+  assert.deepEqual(parseMeasurementPoints_('S1，S2,S3'), [{ code: 'S1' }, { code: 'S2' }, { code: 'S3' }]);
+  const html = buildPdMConfigModalHtml_({
+    'Measurement Points': 'S1，S2',
+    'Point Labels': 'S1=操作侧;S2=非操作侧',
+  });
+  assert.ok(html.includes('data-point="S1"'));
+  assert.ok(html.includes('data-point="S2"'));
 });

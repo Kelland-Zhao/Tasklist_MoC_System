@@ -10,8 +10,12 @@
     return text === '是/ Yes' || text === '是' || text === 'Yes';
   }
 
+  function normalizeMeasurementPointsText_(value) {
+    return measurementConfigText_(value).replace(/，/g, ',');
+  }
+
   function parseMeasurementPoints_(value) {
-    const text = measurementConfigText_(value);
+    const text = normalizeMeasurementPointsText_(value);
     const result = [];
     if (text === '') return result;
     const seen = new Set();
@@ -221,7 +225,7 @@
       copy['Logic'] = root.querySelector('#pdmLogic').value.trim();
       copy['LL Limited'] = root.querySelector('#pdmLL').value.trim();
       copy['HH Limited'] = root.querySelector('#pdmHH').value.trim();
-      copy['Measurement Points'] = root.querySelector('#pdmPoints').value.trim();
+      copy['Measurement Points'] = normalizeMeasurementPointsText_(root.querySelector('#pdmPoints').value);
       const labelsByCode = {};
       root.querySelectorAll('.pdm-point-label').forEach(function (input) {
         labelsByCode[input.getAttribute('data-point')] = input.value.trim();
