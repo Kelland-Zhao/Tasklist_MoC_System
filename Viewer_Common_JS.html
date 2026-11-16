@@ -58,7 +58,7 @@
   function viewerBuildSteps_(row) {
     var data = row || {};
     return [
-      { skip: data['Production Approval (Y/N)'] === 'N', parsed: viewerParseApprover_(data['Production Approver']), label: '班组' },
+      { skip: data['Production Approval (Y/N)'] !== 'Y', parsed: viewerParseApprover_(data['Production Approver']), label: '班组' },
       { skip: false, parsed: viewerParseApprover_(data['Approver1']), label: '审1' },
       { skip: false, parsed: viewerParseApprover_(data['Approver2']), label: '审2' },
       { skip: false, parsed: viewerParseApprover_(data['Dissminater']), label: '文控发放' }

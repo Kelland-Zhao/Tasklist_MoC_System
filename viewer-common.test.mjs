@@ -52,6 +52,23 @@ test('流程 HTML：全部完成显示已生效，并进行 HTML 转义', () => 
   assert.ok(!html.includes('<img src=x>'));
 });
 
+test('班组审批 Y/N 为空时按不适用处理，显示 - 而不是 1', () => {
+  const row = {
+    'Production Approval (Y/N)': '',
+    'Production Approver': '',
+    Approver1: '批准/ Approve a@colpal.com 2024-12-02',
+    Approver2: '批准/ Approve b@colpal.com 2024-12-03',
+    Dissminater: '发放/ Dissminater c@colpal.com 2024-12-04',
+  };
+  const steps = api.viewerBuildSteps_(row);
+  assert.equal(steps[0].skip, true);
+  assert.equal(api.viewerCurrentStepIdx_(steps), -1);
+
+  const html = api.viewerFlowHtml_(row);
+  assert.ok(html.includes('flow-dot na'));
+  assert.ok(!html.includes('flow-dot current'));
+});
+
 test('状态徽章与左边框颜色', () => {
   assert.ok(api.viewerStatusBadge_('生效/ Effective').includes('st-effective'));
   assert.ok(api.viewerStatusBadge_('取代/ Replace').includes('st-replace'));
