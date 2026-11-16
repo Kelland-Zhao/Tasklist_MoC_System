@@ -92,3 +92,25 @@ test('预测性=是 时 PdM 字段为空拦截，填齐则通过', () => {
   assert.equal(missing[0].taskNo, 'T1');
   assert.deepEqual(missing[0].missing, ['Unit', 'Component', 'Logic', 'TagName', 'LL Limited', 'HH Limited']);
 });
+
+test('PdM 必填字段不含 LL/HH（允许为空）', () => {
+  const rows = [{
+    'Task No': 'FCS-43', 'Line Status': '运行', Strategy: 'RBM', Resource: '技术员/ Technician',
+    'PdM?': '是/ Yes', Unit: '哥林柱', Component: '锁模机构', Logic: 'HighAlarm_Max', TagName: 'S1-S4',
+    'LL Limited': '', 'HH Limited': '',
+  }];
+  assert.deepEqual(
+    api.tasklistMissingFields_(rows, ['Line Status', 'Strategy', 'Resource'], {
+      field: 'PdM?',
+      fields: ['Unit', 'Component', 'Logic', 'TagName'],
+    }),
+    []
+  );
+});
+
+test('两页 PdM 必填字段不包含 LL/HH', () => {
+  for (const jsFile of ['Tasklist_MoC_Modify_JS.html', 'Tasklist_Create_JS.html']) {
+    const js = fs.readFileSync(jsFile, 'utf8');
+    assert.ok(!js.includes("'LL Limited', 'HH Limited']"), jsFile);
+  }
+});
