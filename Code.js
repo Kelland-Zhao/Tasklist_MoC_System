@@ -410,6 +410,7 @@ function dataSave_IN(
     var ws = ss.getSheetByName("Tasklist_history");
 
     let machineType = JSON.parse(obj)[0]["Machine Type"];
+    machineType = machineType === null || machineType === undefined ? "" : String(machineType).trim();
 
     // 在途校验优先于 Database for Web 配置校验
     if (tasklistMachineHasPending_(ss, machineType)) {
@@ -1333,7 +1334,7 @@ function saveDissminater(r) {
 
   let maiApproval1 = r[3];
 
-  let machineType = r[4];
+  let machineType = r[4] === null || r[4] === undefined ? "" : String(r[4]).trim();
 
   let reason = r[5];
 
@@ -1377,7 +1378,8 @@ function saveDissminater(r) {
   if (reason.includes("作废") || reason.includes("void")) {
     rowNumber_former =
       dataforHistory.findIndex(function (r) {
-        return r[0] === machineType && r[12] == "生效/ Effective";
+        return (r[0] === null || r[0] === undefined ? "" : String(r[0]).trim()) === machineType
+          && r[12] == "生效/ Effective";
       }) + 1;
 
     console.log("rowNumber_former:" + rowNumber_former);
@@ -1392,7 +1394,8 @@ function saveDissminater(r) {
   } else {
     rowNumber_former =
       dataforHistory.findIndex(function (r) {
-        return r[0] === machineType && r[12] == "生效/ Effective";
+        return (r[0] === null || r[0] === undefined ? "" : String(r[0]).trim()) === machineType
+          && r[12] == "生效/ Effective";
       }) + 1;
 
     console.log("rowNumber_former:" + rowNumber_former);
@@ -1407,6 +1410,8 @@ function saveDissminater(r) {
       console.log("rowNumber_formeri <= 1");
     }
   }
+
+  ws_Tasklisthistory.getRange(rowNumber, 1).setValue(machineType);
 
   ws_Tasklisthistory.getRange(rowNumber, 13).setValue(status);
 
@@ -1448,7 +1453,7 @@ function saveDissminater_IN(r) {
 
   let maiApproval1 = r[3];
 
-  let machineType = r[4];
+  let machineType = r[4] === null || r[4] === undefined ? "" : String(r[4]).trim();
 
   let reason = r[5];
 
@@ -1490,7 +1495,8 @@ function saveDissminater_IN(r) {
   if (reason.includes("作废") || reason.includes("void")) {
     rowNumber_former =
       dataforHistory.findIndex(function (r) {
-        return r[0] === machineType && r[12] == "生效/ Effective";
+        return (r[0] === null || r[0] === undefined ? "" : String(r[0]).trim()) === machineType
+          && r[12] == "生效/ Effective";
       }) + 1;
 
     ws_Tasklisthistory.getRange(rowNumber, 12).setValue(wordApproval);
@@ -1503,7 +1509,8 @@ function saveDissminater_IN(r) {
   } else {
     rowNumber_former =
       dataforHistory.findIndex(function (r) {
-        return r[0] === machineType && r[12] == "生效/ Effective";
+        return (r[0] === null || r[0] === undefined ? "" : String(r[0]).trim()) === machineType
+          && r[12] == "生效/ Effective";
       }) + 1;
 
     console.log("rowNumber_former:" + rowNumber_former);
@@ -1518,6 +1525,8 @@ function saveDissminater_IN(r) {
       console.log("rowNumber_formeri <= 1");
     }
   }
+
+  ws_Tasklisthistory.getRange(rowNumber, 1).setValue(machineType);
 
   ws_Tasklisthistory.getRange(rowNumber, 13).setValue(status);
 
@@ -1552,7 +1561,7 @@ function submitRequest(r) {
   let objBasicInfo = r[0];
   let dataforHistory = r[1];
 
-  let machineType = dataforHistory[0];
+  let machineType = dataforHistory[0] === null || dataforHistory[0] === undefined ? "" : String(dataforHistory[0]).trim();
   let currentData = dataforHistory[1];
   let loginInfo = dataforHistory[2];
   let reason = dataforHistory[3];
@@ -1627,7 +1636,7 @@ function submitRequest_IN(r) {
   let objBasicInfo = r[0];
   let dataforHistory = r[1];
 
-  let machineType = dataforHistory[0];
+  let machineType = dataforHistory[0] === null || dataforHistory[0] === undefined ? "" : String(dataforHistory[0]).trim();
   let currentData = dataforHistory[1];
   let loginInfo = dataforHistory[2];
   let reason = dataforHistory[3];
