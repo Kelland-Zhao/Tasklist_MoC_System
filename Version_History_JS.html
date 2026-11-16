@@ -1,0 +1,108 @@
+<script>
+  /* 清单查阅页「版本历史」公共逻辑 — 保养/点检共用 */
+
+  function versionHistoryEscape_(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function versionHistoryText_(value) {
+    return value === null || value === undefined ? '' : String(value).trim();
+  }
+
+  function versionHistoryStatusBadge_(status) {
+    var text = versionHistoryText_(status);
+    var cls = 'bg-secondary';
+    if (text === '待审批/ Pending') cls = 'bg-warning text-dark';
+    else if (text === '作废待审批/ Void Pending') cls = 'bg-danger';
+    else if (text === '待发放/ Wait for Dissminater') cls = 'bg-warning text-dark';
+    else if (text === '拒绝/ Rejected') cls = 'bg-danger';
+    else if (text === '生效/ Effective') cls = 'bg-success';
+    else if (text === '取代/ Replace') cls = 'bg-secondary';
+    else if (text === '作废/ Void') cls = 'bg-dark';
+    return '<span class="badge ' + cls + '">' + versionHistoryEscape_(text) + '</span>';
+  }
+
+  /**
+   * 该机型的全部历史版本，按历史表行顺序倒序（新版本在前）。
+   * @param {Array<Object>} rows Tasklist_history 行
+   * @param {string} machineType
+   * @returns {Array<Object>}
+   */
+  function machineVersionRows_(rows, machineType) {
+    var target = versionHistoryText_(machineType);
+    if (target === '' || !Array.isArray(rows)) return [];
+    return rows.filter(function (row) {
+      if (!row) return false;
+      if (versionHistoryText_(row.MachineType) !== target) return false;
+      var status = versionHistoryText_(row.Status);
+      if (status === '' || status.indexOf('状态') !== -1 || status.indexOf('Status') !== -1) return false;
+      return true;
+    }).slice().reverse();
+  }
+
+  /**
+   * 解析 History「Operator」列：工号 / 姓名 / 提交时间。
+   * @param {string} operator
+   * @returns {{jobNumber:string,name:string,timestamp:string}}
+   */
+  function versionHistoryParseOperator_(operator) {
+    var text = versionHistoryText_(operator);
+    var result = { jobNumber: '', name: '', timestamp: '' };
+    if (text === '') return result;
+    var job = text.match(/JobNumber:\s*([^_]+)/);
+    if (job) result.jobNumber = job[1].trim();
+    var time = text.match(/(\d{4}[-\/]\d{1,2}[-\/]\d{1,2}\s+\d{1,2}:\d{2}:\d{2})\s*$/);
+    if (time) result.timestamp = time[1];
+    var name = text.match(/Name:\s*(.+)$/);
+    if (name) {
+      result.name = name[1];
+      if (result.timestamp !== '') {
+        result.name = result.name.replace(/\s*\d{4}[-\/]\d{1,2}[-\/]\d{1,2}\s+\d{1,2}:\d{2}:\d{2}\s*$/, '');
+      }
+      result.name = result.name.trim();
+    }
+    if (result.name === '') result.name = result.jobNumber;
+    return result;
+  }
+
+  /**
+   * 版本卡片内的任务清单表格。
+   * @param {Array<{cn:string,en:string,align?:string}>} headers
+   * @param {Array<Object>} rows
+   * @param {Array<string>} keys
+   * @returns {string}
+   */
+  function versionHistoryTableHtml_(headers, rows, keys) {
+    var list = Array.isArray(rows) ? rows : [];
+    var headerHtml = '<tr>';
+    for (var i = 0; i < headers.length; i++) {
+      headerHtml += '<th>' + versionHistoryEscape_(headers[i].cn)
+        + (headers[i].en ? '<br><small>' + versionHistoryEscape_(headers[i].en) + '</small>' : '') + '</th>';
+    }
+    headerHtml += '</tr>';
+    var html = '<div style="overflow-x:auto;margin-top:8px;">'
+      + '<table class="table table-sm table-bordered version-history-table mb-0"><thead>'
+      + headerHtml + '</thead><tbody>';
+    if (list.length === 0) {
+      html += '<tr><td colspan="' + headers.length + '" class="text-muted">—</td></tr>';
+    } else {
+      for (var r = 0; r < list.length; r++) {
+        var row = list[r] || {};
+        html += '<tr>';
+        for (var c = 0; c < keys.length; c++) {
+          var cls = headers[c] && headers[c].align === 'left' ? ' class="version-history-left"' : '';
+          html += '<td' + cls + '>' + versionHistoryEscape_(row[keys[c]]) + '</td>';
+        }
+        html += '</tr>';
+      }
+    }
+    html += '</tbody></table></div>';
+    return html;
+  }
+</script>

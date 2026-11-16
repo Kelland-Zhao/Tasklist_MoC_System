@@ -37,7 +37,8 @@
         {
           targets: 10, // 最后3列的索引
           render: function (data, type, row, meta) {
-            return '<button class="btn btn-info btn-sm" title="任务清单 / Detail Tasklist"><i class="bi bi-list-ul"></i></button>';
+            return '<button class="btn btn-info btn-sm" title="任务清单 / Detail Tasklist"><i class="bi bi-list-ul"></i></button> '
+              + '<button class="btn btn-outline-secondary btn-sm btn-version-history" title="版本历史 / Version History"><i class="bi bi-clock-history"></i></button>';
           }
         }
       ],
@@ -165,6 +166,11 @@
 
         })
 
+        $("#table tbody").on('click', '.btn-version-history', function () {
+          var rowData = table.row($(this).closest('tr')).data();
+          showTasklistVersionHistory_(r[0], rowData['MachineType']);
+        })
+
       } else {
         Swal.close();
         Swal.fire({
@@ -204,8 +210,48 @@
     'No Resources', 'Skill Level', 'Tools & Equip', 'Estimated Time'
   ];
 
-  function formatText(text) {
-    // 定义固定字段
+  /* 版本历史弹窗：列出该机型全部历史版本，每个版本可展开查看任务清单 */
+  function showTasklistVersionHistory_(historyRows, machineType) {
+    var versions = machineVersionRows_(historyRows, machineType);
+    var html = '<div style="text-align:left;">';
+    html += '<div style="margin-bottom:10px;font-size:13px;color:#555;">机型 / Machine Type：<strong>'
+      + versionHistoryEscape_(machineType) + '</strong> · 共 ' + versions.length + ' 个版本</div>';
+    if (versions.length === 0) {
+      html += '<div class="text-muted">暂无历史版本 / No version history</div>';
+    } else {
+      for (var i = 0; i < versions.length; i++) {
+        var version = versions[i] || {};
+        var applicant = versionHistoryParseOperator_(version.Operator);
+        var reasonText = String(version.Reason || '').replace(/<br\s*\/?>/gi, '\n');
+        var tasklist = [];
+        try { tasklist = JSON.parse(version.Tasklist); } catch (e) { tasklist = []; }
+        html += '<div style="border:1px solid #e9ecef;border-radius:6px;padding:10px 12px;margin-bottom:10px;">';
+        html += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+          + versionHistoryStatusBadge_(version.Status)
+          + '<strong>' + versionHistoryEscape_(applicant.name || '-') + '</strong>'
+          + '<span style="color:#888;font-size:12px;">' + versionHistoryEscape_(applicant.timestamp) + '</span>'
+          + '</div>';
+        if (reasonText !== '') {
+          html += '<div style="margin-top:6px;font-size:13px;white-space:pre-line;">变更原因：'
+            + versionHistoryEscape_(reasonText) + '</div>';
+        }
+        html += '<details style="margin-top:8px;"><summary style="cursor:pointer;color:#0d6efd;font-size:13px;">'
+          + '查看任务清单 / View Tasklist</summary>';
+        html += versionHistoryTableHtml_(PM_PRINT_HEADERS, tasklist, PM_PRINT_KEYS);
+        html += '</details></div>';
+      }
+    }
+    html += '</div>';
+    Swal.fire({
+      title: swalTitle('版本历史', 'Version History'),
+      html: html,
+      width: '90%',
+      showCloseButton: true,
+      showConfirmButton: false
+    });
+  }
+
+  function formatText(text) {    // 定义固定字段
     const keywords = [
       "新增条目",
       "删除条目",
