@@ -18,7 +18,7 @@ function extractFunction(src, name) {
 
 let src = '';
 try { src = fs.readFileSync('Measurement_Config_JS.html', 'utf8'); } catch (e) { src = ''; }
-for (const name of ['measurementConfigText_', 'measurementConfigPdMYes_', 'parseMeasurementPoints_', 'parsePointLabels_', 'validateMeasurementConfig_', 'buildPdMSummary_']) {
+for (const name of ['measurementConfigText_', 'measurementConfigPdMYes_', 'parseMeasurementPoints_', 'parsePointLabels_', 'validateMeasurementConfig_', 'buildPdMSummary_', 'measurementConfigEscape_', 'buildPdMConfigField_', 'buildPdMConfigSelect_', 'buildPdMConfigModalHtml_']) {
   const fn = (() => { try { return extractFunction(src, name); } catch (e) { return null; } })();
   (0, eval)(fn || `function ${name}(){ throw new Error("${name} not found in Measurement_Config_JS.html"); }`);
 }
@@ -99,4 +99,20 @@ test('编辑页 PM_FIELDS 与新建页空值排除包含测量配置', () => {
   ['Measurement Points', 'Point Labels', 'Measurement Unit', 'Photo Required'].forEach((f) => {
     assert.ok(create.includes('key === "' + f + '"'), '新建页空值排除缺少 ' + f);
   });
+});
+
+test('PdM 配置弹窗的 Logic 为下拉框', () => {
+  const html = buildPdMConfigModalHtml_({
+    'Unit': '哥林柱',
+    'Logic': 'HighAlarm_Max',
+    'Measurement Unit': 'kN',
+  });
+  assert.ok(html.includes('<select id="pdmLogic"'));
+  assert.ok(html.includes('请选择/ Please select'));
+  assert.ok(html.includes('HighAlarm_Max'));
+  assert.ok(html.includes('LowAlarm_Slope'));
+  assert.ok(html.includes('Out_of_range'));
+  assert.ok(html.includes('selected'));
+  assert.ok(html.includes('id="pdmUnit"'));
+  assert.ok(!html.includes('<select id="pdmUnit"'));
 });
