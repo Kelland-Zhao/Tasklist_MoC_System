@@ -254,12 +254,14 @@
                       { data: "Tools & Equip" },
                       { data: "Estimated Time" },
                       { data: "PdM?" },
-                      { data: "Unit" },
-                      { data: "Component" },
-                      { data: "Logic" },
-                      { data: "TagName" },
-                      { data: "LL Limited" },
-                      { data: "HH Limited" },
+                      { data: "Unit", visible: false },
+                      { data: "Component", visible: false },
+                      { data: "Logic", visible: false },
+                      { data: "TagName", visible: false },
+                      { data: "LL Limited", visible: false },
+                      { data: "HH Limited", visible: false },
+                      { data: "Photo Required" },
+                      { data: null, defaultContent: "" },
                     ],
                     columnDefs: [
                       {
@@ -377,6 +379,27 @@
                           }
                         }
                       },
+                      {
+                        targets: 22,
+                        render: function (data, type) {
+                          if (type !== 'display') return data;
+                          const value = String(data === null || data === undefined ? 'N' : data || '').trim().toUpperCase() === 'Y' ? 'Y' : 'N';
+                          const options = ['N', 'Y'].map(function (item) {
+                            return '<option value="' + item + '"' + (item === value ? ' selected' : '') + '>' + item + '</option>';
+                          }).join('');
+                          return '<select class="form-select form-select-sm photo-required-select" style="width:100%;">' + options + '</select>';
+                        },
+                      },
+                      {
+                        targets: 23,
+                        render: function (data, type, row) {
+                          if (type !== 'display') return '';
+                          const enabled = measurementConfigPdMYes_(row['PdM?']);
+                          const summary = enabled ? buildPdMSummary_(row) : '—';
+                          return '<div style="font-size:12px;">' + measurementConfigEscape_(summary) + '</div>'
+                            + '<button type="button" class="btn btn-outline-secondary btn-sm btn-pdm-config" style="margin-top:4px;"' + (enabled ? '' : ' disabled') + '>配置 / Setup</button>';
+                        },
+                      },
                     ],
                     pageLength: 100,
                   });
@@ -458,6 +481,18 @@
                     row.data(rowData).draw(false);
                   });
 
+                  $("#table tbody").on("change", ".photo-required-select", function () {
+                    const row = table.row($(this).closest("tr"));
+                    const rowData = row.data();
+                    rowData["Photo Required"] = $(this).val() === "Y" ? "Y" : "N";
+                    row.data(rowData);
+                  });
+
+                  $("#table tbody").on("click", ".btn-pdm-config", function () {
+                    const row = table.row($(this).closest("tr"));
+                    openPdMConfigModal_(row, table);
+                  });
+
                   // 更新可编辑单元格状态的函数
                   function updateEditableCells(rowNode, isEditable) {
                     let row = table.row(rowNode);
@@ -520,6 +555,10 @@
                     
                     // 如果是Logic列（索引18），不允许双击编辑（使用下拉框）
                     if (columnIndex === 18) {
+                      return;
+                    }
+
+                    if (columnIndex === 22 || columnIndex === 23) {
                       return;
                     }
                     
@@ -661,6 +700,32 @@
                   });
 
                   $("#submitTasklist").click(() => {
+                    const pdmConfigErrors = [];
+                    table.rows().every(function () {
+                      const rowData = this.data();
+                      const errors = validateMeasurementConfig_(rowData);
+                      if (errors.length > 0) {
+                        pdmConfigErrors.push({
+                          taskNo: rowData['Task No'] || '',
+                          messages: errors.map(function (e) { return e.message; })
+                        });
+                      }
+                    });
+                    if (pdmConfigErrors.length > 0) {
+                      const lines = pdmConfigErrors.slice(0, 5).map(function (item) {
+                        return measurementConfigEscape_(item.taskNo) + '：'
+                          + item.messages.map(function (m) { return measurementConfigEscape_(m); }).join('；');
+                      });
+                      Swal.fire({
+                        icon: 'warning',
+                        title: swalTitle('无法提交', 'Cannot Submit'),
+                        html: '<div style="text-align:left;font-size:13px;line-height:1.7;">以下任务测量配置不完整：<br>'
+                          + lines.join('<br>') + '</div>',
+                        confirmButtonText: '确定 / OK'
+                      });
+                      return;
+                    }
+
                     const rowsForValidation = table.rows().data().toArray().map(function (row) {
                       const copy = Object.assign({}, row);
                       if (!copy.Strategy || copy.Strategy === '请选择/ Please select') {

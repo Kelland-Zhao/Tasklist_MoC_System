@@ -75,4 +75,64 @@
       : points[0].code + '-' + points[points.length - 1].code;
     return label + (unit === '' ? '' : ' · ' + unit);
   }
+
+  function measurementConfigEscape_(value) {
+    return String(value === null || value === undefined ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function openPdMConfigModal_(row, table) {
+    const source = row.data();
+    const copy = Object.assign({}, source);
+    const field = (id, label, value) => '<div style="margin-bottom:8px;text-align:left;"><label style="display:block;font-size:12px;font-weight:600;color:#333;margin-bottom:2px;">'
+      + label + '</label><input id="' + id + '" class="form-control form-control-sm" value="' + measurementConfigEscape_(value) + '"></div>';
+    const html = '<div style="font-size:13px;max-height:60vh;overflow:auto;">'
+      + field('pdmUnit', 'Unit / 测量单元', source['Unit'])
+      + field('pdmComponent', 'Component / 部件', source['Component'])
+      + field('pdmTagName', 'TagName / 标签', source['TagName'])
+      + field('pdmLogic', 'Logic / 逻辑', source['Logic'])
+      + field('pdmLL', 'LL Limited / 低限值（可空）', source['LL Limited'])
+      + field('pdmHH', 'HH Limited / 高限值（可空）', source['HH Limited'])
+      + field('pdmPoints', 'Measurement Points / 测点（如 S1,S2,S3,S4）', source['Measurement Points'])
+      + field('pdmLabels', 'Point Labels / 位置（如 S1=操作侧;S2=非操作侧）', source['Point Labels'])
+      + field('pdmUnitPhysical', 'Measurement Unit / 物理单位（kN / 吨力 / με）', source['Measurement Unit'])
+      + '</div>';
+    Swal.fire({
+      title: swalTitle('PdM 配置', 'PdM Setup'),
+      html: html,
+      width: '80%',
+      showCancelButton: true,
+      confirmButtonText: '保存 / Save',
+      cancelButtonText: '取消 / Cancel',
+      confirmButtonColor: '#E60012'
+    }).then(function (result) {
+      if (!result.isConfirmed) return;
+      const root = Swal.getHtmlContainer();
+      copy['Unit'] = root.querySelector('#pdmUnit').value.trim();
+      copy['Component'] = root.querySelector('#pdmComponent').value.trim();
+      copy['TagName'] = root.querySelector('#pdmTagName').value.trim();
+      copy['Logic'] = root.querySelector('#pdmLogic').value.trim();
+      copy['LL Limited'] = root.querySelector('#pdmLL').value.trim();
+      copy['HH Limited'] = root.querySelector('#pdmHH').value.trim();
+      copy['Measurement Points'] = root.querySelector('#pdmPoints').value.trim();
+      copy['Point Labels'] = root.querySelector('#pdmLabels').value.trim();
+      copy['Measurement Unit'] = root.querySelector('#pdmUnitPhysical').value.trim();
+      const errors = validateMeasurementConfig_(copy);
+      if (errors.length > 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: swalTitle('配置不完整', 'Incomplete Config'),
+          html: '<div style="text-align:left;font-size:13px;line-height:1.7;">'
+            + errors.map(function (e) { return measurementConfigEscape_(e.message); }).join('<br>') + '</div>',
+          confirmButtonText: '确定 / OK'
+        });
+        return;
+      }
+      row.data(copy).draw(false);
+    });
+  }
 </script>
