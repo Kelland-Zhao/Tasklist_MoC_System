@@ -65,7 +65,7 @@
         { skip: row['Production Approval (Y/N)'] === 'N', parsed: parseApprover(row['Production Approver']), label: '班组', key: 'prod' },
         { skip: false, parsed: parseApprover(row['Approver1']), label: '审1', key: 'lv1' },
         { skip: false, parsed: parseApprover(row['Approver2']), label: '审2', key: 'lv2' },
-        { skip: false, parsed: parseApprover(row['Dissminater']), label: '发布', key: 'dis' }
+        { skip: false, parsed: parseApprover(row['Dissminater']), label: '文控发放', key: 'dis' }
       ];
     }
 
