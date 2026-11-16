@@ -93,10 +93,13 @@
   // Logic 保留原表格的下拉选择形式，选项与原下拉一致
   function buildPdMConfigSelect_(id, label, value, options) {
     const current = measurementConfigText_(value);
+    const list = (options || []).slice();
+    // 历史数据里的非标准值保留为选中项，避免打开弹窗后被动丢失
+    if (current !== '' && list.indexOf(current) === -1) list.push(current);
     let html = '<div style="margin-bottom:8px;text-align:left;"><label style="display:block;font-size:12px;font-weight:600;color:#333;margin-bottom:2px;">'
       + label + '</label><select id="' + id + '" class="form-select form-select-sm">'
       + '<option value="">请选择/ Please select</option>';
-    (options || []).forEach(function (option) {
+    list.forEach(function (option) {
       const selected = option === current ? ' selected' : '';
       html += '<option value="' + measurementConfigEscape_(option) + '"' + selected + '>' + measurementConfigEscape_(option) + '</option>';
     });
@@ -111,6 +114,11 @@
       'LowAlarm_Max', 'LowAlarm_Min', 'LowAlarm_Average', 'LowAlarm_Slope',
       'Out_of_range'
     ];
+    const unitOptions = [
+      'kN', '吨力', 'με', 'mm/s', 'μm', 'mm',
+      '°C', 'MPa', 'bar', 'N·m', 'rpm',
+      'A', 'V', 'Hz', '%'
+    ];
     return '<div style="font-size:13px;max-height:60vh;overflow:auto;">'
       + buildPdMConfigField_('pdmUnit', 'Unit / 测量单元', source['Unit'])
       + buildPdMConfigField_('pdmComponent', 'Component / 部件', source['Component'])
@@ -120,7 +128,7 @@
       + buildPdMConfigField_('pdmHH', 'HH Limited / 高限值（可空）', source['HH Limited'])
       + buildPdMConfigField_('pdmPoints', 'Measurement Points / 测点（如 S1,S2,S3,S4）', source['Measurement Points'])
       + buildPdMConfigField_('pdmLabels', 'Point Labels / 位置（如 S1=操作侧;S2=非操作侧）', source['Point Labels'])
-      + buildPdMConfigField_('pdmUnitPhysical', 'Measurement Unit / 物理单位（kN / 吨力 / με）', source['Measurement Unit'])
+      + buildPdMConfigSelect_('pdmUnitPhysical', 'Measurement Unit / 物理单位', source['Measurement Unit'], unitOptions)
       + '</div>';
   }
 

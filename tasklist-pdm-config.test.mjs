@@ -116,3 +116,17 @@ test('PdM 配置弹窗的 Logic 为下拉框', () => {
   assert.ok(html.includes('id="pdmUnit"'));
   assert.ok(!html.includes('<select id="pdmUnit"'));
 });
+
+test('PdM 配置弹窗的 Measurement Unit 为下拉框且含常见单位', () => {
+  const html = buildPdMConfigModalHtml_({ 'Measurement Unit': 'kN' });
+  assert.ok(html.includes('<select id="pdmUnitPhysical"'));
+  for (const unit of ['kN', '吨力', 'με', 'mm/s', 'μm', '°C', 'MPa', 'N·m', 'rpm', '%']) {
+    assert.ok(html.includes(unit), unit);
+  }
+});
+
+test('未知单位保留为选中项', () => {
+  const html = buildPdMConfigModalHtml_({ 'Measurement Unit': '自定义单位' });
+  assert.ok(html.includes('自定义单位'));
+  assert.ok(/value="自定义单位" selected/.test(html));
+});
