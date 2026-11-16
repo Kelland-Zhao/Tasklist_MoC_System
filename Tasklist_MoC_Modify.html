@@ -37,6 +37,31 @@
     #table th:nth-child(21), #table td:nth-child(21),
     #table th:nth-child(22), #table td:nth-child(22) { min-width: 110px; }
     #table th:last-child, #table td:last-child { width: 50px; }
+
+    /* 分组表头 */
+    #table thead tr.group-row th {
+      background:#f1f3f5 !important; color:#495057 !important;
+      font-size:12px; font-weight:700; text-align:center !important;
+      position: static; border-bottom:1px solid #dee2e6;
+    }
+    /* 冻结列：机型 / 任务编号 / 操作 */
+    #table thead tr:not(.group-row) th:nth-child(1), #table tbody td:nth-child(1) { width:90px; min-width:90px; }
+    #table thead tr:not(.group-row) th:nth-child(2), #table tbody td:nth-child(2) { width:100px; min-width:100px; }
+    #table th.col-sticky-1, #table td.col-sticky-1 { position: sticky; left: 0; z-index: 4; }
+    #table th.col-sticky-2, #table td.col-sticky-2 { position: sticky; left: 90px; z-index: 4; }
+    #table th.col-sticky-last, #table td.col-sticky-last { position: sticky; right: 0; z-index: 4; }
+    #table th.col-sticky-1, #table th.col-sticky-2, #table th.col-sticky-last { background:#E60012 !important; }
+    #table tbody tr.odd > td.col-sticky-1, #table tbody tr.odd > td.col-sticky-2, #table tbody tr.odd > td.col-sticky-last { background:#f5f5f5 !important; }
+    #table tbody tr.even > td.col-sticky-1, #table tbody tr.even > td.col-sticky-2, #table tbody tr.even > td.col-sticky-last { background:#fff !important; }
+    /* 长文本两行截断，悬浮看全文 */
+    .cell-clamp { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; max-width:180px; margin:0 auto; word-break:break-word; }
+    /* 新增行高亮 */
+    #table tbody tr.new-row > td { background:#e8f5e9 !important; }
+    /* 校验失败单元格 */
+    #table td.cell-invalid { outline:2px solid #dc3545; outline-offset:-2px; background:#f8d7da !important; }
+    .pdm-info { font-size:12px; color:#fff; opacity:.9; margin-left:2px; cursor:help; }
+    /* 下拉列宽度，避免文案被截断 */
+    #table .line-status-select, #table .strategy-select, #table .resource-select, #table .logic-select { min-width:130px; }
     #table tbody tr.odd > td { background: #f5f5f5; }
     #table tbody tr.even > td { background: #fff; }
     table.dataTable thead .sorting,
@@ -87,20 +112,20 @@
         <? } ?>
       </select>
       <button type="button" class="btn btn-success" id="Confirm">确定 / Confirm</button>
-      <button type="button" class="btn btn-danger" id="Add">增加 / Add</button>
-      <button type="button" class="btn btn-warning" id="Submit">提交 / Submit</button>
-    </div>
-
-    <div class="alert alert-info mb-3" role="alert">
-      <ul class="mb-0" style="padding-left: 20px; font-size:12px;">
-        <li>如果该条任务为预测性保养任务请在"预测性？/ PdM"中选择"是 / Yes"；</li>
-        <li>当"预测性"选择为"是"时，后方 Unit / Component / Logic / TagName / LL Limited / HH Limited 方可编辑；</li>
-      </ul>
+      <button type="button" class="btn btn-outline-secondary" id="Add" disabled>增加 / Add</button>
+      <button type="button" class="btn btn-danger" id="Submit" disabled style="background:#E60012;border-color:#E60012;">提交 / Submit</button>
+      <button type="button" class="btn btn-outline-secondary" id="reselectBtn" style="display:none;">重新选择机型 / Change</button>
     </div>
 
     <div style="overflow-x:auto;">
     <table id="table" class="display" style="width:100%;">
       <thead>
+        <tr class="group-row">
+          <th colspan="8">基础信息 / Basic</th>
+          <th colspan="7">保养状态 / PM Status</th>
+          <th colspan="7">预测性 PdM</th>
+          <th colspan="1">操作 / Action</th>
+        </tr>
         <tr>
           <th>机型<br><small>Machine Type</small></th>
           <th>任务编号<br><small>Task No.</small></th>
@@ -117,7 +142,7 @@
           <th>技能等级<br><small>Skill Level</small></th>
           <th>技能<br><small>Tools & Equip</small></th>
           <th>预估时间<br><small>Estimated Time</small></th>
-          <th>预测性？<br><small>PdM?</small></th>
+          <th>预测性？<br><small>PdM?</small> <i class="bi bi-info-circle pdm-info" title="预测性 = 是 时，Unit / Component / Logic / TagName / LL Limited / HH Limited 必填"></i></th>
           <th>单位<br><small>Unit</small></th>
           <th>部件<br><small>Component</small></th>
           <th>逻辑<br><small>Logic</small></th>

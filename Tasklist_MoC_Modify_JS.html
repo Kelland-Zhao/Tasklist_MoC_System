@@ -25,6 +25,16 @@
       return html + '</select>';
     }
 
+    function escapeModifyHtml_(value) {
+      if (value === null || value === undefined) return '';
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     $(document).ready(() => {
       let addedCount = 0;
       let deletedCount = 0;
@@ -43,8 +53,8 @@
       var table = $("#table").DataTable({
         autoWidth: false,
         columns: [
-          { data: "MachineType" },
-          { data: "Task No" },
+          { data: "MachineType", className: "col-sticky-1" },
+          { data: "Task No", className: "col-sticky-2" },
           { data: "Section" },
           { data: "Function" },
           { data: "Failure Mode" },
@@ -65,8 +75,18 @@
           { data: "TagName" },
           { data: "LL Limited" },
           { data: "HH Limited" },
+          { data: null, className: "col-sticky-last", defaultContent: "" },
         ],
         columnDefs: [
+          {
+            targets: [2, 3, 4, 5, 6, 13],
+            render: function (data, type) {
+              if (type !== 'display') return data;
+              var text = data === null || data === undefined ? '' : String(data);
+              if (text.indexOf('<input') === 0) return text;
+              return '<div class="cell-clamp" title="' + escapeModifyHtml_(text) + '">' + escapeModifyHtml_(text) + '</div>';
+            }
+          },
           {
             targets: 8, // 设备状态/ Line Status列
             render: function (data, type, row, meta) {
@@ -221,10 +241,13 @@
           {
             targets: 22, // 表示最后一列（功能/ Option）
             render: function (data, type, row, meta) {
-              return '<button class="btn btn-danger btn-sm" title="删除 / Delete"><i class="bi bi-x-lg"></i></button>';
+              return '<button class="btn btn-danger btn-sm btn-delete" title="删除 / Delete"><i class="bi bi-x-lg"></i></button>';
             },
           },
         ],
+        rowCallback: function (rowEl, data) {
+          if (data && data._isNew) $(rowEl).addClass('new-row');
+        },
         pageLength: 100,
       });
 
@@ -342,6 +365,11 @@
             table.clear().draw();
             table.rows.add(Tasklist[0]).draw();
 
+            // 机型确定后锁定，启用增加/提交
+            $("#MachineType").prop("disabled", true);
+            $("#reselectBtn").show();
+            $("#Add, #Submit").prop("disabled", false);
+
             // 保存原始数据用于自动计算编辑条数
             const originalData = JSON.parse(JSON.stringify(Tasklist[0]));
             const PM_FIELDS = ['MachineType', 'Task No', 'Section', 'Function', 'Failure Mode',
@@ -354,11 +382,24 @@
 
             //  console.log(Tasklist)
 
-            // 添加按钮点击事件处理程序
-            $("#table tbody").on("click", ".btn", function () {
+            // 删除按钮：二次确认
+            $("#table tbody").on("click", ".btn-delete", function () {
               var row = table.row($(this).closest("tr"));
-              deletedCount++;
-              row.remove().draw();
+              var rowData = row.data() || {};
+              Swal.fire({
+                icon: 'warning',
+                title: swalTitle('确认删除？', 'Delete Row?'),
+                html: swalHtml('将删除：' + (rowData['Task No'] || rowData['Section'] || '该行'), 'Delete this row?'),
+                showCancelButton: true,
+                confirmButtonText: '删除 / Delete',
+                cancelButtonText: '取消 / Cancel',
+                confirmButtonColor: '#E60012'
+              }).then(function (result) {
+                if (result.isConfirmed) {
+                  deletedCount++;
+                  row.remove().draw();
+                }
+              });
             });
 
             // 处理PdM?单选按钮变化事件
@@ -469,7 +510,29 @@
                 field: 'PdM?',
                 fields: ['Unit', 'Component', 'Logic', 'TagName', 'LL Limited', 'HH Limited']
               });
+              $("#table td.cell-invalid").removeClass("cell-invalid");
               if (missingFields.length > 0) {
+                const fieldColumns = {
+                  'Line Status': 8, 'Strategy': 9, 'Resource': 10,
+                  'Unit': 16, 'Component': 17, 'Logic': 18,
+                  'TagName': 19, 'LL Limited': 20, 'HH Limited': 21
+                };
+                let firstCell = null;
+                missingFields.forEach(function (item) {
+                  const rowIdx = item.index - 1;
+                  item.missing.forEach(function (field) {
+                    const colIdx = fieldColumns[field];
+                    if (colIdx === undefined) return;
+                    const cell = table.cell(rowIdx, colIdx).node();
+                    if (cell) {
+                      $(cell).addClass("cell-invalid");
+                      if (!firstCell) firstCell = cell;
+                    }
+                  });
+                });
+                if (firstCell) {
+                  firstCell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+                }
                 Swal.fire({
                   icon: 'warning',
                   title: swalTitle('无法提交', 'Cannot Submit'),
@@ -660,6 +723,15 @@
         }
       })
         .getData();
+    $("#reselectBtn").click(() => {
+      $("#MachineType").prop("disabled", false);
+      $("#MachineType")[0].selectedIndex = 0;
+      $("#reselectBtn").hide();
+      $("#Add, #Submit").prop("disabled", true);
+      $("#table").DataTable().clear().draw();
+      addedCount = 0;
+      deletedCount = 0;
+    });
     $("#Add").click(() => {
       addedCount++;
       var table = $("#table").DataTable();
