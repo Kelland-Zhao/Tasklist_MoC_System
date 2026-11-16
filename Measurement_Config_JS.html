@@ -91,9 +91,10 @@
     const placeholder = opts.placeholder ? ' placeholder="' + measurementConfigEscape_(opts.placeholder) + '"' : '';
     const type = opts.type ? ' type="' + opts.type + '"' : '';
     const step = opts.step ? ' step="' + opts.step + '"' : '';
+    const help = opts.help ? '<div style="font-size:11px;color:#888;margin-top:2px;">' + opts.help + '</div>' : '';
     return '<div class="' + (opts.col || 'col-12') + '"><label style="display:block;font-size:12px;font-weight:600;color:#333;margin-bottom:2px;">'
       + label + required + '</label><input id="' + id + '" class="form-control form-control-sm"' + type + step + placeholder
-      + ' value="' + measurementConfigEscape_(value) + '"></div>';
+      + ' value="' + measurementConfigEscape_(value) + '">' + help + '</div>';
   }
 
   // 下拉字段：Logic 保留原表格的选择形式，历史非标准值保留为选中项
@@ -172,7 +173,7 @@
       + '</div>'
       + buildPdMConfigSection_('测量要求', 'MEASUREMENT REQUIREMENT')
       + '<div class="row g-3">'
-      + buildPdMConfigField_('pdmPoints', 'Measurement Points / 测点', source['Measurement Points'], { required: true, placeholder: '如 S1,S2,S3,S4', col: 'col-md-8' })
+      + buildPdMConfigField_('pdmPoints', 'Measurement Points / 测点', source['Measurement Points'], { required: true, placeholder: '如 S1,S2,S3,S4', col: 'col-md-8', help: '多个测点请用英文逗号「,」分隔（如 S1,S2,S3,S4）' })
       + buildPdMConfigSelect_('pdmUnitPhysical', 'Measurement Unit / 物理单位', source['Measurement Unit'], unitOptions, { required: true, col: 'col-md-4' })
       + '<div class="col-12"><label style="display:block;font-size:12px;font-weight:600;color:#333;margin-bottom:2px;">Point Labels / 位置'
       + '<span style="color:#E60012;margin-left:2px;">*</span></label><div id="pdmLabelsContainer">'
