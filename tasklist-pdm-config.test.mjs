@@ -176,3 +176,9 @@ test('拼接回 Point Labels 字符串', () => {
   assert.equal(composePointLabels_('S1,S2', { S1: '操作侧', S2: '' }), 'S1=操作侧;S2=');
   assert.equal(composePointLabels_('', {}), '');
 });
+
+test('弹窗内容左对齐且不产生横向滚动', () => {
+  const html = buildPdMConfigModalHtml_({});
+  assert.ok(html.includes('text-align:left'));
+  assert.ok(html.includes('padding:0 12px 4px'));
+});

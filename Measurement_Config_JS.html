@@ -156,7 +156,7 @@
       '°C', 'MPa', 'bar', 'N·m', 'rpm',
       'A', 'V', 'Hz', '%'
     ];
-    return '<div style="font-size:13px;max-height:60vh;overflow:auto;padding:0 2px;">'
+    return '<div style="font-size:13px;max-height:60vh;overflow-y:auto;overflow-x:hidden;text-align:left;padding:0 12px 4px;">'
       + buildPdMConfigSection_('测量对象', 'MEASUREMENT OBJECT')
       + '<div class="row g-3">'
       + buildPdMConfigField_('pdmUnit', 'Unit / 测量单元', source['Unit'], { required: true, placeholder: '如 哥林柱', col: 'col-md-4' })
