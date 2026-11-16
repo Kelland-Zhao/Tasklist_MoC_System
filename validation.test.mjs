@@ -96,7 +96,7 @@ test('预测性=是 时 PdM 字段为空拦截，填齐则通过', () => {
 test('PdM 必填字段不含 LL/HH（允许为空）', () => {
   const rows = [{
     'Task No': 'FCS-43', 'Line Status': '运行', Strategy: 'RBM', Resource: '技术员/ Technician',
-    'PdM?': '是/ Yes', Unit: '哥林柱', Component: '锁模机构', Logic: 'HighAlarm_Max', TagName: 'S1-S4',
+    'PdM?': '是/ Yes', Unit: '哥林柱', Component: '锁模机构', Logic: 'HighAlarm_Max', TagName: '哥林柱拉伸变形量',
     'LL Limited': '', 'HH Limited': '',
   }];
   assert.deepEqual(
