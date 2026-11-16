@@ -87,3 +87,16 @@ test('新建页包含照片列与 PdM 配置按钮', () => {
   assert.ok(html.includes('需要照片'));
   assert.ok(html.includes('PdM 配置'));
 });
+
+test('编辑页 PM_FIELDS 与新建页空值排除包含测量配置', () => {
+  const modify = fs.readFileSync('Tasklist_MoC_Modify_JS.html', 'utf8');
+  const pmFields = modify.match(/const PM_FIELDS = \[([\s\S]*?)\];/);
+  assert.ok(pmFields, '未找到 PM_FIELDS');
+  ['Measurement Points', 'Point Labels', 'Measurement Unit', 'Photo Required'].forEach((f) => {
+    assert.ok(pmFields[1].includes(f), 'PM_FIELDS 缺少 ' + f);
+  });
+  const create = fs.readFileSync('Tasklist_Create_JS.html', 'utf8');
+  ['Measurement Points', 'Point Labels', 'Measurement Unit', 'Photo Required'].forEach((f) => {
+    assert.ok(create.includes('key === "' + f + '"'), '新建页空值排除缺少 ' + f);
+  });
+});

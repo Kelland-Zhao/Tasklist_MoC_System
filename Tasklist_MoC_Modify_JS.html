@@ -398,7 +398,8 @@
             const PM_FIELDS = ['MachineType', 'Task No', 'Section', 'Function', 'Failure Mode',
               'Task Type', 'Task Description', 'Frecuency', 'Line Status', 'Strategy',
               'Resource', 'No Resources', 'Skill Level', 'Tools & Equip', 'Estimated Time',
-              'PdM?', 'Unit', 'Component', 'Logic', 'TagName', 'LL Limited', 'HH Limited'];
+              'PdM?', 'Unit', 'Component', 'Logic', 'TagName', 'LL Limited', 'HH Limited',
+              'Measurement Points', 'Point Labels', 'Measurement Unit', 'Photo Required'];
             const rowsEqual = (a, b) => PM_FIELDS.every(f => (a[f] || '') === (b[f] || ''));
             addedCount = 0;
             deletedCount = 0;
@@ -858,6 +859,10 @@
           "Tools & Equip": "请输入",
           "Estimated Time": "请输入",
           "PdM?": "否/ No",
+          "Measurement Points": "",
+          "Point Labels": "",
+          "Measurement Unit": "",
+          "Photo Required": "N",
           "Unit": "",
           "Component": "",
           "Logic": "",

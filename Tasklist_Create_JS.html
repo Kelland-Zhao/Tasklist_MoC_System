@@ -211,6 +211,10 @@
                       Strategy: "",
                       Resource: "",
                       "PdM?": "否/ No",
+                      "Measurement Points": "",
+                      "Point Labels": "",
+                      "Measurement Unit": "",
+                      "Photo Required": "N",
                       "Unit": "",
                       "Component": "",
                       "Logic": "",
@@ -827,7 +831,11 @@
                               key === "Logic" ||
                               key === "TagName" ||
                               key === "LL Limited" ||
-                              key === "HH Limited"
+                              key === "HH Limited" ||
+                              key === "Measurement Points" ||
+                              key === "Point Labels" ||
+                              key === "Measurement Unit" ||
+                              key === "Photo Required"
                             ) {
                               continue; // 跳过特定属性（这些字段可能为空或由下拉框/单选按钮控制）
                             }
