@@ -36,12 +36,46 @@
     .user-bar .u-name i { margin-right: 6px; }
     .user-bar .spacer { flex: 1; }
 
-    #table thead th {
+    #table thead th,
+    .dataTables_scrollHead thead th {
       background-color: #E60012 !important; color: white !important;
       position: sticky; top: 0; z-index: 10; text-align: center !important;
     }
-    #table thead th small { font-size: 0.8em; font-weight: 400; opacity: 0.85; }
-    #table th, #table td { padding: 5px 6px; font-size: 12px; vertical-align: middle; text-align: center; }
+    #table thead th small, .dataTables_scrollHead thead th small { font-size: 0.8em; font-weight: 400; opacity: 0.85; }
+    #table th, #table td, .dataTables_scrollHead th { padding: 5px 6px; font-size: 12px; vertical-align: middle; text-align: center; }
+    #table tbody td:first-child { border-left: 4px solid transparent; }
+
+    /* 状态徽章（与进度页一致） */
+    .st-badge { display:inline-flex; flex-direction:column; align-items:center; font-size:11px; font-weight:600; padding:3px 10px; border-radius:12px; line-height:1.25; white-space:normal; }
+    .st-badge small { font-size:0.82em; font-weight:400; opacity:.85; }
+    .st-effective { background:#d4edda; color:#155724; }
+    .st-replace   { background:#e2e3e5; color:#41464b; }
+    .st-void      { background:#f8d7da; color:#842029; }
+    .st-pending   { background:#fff3cd; color:#856404; }
+
+    /* 变更原因列：摘要 + 详情 */
+    .reason-main { display:inline-block; font-size:11px; background:#eef2f7; color:#41464b;
+      padding:3px 10px; border-radius:12px; max-width:160px; white-space:normal; word-break:break-word; }
+    .btn-reason-detail { font-size:11px; padding:1px 8px; margin-top:4px; }
+    .reason-detail-table thead th { background:#E60012 !important; color:#fff !important; text-align:center !important; }
+    .reason-detail-table td { font-size:13px; vertical-align:middle; text-align:center; }
+
+    /* 审批流程 stepper（与进度页一致） */
+    .flow { display:flex; align-items:flex-start; justify-content:center; }
+    .flow-node { display:flex; flex-direction:column; align-items:center; flex:0 0 auto; width:42px; }
+    .flow-dot { width:24px; height:24px; border-radius:50%; display:flex; align-items:center;
+      justify-content:center; font-size:13px; font-weight:700; line-height:1; }
+    .flow-dot.done    { background:#198754; color:#fff; }
+    .flow-dot.reject  { background:#dc3545; color:#fff; }
+    .flow-dot.current { background:#ffc107; color:#333; box-shadow:0 0 0 3px rgba(255,193,7,0.25); }
+    .flow-dot.wait    { background:#fff; border:2px solid #dee2e6; color:#adb5bd; }
+    .flow-dot.na      { background:#e9ecef; color:#adb5bd; }
+    .flow-label { font-size:10px; color:#888; margin-top:3px; line-height:1.1; }
+    .flow-node.is-current .flow-label { color:#b8860b; font-weight:700; }
+    .flow-conn { flex:1 1 auto; height:2px; background:#dee2e6; min-width:6px; margin-top:11px; }
+    .flow-conn.done { background:#198754; }
+    .flow-caption { font-size:11px; text-align:center; margin-top:6px; color:#555; }
+    .flow-caption.released { color:#155724; font-weight:600; }
     #diffTable thead th { background:#E60012 !important; color:#fff !important; text-align:center !important; }
     #diffTable thead th small { font-size: 0.8em; font-weight: 400; opacity: 0.85; }
     #diffTable th, #diffTable td { padding:5px 6px; font-size:12px; vertical-align:middle; text-align:center; }
@@ -103,15 +137,10 @@
         <thead>
           <tr>
             <th>机型<br><small>Machine Type</small></th>
-            <th>申请人<br><small>Editor</small></th>
+            <th>申请人<br><small>Applicant</small></th>
             <th>变更原因<br><small>Reason</small></th>
-            <th>审批人1<br><small>Approval Level 1</small></th>
-            <th>意见1<br><small>Comment1</small></th>
-            <th>审批人2<br><small>Approval Level 2</small></th>
-            <th>意见2<br><small>Comment2</small></th>
-            <th>文控发放<br><small>Document Control Release</small></th>
+            <th>审批流程<br><small>Approval Flow</small></th>
             <th>状态<br><small>Status</small></th>
-            <th>submitMail</th>
             <th>操作<br><small>Action</small></th>
           </tr>
         </thead>
@@ -125,6 +154,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
   <?!=include("Sweetalert2_js") ?>
   <?!=include("Print_Export_JS") ?>
+  <?!=include("Viewer_Common_JS") ?>
   <?!=include("Version_History_JS") ?>
   <?!=include("Tasklist_Viewer_JS") ?>
 

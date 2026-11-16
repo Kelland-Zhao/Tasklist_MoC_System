@@ -22,27 +22,56 @@
         { data: 'MachineType' },
         { data: 'Operator' },
         { data: 'Reason' },
-        { data: 'Approver1' },
-        { data: 'Comment1' },
-        { data: 'Approver2' },
-        { data: 'Comment2' },
-        { data: 'Dissminater' },
+        { data: null, defaultContent: '' },
         { data: 'Status' },
-        {
-          data: 'submitMail',
-          "visible": false
-        }
+        { data: null, defaultContent: '' }
       ],
+      autoWidth: false,
+      scrollX: true,
+      pageLength: 50,
+      rowCallback: function (rowEl, data) {
+        $(rowEl).children('td:first-child').css('border-left', '4px solid ' + viewerStatusBorderColor_(data.Status));
+      },
       columnDefs: [
         {
-          targets: 10, // 最后3列的索引
-          render: function (data, type, row, meta) {
-            return '<button class="btn btn-info btn-sm" title="任务清单 / Detail Tasklist"><i class="bi bi-list-ul"></i></button> '
-              + '<button class="btn btn-outline-secondary btn-sm btn-version-history" title="版本历史 / Version History"><i class="bi bi-clock-history"></i></button>';
+          targets: 0, width: '100px', render: function (data, type) {
+            if (type !== 'display') return data;
+            return viewerEscape_(data);
+          }
+        },
+        {
+          targets: 1, width: '130px', render: function (data, type, row) {
+            if (type !== 'display') return row.Operator;
+            return viewerApplicantHtml_(row.Operator);
+          }
+        },
+        {
+          targets: 2, width: '160px', render: function (data, type) {
+            if (type !== 'display') return data;
+            return viewerReasonHtml_(data);
+          }
+        },
+        {
+          targets: 3, width: 'auto',
+          createdCell: function (td) { $(td).css('background-color', '#f4f9ff'); },
+          render: function (data, type, row) {
+            if (type !== 'display') return '';
+            return viewerFlowHtml_(row);
+          }
+        },
+        {
+          targets: 4, width: '100px', render: function (data, type) {
+            if (type !== 'display') return data;
+            return viewerStatusBadge_(data);
+          }
+        },
+        {
+          targets: 5, width: '170px', render: function (data, type, row) {
+            if (type !== 'display') return '';
+            return viewerActionButtonsHtml_();
           }
         }
-      ],
-      pageLength: 50
+      ]
     });
 
 
@@ -100,16 +129,13 @@
 
         let diffTableData = [];
 
-        $("#table tbody").on('click', '.btn-info', function () {
+        $("#table tbody").on('click', '.btn-tasklist-detail', function () {
           Swal.fire({ title: swalTitle('任务清单', 'Tasklist'), html: tableHTML, width: '90%', showConfirmButton: false, showCloseButton: true });
           // 获取当前行的数据
           let rowData = table.row($(this).closest('tr')).data();
 
-          // 提取申请人/ Editor 信息
-          let editor = rowData['Operator'];
-          let item = r[0].filter((r) => { return r.Operator == editor });
-          let tasklist = JSON.parse(item[0].Tasklist);
-          // console.log(tasklist);
+          let tasklist = [];
+          try { tasklist = JSON.parse(rowData.Tasklist); } catch (e) { tasklist = []; }
 
           $('#exportPdfBtn').off('click').on('click', function () {
             const rows = tasklist.map((t) => IN_PRINT_KEYS.map((k) => t[k]));
@@ -149,6 +175,16 @@
           diffTable.clear().rows.add(tasklist).draw(); // 填充并绘制 diffTable
 
         })
+
+        $("#table tbody").on('click', '.btn-reason-detail', function () {
+          var rowData = table.row($(this).closest('tr')).data();
+          Swal.fire({
+            title: swalTitle('变更原因', 'Change Reason'),
+            html: viewerReasonDetailHtml_(rowData.Reason),
+            width: '80%',
+            confirmButtonText: '确定 / OK'
+          });
+        });
 
         $("#table tbody").on('click', '.btn-version-history', function () {
           var rowData = table.row($(this).closest('tr')).data();

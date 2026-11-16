@@ -1,0 +1,212 @@
+<script>
+  /* 清单查阅页公共渲染 — 保养/点检共用（与进度页视觉一致） */
+
+  function viewerEscape_(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function viewerText_(value) {
+    return value === null || value === undefined ? '' : String(value).trim();
+  }
+
+  /* 解析申请人：工号 / 姓名 / 提交时间 */
+  function viewerParseOperator_(operator) {
+    var text = viewerText_(operator);
+    var result = { jobNumber: '', name: '', timestamp: '' };
+    if (text === '') return result;
+    var job = text.match(/JobNumber:\s*([^_]+)/);
+    if (job) result.jobNumber = job[1].trim();
+    var time = text.match(/(\d{4}[-\/]\d{1,2}[-\/]\d{1,2}\s+\d{1,2}:\d{2}:\d{2})\s*$/);
+    if (time) result.timestamp = time[1];
+    var name = text.match(/Name:\s*(.+)$/);
+    if (name) {
+      result.name = name[1];
+      if (result.timestamp !== '') {
+        result.name = result.name.replace(/\s*\d{4}[-\/]\d{1,2}[-\/]\d{1,2}\s+\d{1,2}:\d{2}:\d{2}\s*$/, '');
+      }
+      result.name = result.name.trim();
+    }
+    if (result.name === '') result.name = result.jobNumber;
+    return result;
+  }
+
+  /* 解析审批人：动作 / 姓名（邮箱前缀）/ 日期 */
+  function viewerParseApprover_(value) {
+    var text = viewerText_(value);
+    if (text === '') return null;
+    var action = '批准';
+    if (text.indexOf('批准作废') !== -1) action = '批准作废';
+    else if (text.indexOf('批准') !== -1) action = '批准';
+    else if (text.indexOf('拒绝') !== -1) action = '拒绝';
+    else action = text.substring(0, 4);
+    var name = '';
+    var email = text.match(/[\w.]+@[\w.]+/);
+    if (email) name = email[0].split('@')[0];
+    var date = '';
+    var dateMatch = text.match(/\d{4}-\d{2}-\d{2}/);
+    if (dateMatch) date = dateMatch[0];
+    return { action: action, name: name, date: date };
+  }
+
+  /* 审批四步：班组（按配置跳过）/ 审1 / 审2 / 文控发放 */
+  function viewerBuildSteps_(row) {
+    var data = row || {};
+    return [
+      { skip: data['Production Approval (Y/N)'] === 'N', parsed: viewerParseApprover_(data['Production Approver']), label: '班组' },
+      { skip: false, parsed: viewerParseApprover_(data['Approver1']), label: '审1' },
+      { skip: false, parsed: viewerParseApprover_(data['Approver2']), label: '审2' },
+      { skip: false, parsed: viewerParseApprover_(data['Dissminater']), label: '文控发放' }
+    ];
+  }
+
+  function viewerCurrentStepIdx_(steps) {
+    for (var i = 0; i < steps.length; i++) {
+      if (!steps[i].skip && !steps[i].parsed) return i;
+    }
+    return -1;
+  }
+
+  /* 审批流程步进条（紧凑，明细走 title 悬浮） */
+  function viewerFlowHtml_(row) {
+    var steps = viewerBuildSteps_(row);
+    var currentIdx = viewerCurrentStepIdx_(steps);
+    var html = '<div class="flow">';
+    for (var i = 0; i < steps.length; i++) {
+      var step = steps[i];
+      var cls = '';
+      var inner = '';
+      var tip = step.label;
+      if (step.skip) {
+        cls = 'na';
+        inner = '<i class="bi bi-dash"></i>';
+        tip += '：N/A';
+      } else if (step.parsed) {
+        cls = step.parsed.action.indexOf('拒绝') !== -1 ? 'reject' : 'done';
+        inner = step.parsed.action.indexOf('拒绝') !== -1 ? '<i class="bi bi-x"></i>' : '<i class="bi bi-check"></i>';
+        tip += '：' + step.parsed.action + (step.parsed.name ? ' ' + step.parsed.name : '') + (step.parsed.date ? ' ' + step.parsed.date : '');
+      } else if (i === currentIdx) {
+        cls = 'current';
+        inner = String(i + 1);
+        tip += '：待审批';
+      } else {
+        cls = 'wait';
+        tip += '：待';
+      }
+      var nodeCls = i === currentIdx ? 'flow-node is-current' : 'flow-node';
+      html += '<div class="' + nodeCls + '" title="' + viewerEscape_(tip) + '">';
+      html += '<div class="flow-dot ' + cls + '">' + inner + '</div>';
+      html += '<div class="flow-label">' + step.label + '</div></div>';
+      if (i < steps.length - 1) {
+        html += '<div class="flow-conn' + (step.parsed ? ' done' : '') + '"></div>';
+      }
+    }
+    html += '</div>';
+    if (currentIdx === -1) {
+      html += '<div class="flow-caption released">已生效 / Effective</div>';
+    } else {
+      html += '<div class="flow-caption">当前：' + steps[currentIdx].label + ' · 待审批</div>';
+    }
+    return html;
+  }
+
+  /* 状态徽章 */
+  function viewerStatusBadge_(status) {
+    var text = viewerText_(status);
+    var cls = 'st-replace';
+    if (text === '生效/ Effective') cls = 'st-effective';
+    else if (text === '取代/ Replace') cls = 'st-replace';
+    else if (text === '作废/ Void' || text === '拒绝/ Rejected') cls = 'st-void';
+    else if (text === '待审批/ Pending' || text === '待发放/ Wait for Dissminater' || text === '作废待审批/ Void Pending') cls = 'st-pending';
+    var parts = text.split('/ ');
+    var cn = parts[0] || text;
+    var en = parts.slice(1).join('/ ');
+    return '<span class="st-badge ' + cls + '"><span>' + viewerEscape_(cn) + '</span>'
+      + (en ? '<small>' + viewerEscape_(en) + '</small>' : '') + '</span>';
+  }
+
+  /* 行左侧状态色边框 */
+  function viewerStatusBorderColor_(status) {
+    var text = viewerText_(status);
+    if (text === '待审批/ Pending' || text === '待发放/ Wait for Dissminater') return '#ffc107';
+    if (text === '作废待审批/ Void Pending' || text === '拒绝/ Rejected') return '#dc3545';
+    if (text === '生效/ Effective') return '#198754';
+    return '#adb5bd';
+  }
+
+  /* 变更原因：把已格式化的 <br> 还原为换行，便于转义显示 */
+  function viewerReasonText_(reason) {
+    return String(reason === null || reason === undefined ? '' : reason).replace(/<br\s*\/?>/gi, '\n');
+  }
+
+  function viewerReasonMainText_(after) {
+    var markers = ['修改条目数', '新增条目数', '删除条目数'];
+    var cut = -1;
+    for (var i = 0; i < markers.length; i++) {
+      var index = after.indexOf(markers[i]);
+      if (index >= 0 && (cut === -1 || index < cut)) cut = index;
+    }
+    var main = cut >= 0 ? after.substring(0, cut).trim() : after;
+    return main.trim();
+  }
+
+  function viewerExtractMainReason_(reason) {
+    var text = viewerReasonText_(reason);
+    if (text === '') return '';
+    if (text.indexOf('变更原因/ Reason for change:') === -1) return text.split('\n')[0].trim();
+    var after = text.split('变更原因/ Reason for change:')[1].trim();
+    return viewerReasonMainText_(after).split('\n')[0].trim();
+  }
+
+  /* 变更原因列：摘要 + 详情按钮 */
+  function viewerReasonHtml_(reason) {
+    var main = viewerExtractMainReason_(reason);
+    var full = viewerReasonText_(reason);
+    return '<span class="reason-main" title="' + viewerEscape_(full) + '">' + viewerEscape_(main || '-') + '</span>'
+      + '<button type="button" class="btn btn-outline-secondary btn-sm btn-reason-detail d-block mx-auto">详情 / Details</button>';
+  }
+
+  /* 变更原因详情弹窗内容 */
+  function viewerReasonDetailHtml_(reason) {
+    var text = viewerReasonText_(reason);
+    var parts = { mainReason: text, addCount: '', deleteCount: '', editCount: '' };
+    if (text.indexOf('变更原因/ Reason for change:') !== -1) {
+      var after = text.split('变更原因/ Reason for change:')[1].trim();
+      parts.mainReason = viewerReasonMainText_(after);
+      var addMatch = after.match(/新增条目数\/ Number of add: (\d+)/);
+      var deleteMatch = after.match(/删除条目数\/ Number of delete: (\d+)/);
+      var editMatch = after.match(/修改条数\/ Number of edit: (\d+)/) || after.match(/修改条目数\/ Number of edit: (\d+)/);
+      if (addMatch) parts.addCount = addMatch[1];
+      if (deleteMatch) parts.deleteCount = deleteMatch[1];
+      if (editMatch) parts.editCount = editMatch[1];
+    }
+    var html = '<table class="table table-bordered reason-detail-table"><thead><tr><th>项目 / Item</th><th>内容 / Content</th></tr></thead><tbody>';
+    html += '<tr><td>主要变更原因 / Main Reason</td><td style="text-align:left;white-space:pre-line;">' + viewerEscape_(parts.mainReason || text) + '</td></tr>';
+    if (parts.addCount !== '') html += '<tr><td>新增条目数 / Number of Add</td><td>' + viewerEscape_(parts.addCount) + '</td></tr>';
+    if (parts.deleteCount !== '') html += '<tr><td>删除条目数 / Number of Delete</td><td>' + viewerEscape_(parts.deleteCount) + '</td></tr>';
+    if (parts.editCount !== '') html += '<tr><td>修改条目数 / Number of Edit</td><td>' + viewerEscape_(parts.editCount) + '</td></tr>';
+    html += '</tbody></table>';
+    return html;
+  }
+
+  /* 申请人：工号 / 姓名 两行 */
+  function viewerApplicantHtml_(operator) {
+    var applicant = viewerParseOperator_(operator);
+    return '<div title="' + viewerEscape_(applicant.timestamp) + '" style="font-size:0.8em;line-height:1.35;">'
+      + '<div style="color:#6c757d;">' + viewerEscape_(applicant.jobNumber || '') + '</div>'
+      + '<div style="font-weight:600;color:#333;">' + viewerEscape_(applicant.name || '') + '</div></div>';
+  }
+
+  /* 操作列：任务清单 + 版本历史 */
+  function viewerActionButtonsHtml_() {
+    return '<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">'
+      + '<button type="button" class="btn btn-info btn-sm btn-tasklist-detail" title="任务清单 / Tasklist"><i class="bi bi-list-ul"></i> 任务清单</button>'
+      + '<button type="button" class="btn btn-outline-secondary btn-sm btn-version-history" title="版本历史 / Version History"><i class="bi bi-clock-history"></i> 版本历史</button>'
+      + '</div>';
+  }
+</script>
