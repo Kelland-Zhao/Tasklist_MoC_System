@@ -255,6 +255,7 @@
               { data: 'Tools & Equip' },
               { data: 'Estimated Time' }
             ],
+            rowCallback: tasklistPdMRow_,
             pageLength: 100
           });
           diffTable.clear().rows.add(tasklist).draw(); // 填充并绘制 diffTable

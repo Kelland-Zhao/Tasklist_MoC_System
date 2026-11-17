@@ -1,0 +1,82 @@
+<script>
+  /* 保养任务 PdM 显示 — 只添加 DOM 标记，不修改任务字段或保存内容。 */
+  function tasklistIsPdM_(task) {
+    var value = task && task['PdM?'];
+    var text = value === null || value === undefined ? '' : String(value).trim();
+    return text === '是/ Yes' || text === '是' || text === 'Yes';
+  }
+
+  function tasklistPdMRowClass_(task) {
+    return tasklistIsPdM_(task) ? 'tasklist-pdm-row' : '';
+  }
+
+  function tasklistPdMCellClass_(task, field) {
+    return field === 'Task No' && tasklistIsPdM_(task) ? 'tasklist-pdm-task-no' : '';
+  }
+
+  /* 各保养明细表的任务编号固定为第二个可见单元格。每次重绘同时处理添加和移除。 */
+  function tasklistPdMRow_(row, task) {
+    var enabled = tasklistIsPdM_(task);
+    row.classList.toggle('tasklist-pdm-row', enabled);
+    var taskNoCell = row.cells[1];
+    if (!taskNoCell) return;
+    taskNoCell.classList.toggle('tasklist-pdm-task-no', enabled);
+    if (enabled) {
+      taskNoCell.setAttribute('aria-label', String(task['Task No'] || '') + '，PdM 预测性保养任务');
+    } else {
+      taskNoCell.removeAttribute('aria-label');
+    }
+  }
+
+  function tasklistPdMStyles_() {
+    return `
+      #table tbody tr.tasklist-pdm-row:not(.new-row) > td:not(.cell-invalid),
+      #diffTable tbody tr.tasklist-pdm-row:not(.new-row) > td:not(.cell-invalid),
+      table tbody tr.tasklist-pdm-row:not(.new-row) > td:not(.cell-invalid) {
+        background-color: #f3eafb !important;
+      }
+      /* 冻结列的奇偶行底色不能覆盖新增/错误状态；错误格始终优先。 */
+      #table.dataTable tbody tr.new-row > td:not(.cell-invalid) {
+        background-color: #e8f5e9 !important;
+      }
+      #table.dataTable tbody tr > td.cell-invalid {
+        background-color: #f8d7da !important;
+      }
+      td.tasklist-pdm-task-no::after {
+        content: "PdM";
+        display: table;
+        margin: 4px auto 0;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: #7040a4;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.5;
+        white-space: nowrap;
+      }
+      @media print {
+        .tasklist-pdm-row, .tasklist-pdm-task-no {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+      }
+    `;
+  }
+
+  /* 打印仍使用原有可见列，PdM 标记取自完整任务对象，而非编号或导出数组位置。 */
+  function tasklistPdMPrintOptions_(tasks, keys) {
+    return {
+      rowClass: function (row, index) { return tasklistPdMRowClass_(tasks[index]); },
+      cellClass: function (row, column, index) { return tasklistPdMCellClass_(tasks[index], keys[column]); },
+      extraStyles: tasklistPdMStyles_()
+    };
+  }
+
+  if (typeof document !== 'undefined' && !document.getElementById('tasklist-pdm-styles')) {
+    var tasklistPdMStyle = document.createElement('style');
+    tasklistPdMStyle.id = 'tasklist-pdm-styles';
+    tasklistPdMStyle.textContent = tasklistPdMStyles_();
+    document.head.appendChild(tasklistPdMStyle);
+  }
+</script>

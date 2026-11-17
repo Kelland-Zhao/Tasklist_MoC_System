@@ -260,7 +260,8 @@
           },
         ],
         rowCallback: function (rowEl, data) {
-          if (data && data._isNew) $(rowEl).addClass('new-row');
+          $(rowEl).toggleClass('new-row', !!(data && data._isNew));
+          tasklistPdMRow_(rowEl, data);
         },
         pageLength: 100,
       });

@@ -76,9 +76,11 @@
    * @param {Array<{cn:string,en:string,align?:string}>} headers
    * @param {Array<Object>} rows
    * @param {Array<string>} keys
+   * @param {{rowClass?:Function, cellClass?:Function}} [options] 可选的行/字段显示类名
    * @returns {string}
    */
-  function versionHistoryTableHtml_(headers, rows, keys) {
+  function versionHistoryTableHtml_(headers, rows, keys, options) {
+    var config = options || {};
     var list = Array.isArray(rows) ? rows : [];
     var headerHtml = '<tr>';
     for (var i = 0; i < headers.length; i++) {
@@ -94,9 +96,12 @@
     } else {
       for (var r = 0; r < list.length; r++) {
         var row = list[r] || {};
-        html += '<tr>';
+        var rowClass = config.rowClass ? config.rowClass(row) : '';
+        html += '<tr' + (rowClass ? ' class="' + versionHistoryEscape_(rowClass) + '"' : '') + '>';
         for (var c = 0; c < keys.length; c++) {
-          var cls = headers[c] && headers[c].align === 'left' ? ' class="version-history-left"' : '';
+          var cellClass = config.cellClass ? config.cellClass(row, keys[c]) : '';
+          var classes = [headers[c] && headers[c].align === 'left' ? 'version-history-left' : '', cellClass].filter(Boolean).join(' ');
+          var cls = classes ? ' class="' + versionHistoryEscape_(classes) + '"' : '';
           html += '<td' + cls + '>' + versionHistoryEscape_(row[keys[c]]) + '</td>';
         }
         html += '</tr>';

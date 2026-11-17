@@ -342,6 +342,7 @@
             { data: 'Line Status' }, { data: 'Strategy' }, { data: 'Resource' }, { data: 'No Resources' },
             { data: 'Skill Level' }, { data: 'Tools & Equip' }, { data: 'Estimated Time' }
           ],
+          rowCallback: tasklistPdMRow_,
           pageLength: 100
         }).clear().rows.add(tasklist).draw();
       });

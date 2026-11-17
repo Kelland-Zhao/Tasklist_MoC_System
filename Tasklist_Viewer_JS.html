@@ -155,7 +155,8 @@
               title: buildPrintFileName('保养', rowData['MachineType'], new Date()),
               heading: '保养任务清单',
               headers: PM_PRINT_HEADERS,
-              rows: rows
+              rows: rows,
+              ...tasklistPdMPrintOptions_(tasklist, PM_PRINT_KEYS)
             });
             if (!ok) {
               Swal.fire({
@@ -186,6 +187,7 @@
               { data: 'Tools & Equip' },
               { data: 'Estimated Time' }
             ],
+            rowCallback: tasklistPdMRow_,
             pageLength: 100
           });
           diffTable.clear().rows.add(tasklist).draw(); // 填充并绘制 diffTable
@@ -273,7 +275,10 @@
         }
         html += '<details style="margin-top:8px;"><summary style="cursor:pointer;color:#0d6efd;font-size:13px;">'
           + '查看任务清单 / View Tasklist</summary>';
-        html += versionHistoryTableHtml_(PM_PRINT_HEADERS, tasklist, PM_PRINT_KEYS);
+        html += versionHistoryTableHtml_(PM_PRINT_HEADERS, tasklist, PM_PRINT_KEYS, {
+          rowClass: tasklistPdMRowClass_,
+          cellClass: tasklistPdMCellClass_
+        });
         html += '</details></div>';
       }
     }
